@@ -62,7 +62,7 @@ def _parse_args(argv: list[str]):
     ast = YulTransformer().transform(tree)
     ctx = compile_to_venom(ast)
 
-    run_passes_on(ctx, OptimizationLevel.CODESIZE)
+    run_passes_on(ctx, OptimizationLevel.GAS)
     asm = generate_assembly_experimental(ctx)
     bytecode = generate_bytecode(asm, compiler_metadata=None)
     print(f"0x{bytecode.hex()}")
