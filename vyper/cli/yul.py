@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from __future__ import annotation
 import argparse
 import sys
 
@@ -140,8 +141,8 @@ from lark import Token, Transformer, Tree
 @dataclass
 class YulObject:
     name: str
-    code: "CodeSection"
-    subobjects: List[Union["YulObject", "DataSection"]] = field(default_factory=list)
+    code: CodeSection
+    subobjects: list[YulObject | DataSection]] = field(default_factory=list)
 
 
 @dataclass
@@ -397,46 +398,25 @@ class YulToVenom:
         functions.extend(self._collect_functions(ast_node))
         self.functions = {f.name: f for f in functions}
 
+        for stmt in ast_node.code.block.statements:
+            if isinstance(stmt, FunctionDef):
+                self.functions[stmt.name] = stmt
+
+        assert "__global" not in self.functions
         fn = self.ctx.create_function("__global")
         self.ctx.entry_function = fn
         for stmt in ast_node.code.block.statements:
             if isinstance(stmt, FunctionDef):
                 continue
             self._compile_statement(stmt, fn)
+
         fn.get_basic_block().append_instruction("stop")  # invalid?
 
         # Compile each function
-        for fdef in functions:
+        for fdef in self.functions.values():
             self._compile_function(fdef)
-        return self.ctx
 
-    def _collect_functions(self, node) -> list[FunctionDef]:
-        funcs: list[FunctionDef] = []
-        if isinstance(node, FunctionDef):
-            funcs.append(node)
-        # Recurse into child nodes
-        if isinstance(node, YulObject):
-            for stmt in node.code.block.statements:
-                funcs.extend(self._collect_functions(stmt))
-            for sub in getattr(node, "subobjects", []):
-                funcs.extend(self._collect_functions(sub))
-        elif isinstance(node, Block):
-            for stmt in node.statements:
-                funcs.extend(self._collect_functions(stmt))
-        elif isinstance(node, If):
-            funcs.extend(self._collect_functions(node.body))
-        elif isinstance(node, Switch):
-            funcs.extend(self._collect_functions(node.expr))
-            for case in node.cases:
-                funcs.extend(self._collect_functions(case.body))
-            if node.default:
-                funcs.extend(self._collect_functions(node.default))
-        elif isinstance(node, ForLoop):
-            funcs.extend(self._collect_functions(node.init))
-            funcs.extend(self._collect_functions(node.post))
-            funcs.extend(self._collect_functions(node.body))
-        # Other nodes do not contain FunctionDef
-        return funcs
+        return self.ctx
 
     def _compile_function(self, fdef: FunctionDef) -> IRFunction:
         # Create IRFunction
