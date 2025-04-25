@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from __future__ import annotation
+from __future__ import annotations
 import argparse
 import sys
 
@@ -142,7 +142,7 @@ from lark import Token, Transformer, Tree
 class YulObject:
     name: str
     code: CodeSection
-    subobjects: list[YulObject | DataSection]] = field(default_factory=list)
+    subobjects: list[YulObject | DataSection] = field(default_factory=list)
 
 
 @dataclass
