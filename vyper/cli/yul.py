@@ -617,6 +617,11 @@ class YulToVenom:
                 if opcode == "keccak256":
                     # vyper calls it sha3 internally
                     opcode = "sha3"
+
+                if opcode == "memoryguard":
+                    # memoryguard reserves memory.. we could maybe
+                    # call this 'reserve' (or reuse alloc)
+                    opcode = "store"
                 return bb.append_instruction(opcode, *args)
 
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
