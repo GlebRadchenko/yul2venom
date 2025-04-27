@@ -63,6 +63,7 @@ def _parse_args(argv: list[str]):
     ast = YulTransformer().transform(tree)
     ctx = compile_to_venom(ast)
 
+    # print(ctx)
     check_venom_ctx(ctx)
 
     run_passes_on(ctx, OptimizationLevel.GAS)
@@ -99,7 +100,8 @@ block: "{" statement* "}"
            | if_stmt
            | switch_stmt
            | for_loop
-           | break_con
+           | break_
+           | continue_
            | leave
            | expr_stmt
 
@@ -119,7 +121,8 @@ case: "case" literal block
 default: "default" block
 
 for_loop: "for" block expr block block
-break_con: "break" | "continue"
+break_: "break"
+continue_: "continue"
 leave: "leave"
 
 expr_stmt: expr
@@ -339,8 +342,11 @@ class YulTransformer(Transformer):
     def for_loop(self, items):
         return ForLoop(items[0], items[1], items[2], items[3])
 
-    def break_con(self, items):
-        return Break() if items[0] == "break" else Continue()
+    def break_(self, items):
+        return Break()
+
+    def continue_(self, items):
+        return Continue()
 
     def leave(self, _):
         return Leave()
@@ -443,6 +449,9 @@ class YulToVenom:
         if not last_bb.is_terminated:
             self._compile_leave()
 
+        assert self._break_target is None
+        assert self._continue_target is None
+
         return fn
 
     def _compile_leave(self):
@@ -478,20 +487,20 @@ class YulToVenom:
             cond_op = self._compile_expr(stmt.cond, bb)
             then_bb = IRBasicBlock(self.ctx.get_next_label("then"), fn)
             else_bb = IRBasicBlock(self.ctx.get_next_label("else"), fn)
-            end_bb = IRBasicBlock(self.ctx.get_next_label("ifend"), fn)
+            join_bb = IRBasicBlock(self.ctx.get_next_label("join"), fn)
 
             bb.append_instruction("jnz", cond_op, then_bb.label, else_bb.label)
 
             fn.append_basic_block(then_bb)
             self._compile_block(stmt.body, fn)
-            if not then_bb.is_terminated:
-                then_bb.append_instruction("jmp", end_bb.label)
+            if not (then_bb := fn.get_basic_block()).is_terminated:
+                then_bb.append_instruction("jmp", join_bb.label)
 
             fn.append_basic_block(else_bb)
-            if not else_bb.is_terminated:
-                else_bb.append_instruction("jmp", end_bb.label)
+            if not (else_bb := fn.get_basic_block()).is_terminated:
+                else_bb.append_instruction("jmp", join_bb.label)
 
-            fn.append_basic_block(end_bb)
+            fn.append_basic_block(join_bb)
 
         elif isinstance(stmt, Switch):
             expr_op = self._compile_expr(stmt.expr, bb)
@@ -542,12 +551,9 @@ class YulToVenom:
             body_bb = IRBasicBlock(self.ctx.get_next_label("for_body"), fn)
             post_bb = IRBasicBlock(self.ctx.get_next_label("for_post"), fn)
             end_bb = IRBasicBlock(self.ctx.get_next_label("for_end"), fn)
-            fn.append_basic_block(cond_bb)
-            fn.append_basic_block(body_bb)
-            fn.append_basic_block(post_bb)
-            fn.append_basic_block(end_bb)
 
-            bb.append_instruction("jmp", cond_bb.label)
+            fn.get_basic_block().append_instruction("jmp", cond_bb.label)
+            fn.append_basic_block(cond_bb)
             cond_op = self._compile_expr(stmt.cond, cond_bb)
             cond_bb.append_instruction("jnz", cond_op, body_bb.label, end_bb.label)
 
@@ -556,6 +562,7 @@ class YulToVenom:
 
             fn.append_basic_block(body_bb)
             self._compile_block(stmt.body, fn)
+            body_bb = fn.get_basic_block()
             if not body_bb.is_terminated:
                 body_bb.append_instruction("jmp", post_bb.label)
 
@@ -563,21 +570,25 @@ class YulToVenom:
             self._compile_block(stmt.post, fn)
             post_bb.append_instruction("jmp", cond_bb.label)
 
-            fn.append_basic_block(end_bb)
             self._break_target, self._continue_target = old_break, old_continue
 
+            fn.append_basic_block(end_bb)
+
         elif isinstance(stmt, Break):
-            assert self._break_target
+            assert self._break_target is not None
             bb.append_instruction("jmp", self._break_target.label)
-            fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
+            #fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
 
         elif isinstance(stmt, Continue):
-            assert self._continue_target
+            assert self._continue_target is not None
             bb.append_instruction("jmp", self._continue_target.label)
-            fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
+            #fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
 
         elif isinstance(stmt, Leave):
-            self._compile_leave(fn)
+            self._compile_leave()
+
+        elif isinstance(stmt, Block):
+            self._compile_block(stmt, fn)
 
         else:
             raise NotImplementedError(f"Statement {type(stmt)} not implemented: {stmt}")
