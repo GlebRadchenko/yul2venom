@@ -394,9 +394,7 @@ class YulToVenom:
         Compile a list of YulObject or Block AST nodes into a Venom IRContext.
         """
         # Gather all function definitions in the AST
-        functions: list[FunctionDef] = []
-        functions.extend(self._collect_functions(ast_node))
-        self.functions = {f.name: f for f in functions}
+        self.functions = {}
 
         for stmt in ast_node.code.block.statements:
             if isinstance(stmt, FunctionDef):
