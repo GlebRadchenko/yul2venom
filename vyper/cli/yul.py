@@ -598,10 +598,15 @@ class YulToVenom:
             else:
                 # regular evm instruction
                 # special mappings: log1, log2.. -> log 1, log 2, ...
-                if expr.name.startswith("log"):
-                    topic_count = int(expr.name[3:])
+                opcode = expr.name
+                if opcode.startswith("log"):
+                    topic_count = int(opcode[3:])
                     return bb.append_instruction("log", topic_count, *args)
-                return bb.append_instruction(expr.name, *args)
+
+                if opcode == "keccak256":
+                    # vyper calls it sha3 internally
+                    opcode = "sha3"
+                return bb.append_instruction(opcode, *args)
 
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
 
