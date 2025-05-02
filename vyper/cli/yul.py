@@ -418,8 +418,6 @@ class YulToVenom:
                 continue
             self._compile_statement(stmt, fn)
 
-        fn.get_basic_block().append_instruction("stop")  # invalid?
-
         # Compile each function
         for fdef in self.functions.values():
             self._compile_function(fdef)
