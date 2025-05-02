@@ -63,7 +63,6 @@ def _parse_args(argv: list[str]):
     ast = YulTransformer().transform(tree)
     ctx = compile_to_venom(ast)
 
-    # print(ctx)
     check_venom_ctx(ctx)
 
     run_passes_on(ctx, OptimizationLevel.GAS)
@@ -75,7 +74,8 @@ def _parse_args(argv: list[str]):
 yul_grammar = r"""
 %import common.WS
 %import common.ESCAPED_STRING -> STRING
-%import common.CNAME -> NAME
+%import common.LETTER
+%import common.DIGIT
 %ignore WS
 %ignore /\/\/[^\n]*/
 %ignore /\/\*(.|\n)*?\*\//
@@ -85,6 +85,8 @@ DECIMALNUMBER: /\d+/
 number: HEXNUMBER | DECIMALNUMBER
 TRUE: "true"
 FALSE: "false"
+
+NAME: ("_"|LETTER) ("_"|LETTER|DIGIT|"$")*
 
 ?start: (object | block)+
 
