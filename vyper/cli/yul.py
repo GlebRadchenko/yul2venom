@@ -460,7 +460,7 @@ class YulToVenom:
         fdef = self.current_fdef
         fn = self.function
         return_args = [IRVariable(s) for s in fdef.returns]
-        assert len(return_args) <= 1, "multi return"
+        assert len(return_args) <= 1, f"multi return {fdef}"
         return_pc = self.return_pc
 
         bb = fn.get_basic_block()
