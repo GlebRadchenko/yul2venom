@@ -94,7 +94,8 @@ NAME: ("_"|LETTER) ("_"|LETTER|DIGIT|"$")*
 
 object: "object" STRING "{" code_section (object | data_section)* "}"
 code_section: "code" block
-data_section: "data" STRING (HEXNUMBER | STRING)
+data_section: "data" STRING (HEXNUMBER | STRING | HEXSTRING)
+HEXSTRING: /hex"[0-9a-fA-F]*"/
 
 block: "{" statement* "}"
 ?statement: block
