@@ -443,10 +443,6 @@ class YulToVenom:
         assert "__global" not in self.functions
         fn = self.ctx.create_function("__global")
         self.ctx.entry_function = fn
-        
-        # Add a revert handler for assert
-        self._add_revert_handler(fn)
-        
         for stmt in ast_node.code.block.statements:
             if isinstance(stmt, FunctionDef):
                 continue
@@ -465,6 +461,8 @@ class YulToVenom:
         # Inline subobject code after main code (only for main object)
         if ast_node.subobjects and not self.is_subobject:
             self._inline_subobjects(ast_node)
+        
+        self._add_revert_handler(fn)
 
         return self.ctx
     
@@ -526,21 +524,11 @@ class YulToVenom:
         self.current_fdef = old_fdef
     
     def _add_revert_handler(self, fn: IRFunction) -> None:
-        entry_bb = fn.get_basic_block()
-        
-        continue_label = self.ctx.get_next_label("main_continue")
-        continue_bb = IRBasicBlock(continue_label, fn)
-        
-        entry_bb.append_instruction("jmp", continue_label)
-        
         revert_label = IRLabel("revert")
         revert_bb = IRBasicBlock(revert_label, fn)
         revert_bb.is_pinned = True  # Make sure this block gets emitted
-        fn.append_basic_block(revert_bb)
-        
         revert_bb.append_instruction("revert", IRLiteral(0), IRLiteral(0))
-        
-        fn.append_basic_block(continue_bb)
+        fn.append_basic_block(revert_bb)
 
     def _compile_function(self, fdef: FunctionDef) -> IRFunction:
         # Create IRFunction
