@@ -454,7 +454,7 @@ class YulToVenom:
         
         bb = fn.get_basic_block()
         if not bb.is_terminated:
-            bb.append_instruction("stop")
+            bb.append_instruction("db", IRHexString(b""))
 
         # Compile each function as a separate Venom function
         for fdef in self.functions.values():
@@ -507,7 +507,7 @@ class YulToVenom:
         # Ensure it terminates
         current_bb = fn.get_basic_block()
         if not current_bb.is_terminated:
-            current_bb.append_instruction("stop")
+            current_bb.append_instruction("db", IRHexString(b""))
         
         # Compile subobject's functions as separate Venom functions
         for fdef in self.functions.values():
@@ -518,7 +518,7 @@ class YulToVenom:
         end_fn = self.ctx.create_function(end_label)
         end_bb = end_fn.entry
         end_bb.is_pinned = True  # Mark as pinned to avoid optimization issues
-        end_bb.append_instruction("stop")
+        end_bb.append_instruction("db", IRHexString(b""))
         
         # Restore state
         self.functions = old_functions
