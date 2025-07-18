@@ -76,7 +76,7 @@ def _parse_args(argv: list[str]):
     run_passes_on(ctx, OptimizationLevel.GAS)
     
     if args.asm:
-        asm = generate_assembly_experimental(ctx, OptimizationLevel.NONE)
+        asm = generate_assembly_experimental(ctx)
         print(asm)
         return
         
