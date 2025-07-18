@@ -609,11 +609,11 @@ class YulToVenom:
         if isinstance(stmt, VarDecl):
             if stmt.init:
                 val = self._compile_expr(stmt.init, bb)
-                bb.append_instruction("store", val, ret=IRVariable(stmt.names[0]))
+                bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
 
         elif isinstance(stmt, Assign):
             val = self._compile_expr(stmt.value, bb)
-            bb.append_instruction("store", val, ret=IRVariable(stmt.targets[0]))
+            bb.append_instruction("assign", val, ret=IRVariable(stmt.targets[0]))
 
         elif isinstance(stmt, ExprStmt):
             self._compile_expr(stmt.expr, bb)
@@ -779,7 +779,7 @@ class YulToVenom:
                 if opcode == "memoryguard":
                     # memoryguard reserves memory.. we could maybe
                     # call this 'reserve' (or reuse alloc)
-                    opcode = "store"
+                    opcode = "assign"
                 return bb.append_instruction(opcode, *args)
 
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
