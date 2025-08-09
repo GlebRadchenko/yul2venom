@@ -457,6 +457,11 @@ class YulToVenom:
         bb = fn.get_basic_block()
         if not bb.is_terminated:
             bb.append_instruction("db", IRHexString(b""))
+        
+        # Ensure all basic blocks in main function are terminated
+        for bb in fn.get_basic_blocks():
+            if not bb.is_terminated:
+                bb.append_instruction("stop")
 
         # Compile each function as a separate Venom function
         for fdef in self.functions.values():
@@ -560,6 +565,13 @@ class YulToVenom:
         last_bb = fn.get_basic_block()
         if not last_bb.is_terminated:
             self._compile_leave()
+        
+        # Ensure all basic blocks are terminated
+        for bb in fn.get_basic_blocks():
+            if not bb.is_terminated:
+                # Add a stop instruction to unterminated blocks
+                # These are typically unreachable blocks
+                bb.append_instruction("stop")
 
         return fn
     
@@ -615,11 +627,27 @@ class YulToVenom:
         if isinstance(stmt, VarDecl):
             if stmt.init:
                 val = self._compile_expr(stmt.init, bb)
-                bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
+                if len(stmt.names) > 1:
+                    # Multiple variable declaration - Yul allows this for functions with multiple returns
+                    # For now, we only support the first return value properly
+                    # TODO: Implement proper multi-value returns in Venom
+                    bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
+                    # Initialize other variables to 0 to avoid undefined references
+                    for name in stmt.names[1:]:
+                        bb.append_instruction("assign", IRLiteral(0), ret=IRVariable(name))
+                else:
+                    bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
 
         elif isinstance(stmt, Assign):
             val = self._compile_expr(stmt.value, bb)
-            bb.append_instruction("assign", val, ret=IRVariable(stmt.targets[0]))
+            if len(stmt.targets) > 1:
+                # Multiple assignment - similar to VarDecl with multiple names
+                bb.append_instruction("assign", val, ret=IRVariable(stmt.targets[0]))
+                # Initialize other targets to 0 to avoid undefined references
+                for target in stmt.targets[1:]:
+                    bb.append_instruction("assign", IRLiteral(0), ret=IRVariable(target))
+            else:
+                bb.append_instruction("assign", val, ret=IRVariable(stmt.targets[0]))
 
         elif isinstance(stmt, ExprStmt):
             self._compile_expr(stmt.expr, bb)
@@ -679,6 +707,8 @@ class YulToVenom:
                     default_bb.append_instruction("jmp", end_bb.label)
 
             fn.append_basic_block(end_bb)
+            # The end block might be unreachable if all cases terminate
+            # We'll handle this after all statements are compiled
 
         elif isinstance(stmt, ForLoop):
             # init
@@ -713,12 +743,16 @@ class YulToVenom:
         elif isinstance(stmt, Break):
             assert self._break_target is not None
             bb.append_instruction("jmp", self._break_target.label)
-            #fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
+            # Create a new basic block for any code after break (though it's unreachable)
+            unreachable_bb = IRBasicBlock(self.ctx.get_next_label("unreachable"), fn)
+            fn.append_basic_block(unreachable_bb)
 
         elif isinstance(stmt, Continue):
             assert self._continue_target is not None
             bb.append_instruction("jmp", self._continue_target.label)
-            #fn.append_basic_block(IRBasicBlock(self.ctx.get_next_label(), fn))
+            # Create a new basic block for any code after continue (though it's unreachable)
+            unreachable_bb = IRBasicBlock(self.ctx.get_next_label("unreachable"), fn)
+            fn.append_basic_block(unreachable_bb)
 
         elif isinstance(stmt, Leave):
             self._compile_leave()
