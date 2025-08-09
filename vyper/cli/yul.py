@@ -73,7 +73,13 @@ def _parse_args(argv: list[str]):
         print(ctx)
         return
 
-    run_passes_on(ctx, OptimizationLevel.GAS)
+    # Run essential normalization pass
+    from vyper.venom.passes.cfg_normalization import CFGNormalization
+    from vyper.venom.analysis import IRAnalysesCache
+    
+    for fn in ctx.functions.values():
+        ac = IRAnalysesCache(fn)
+        CFGNormalization(ac, fn).run_pass()
     
     if args.asm:
         asm = generate_assembly_experimental(ctx)
@@ -621,19 +627,14 @@ class YulToVenom:
         elif isinstance(stmt, If):
             cond_op = self._compile_expr(stmt.cond, bb)
             then_bb = IRBasicBlock(self.ctx.get_next_label("then"), fn)
-            else_bb = IRBasicBlock(self.ctx.get_next_label("else"), fn)
             join_bb = IRBasicBlock(self.ctx.get_next_label("join"), fn)
 
-            bb.append_instruction("jnz", cond_op, then_bb.label, else_bb.label)
+            bb.append_instruction("jnz", cond_op, then_bb.label, join_bb.label)
 
             fn.append_basic_block(then_bb)
             self._compile_block(stmt.body, fn)
             if not (then_bb := fn.get_basic_block()).is_terminated:
                 then_bb.append_instruction("jmp", join_bb.label)
-
-            fn.append_basic_block(else_bb)
-            if not (else_bb := fn.get_basic_block()).is_terminated:
-                else_bb.append_instruction("jmp", join_bb.label)
 
             fn.append_basic_block(join_bb)
 
@@ -728,11 +729,25 @@ class YulToVenom:
         else:
             raise NotImplementedError(f"Statement {type(stmt)} not implemented: {stmt}")
 
+    def _string_to_evm_value(self, s: str) -> int:
+        if s.startswith('"') and s.endswith('"'):
+            s = s[1:-1]
+        
+        b = s.encode('utf-8')
+        
+        # Truncate to 32 bytes for now
+        if len(b) > 32:
+            b = b[:32]
+        
+        padded = b.ljust(32, b'\x00')        
+        return int.from_bytes(padded, 'big')
+    
     def _compile_expr(self, expr, bb: IRBasicBlock) -> IRVariable | IRLiteral:
         if isinstance(expr, Literal):
-            # For string literals, return the string value itself
+            # Handle string literals by converting to EVM representation
             if isinstance(expr.value, str):
-                return expr.value
+                # String literals are passed with quotes from the parser
+                return IRLiteral(self._string_to_evm_value(expr.value))
             return IRLiteral(expr.value)
         if isinstance(expr, str):
             return IRVariable(expr)
@@ -759,10 +774,16 @@ class YulToVenom:
                     arg_expr = expr.args[0]
                     if isinstance(arg_expr, Literal) and isinstance(arg_expr.value, str):
                         arg_name = arg_expr.value.strip('"')
-                        # Return a placeholder label that will be resolved later
-                        size_name = f"{arg_name.upper()}_SIZE"
-                        # Use IRLabel with is_symbol=True to indicate it's a const reference
-                        return IRLabel(size_name, is_symbol=True)
+                        
+                        # Check if this is a known subobject
+                        if arg_name in self.subobject_info:
+                            # Return a placeholder label that will be resolved later
+                            size_name = f"{arg_name.upper()}_SIZE"
+                            # Use IRLabel with is_symbol=True to indicate it's a const reference
+                            return IRLabel(size_name, is_symbol=True)
+                        else:
+                            # TODO: Implement proper handling of self-referential datasize
+                            return IRLiteral(0)
                     return IRLiteral(0)
                 
                 # regular evm instruction
