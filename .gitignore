@@ -26,11 +26,8 @@ htmlcov/
 *~
 .DS_Store
 
-test_validation/fixtures/yul/
-
 scrap/
 *.tmp
 *.log
 
 *.local.md
-CLAUDE.local.md
