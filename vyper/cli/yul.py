@@ -10,7 +10,7 @@ import vyper.evm.opcodes as evm
 from vyper.compiler.phases import generate_bytecode
 from vyper.compiler.settings import OptimizationLevel, Settings, set_global_settings
 from vyper.venom import generate_assembly_experimental, run_passes_on
-from vyper.venom.basicblock import IRBasicBlock, IRLabel, IRLiteral, IRVariable, IRHexString, LabelRef
+from vyper.venom.basicblock import IRBasicBlock, IRLabel, IRLiteral, IRVariable
 from vyper.venom.check_venom import check_venom_ctx
 from vyper.venom.context import IRContext
 from vyper.venom.function import IRFunction
@@ -21,6 +21,22 @@ Standalone entry point into venom compiler. Parses venom input and emits
 bytecode.
 """
 
+
+def inject_embedded_bytecode(asm, embedded_bytecode):
+    """Inject embedded bytecode into the assembly as raw data."""
+    if not embedded_bytecode:
+        return asm
+    
+    from vyper.evm.assembler.instructions import DataHeader, DATA_ITEM, Label
+    
+    # Append the embedded bytecode at the end of the assembly
+    # Using the same format as Vyper uses for runtime code
+    for label_name, bytecode in embedded_bytecode.items():
+        # Create a data segment with label and bytecode
+        data_segment = [DataHeader(Label(label_name)), DATA_ITEM(bytecode)]
+        asm.extend(data_segment)
+    
+    return asm
 
 def _parse_cli_args():
     return _parse_args(sys.argv[1:])
@@ -70,23 +86,61 @@ def _parse_args(argv: list[str]):
     # check_venom_ctx(ctx)  # Skip check for now to see output
 
     if args.venom:
-        print(ctx)
+        # Print the Venom IR with embedded bytecode shown
+        output = str(ctx)
+        
+        # For each data function, append the actual bytecode
+        if hasattr(ctx, 'embedded_bytecode'):
+            for label, bytecode in ctx.embedded_bytecode.items():
+                # Find the function in the output and add bytecode display
+                func_pattern = f"function {label}"
+                if func_pattern in output:
+                    # Replace the dbhex instruction with actual bytecode display
+                    hex_str = bytecode.hex()
+                    # Format as DB instructions for clarity
+                    db_lines = []
+                    for i in range(0, len(hex_str), 64):  # 32 bytes per line
+                        db_lines.append(f"      db 0x{hex_str[i:i+64]}")
+                    
+                    # Replace the stop instruction with actual DB instructions for data functions
+                    # Find the function and replace its stop with DB
+                    import re
+                    # Match the data function block and replace stop with db
+                    pattern = f"function {label} {{\n  {label}:.*\n      stop"
+                    replacement = f"function {label} {{\n  {label}:  ; DATA\n" + "\n".join(db_lines)
+                    output = re.sub(pattern, replacement, output, flags=re.DOTALL)
+        
+        print(output)
         return
 
-    # Run essential normalization pass
-    from vyper.venom.passes.cfg_normalization import CFGNormalization
-    from vyper.venom.analysis import IRAnalysesCache
+    # Run full optimization passes
+    from vyper.venom import run_passes_on
+    from vyper.compiler.settings import OptimizationLevel
     
-    for fn in ctx.functions.values():
-        ac = IRAnalysesCache(fn)
-        CFGNormalization(ac, fn).run_pass()
+    # Filter out data functions before optimization
+    original_functions = ctx.functions.copy()
+    ctx.functions = {name: fn for name, fn in ctx.functions.items() 
+                     if not getattr(fn, 'is_data_section', False)}
+    
+    # Run full optimization pipeline
+    run_passes_on(ctx, OptimizationLevel.default())
     
     if args.asm:
         asm = generate_assembly_experimental(ctx)
+        # Restore original functions for display
+        ctx.functions = original_functions
+        # Handle embedded bytecode if present
+        if hasattr(ctx, 'embedded_bytecode'):
+            asm = inject_embedded_bytecode(asm, ctx.embedded_bytecode)
         print(asm)
         return
         
     asm = generate_assembly_experimental(ctx)
+    # Restore original functions
+    ctx.functions = original_functions
+    # Handle embedded bytecode if present  
+    if hasattr(ctx, 'embedded_bytecode'):
+        asm = inject_embedded_bytecode(asm, ctx.embedded_bytecode)
     bytecode, _ = generate_bytecode(asm)
     print(f"0x{bytecode.hex()}")
 
@@ -409,7 +463,7 @@ class YulTransformer(Transformer):
         return False
 
 
-from vyper.venom.basicblock import IRBasicBlock, IRLabel, IRLiteral, IRVariable, IRHexString, LabelRef
+from vyper.venom.basicblock import IRBasicBlock, IRLabel, IRLiteral, IRVariable
 from vyper.venom.context import IRContext
 from vyper.venom.function import IRFunction
 
@@ -423,21 +477,38 @@ class YulToVenom:
         self.data_offsets: dict[str, int] = {}  # data section name -> offset
         self.is_subobject = is_subobject
         self.subobject_sizes: dict[str, int] = {}  # name -> bytecode size
+        self.subobject_bytecode: dict[str, bytes] = {}  # name -> compiled bytecode
 
     def compile(self, ast_node: YulObject) -> IRContext:
         """
         Compile a list of YulObject or Block AST nodes into a Venom IRContext.
         """
-        # First, register all subobjects and create const expressions
+        # First, compile all nested objects to bytecode
         for item in ast_node.subobjects:
             if isinstance(item, YulObject):
-                start_label = item.name  # Use the object name directly as start
-                end_label = f"{item.name}_end"
-                self.subobject_info[item.name] = (start_label, end_label)
+                # Compile the nested object as a completely independent module
+                # This is exactly like compiling a standalone Yul file
+                nested_compiler = YulToVenom()
+                nested_ctx = nested_compiler.compile(item)
                 
-                # Add const expression for size calculation as a tuple
-                size_name = f"{item.name.upper()}_SIZE"
-                self.ctx.add_const_expression(size_name, ("sub", LabelRef(end_label), LabelRef(start_label)))
+                # Run full optimization passes on the nested context
+                from vyper.venom import run_passes_on
+                from vyper.compiler.settings import OptimizationLevel
+                
+                # Use default optimization level - runs all passes
+                run_passes_on(nested_ctx, OptimizationLevel.default())
+                
+                # Generate assembly and bytecode with full optimization
+                asm = generate_assembly_experimental(nested_ctx)
+                bytecode, _ = generate_bytecode(asm)
+                
+                # Store the bytecode
+                self.subobject_bytecode[item.name] = bytecode
+                self.subobject_sizes[item.name] = len(bytecode)
+                
+                # Register labels for this subobject
+                start_label = f"{item.name}_data"
+                self.subobject_info[item.name] = (start_label, None)
         
         # Gather all function definitions in the AST
         self.functions = {}
@@ -456,7 +527,7 @@ class YulToVenom:
         
         bb = fn.get_basic_block()
         if not bb.is_terminated:
-            bb.append_instruction("db", IRHexString(b""))
+            bb.append_instruction("stop")
         
         # Ensure all basic blocks in main function are terminated
         for bb in fn.get_basic_blocks():
@@ -469,20 +540,37 @@ class YulToVenom:
             if fdef.name not in [fn.name.value for fn in self.ctx.functions.values()]:
                 self._compile_function(fdef)
         
-        # Inline subobject code after main code (only for main object)
-        if ast_node.subobjects and not self.is_subobject:
-            self._inline_subobjects(ast_node)
+        # Embed subobject bytecode as data (only for main object)
+        if self.subobject_bytecode and not self.is_subobject:
+            self._embed_subobject_bytecode(fn)
         
         self._add_revert_handler(fn)
 
         return self.ctx
     
-    def _inline_subobjects(self, ast_node: YulObject) -> None:
-        """Compile subobjects as separate functions in the same context."""
-        for item in ast_node.subobjects:
-            if isinstance(item, YulObject):
-                # Compile the subobject as a function named after it
-                self._compile_subobject_as_function(item)
+    def _embed_subobject_bytecode(self, fn: IRFunction) -> None:
+        """Embed compiled subobject bytecode as data in the IR context."""
+        # Store the bytecode in the context for later assembly generation
+        if not hasattr(self.ctx, 'embedded_bytecode'):
+            self.ctx.embedded_bytecode = {}
+        
+        for name, bytecode in self.subobject_bytecode.items():
+            # Store bytecode for assembly generation
+            self.ctx.embedded_bytecode[f"{name}_data"] = bytecode
+            
+            # Create a data block in Venom IR to show the bytecode
+            # This will be visible in --venom output
+            data_fn = self.ctx.create_function(f"{name}_data")
+            data_bb = data_fn.entry
+            
+            # Store the actual bytecode on the function for display
+            data_fn.runtime_bytecode = bytecode
+            
+            # Mark this function as data-only so it can be skipped during assembly
+            data_fn.is_data_section = True
+            
+            # Just terminate the block - it won't be compiled to assembly
+            data_bb.append_instruction("stop")
     
     def _compile_subobject_as_function(self, obj: YulObject) -> None:
         """Compile a subobject as a Venom function with start/end labels for size calculation."""
@@ -516,7 +604,7 @@ class YulToVenom:
         # Ensure it terminates
         current_bb = fn.get_basic_block()
         if not current_bb.is_terminated:
-            current_bb.append_instruction("db", IRHexString(b""))
+            current_bb.append_instruction("stop")
         
         # Compile subobject's functions as separate Venom functions
         for fdef in self.functions.values():
@@ -527,7 +615,7 @@ class YulToVenom:
         end_fn = self.ctx.create_function(end_label)
         end_bb = end_fn.entry
         end_bb.is_pinned = True  # Mark as pinned to avoid optimization issues
-        end_bb.append_instruction("db", IRHexString(b""))
+        end_bb.append_instruction("stop")
         
         # Restore state
         self.functions = old_functions
@@ -799,9 +887,11 @@ class YulToVenom:
                     arg_expr = expr.args[0]
                     if isinstance(arg_expr, Literal) and isinstance(arg_expr.value, str):
                         arg_name = arg_expr.value.strip('"')
-                        # For subobjects, return the object name directly as the label
-                        # Use is_symbol=False to ensure it's treated as a regular label, not a const
-                        return IRLabel(arg_name, is_symbol=False)
+                        # For pre-compiled subobjects, return the data label
+                        if arg_name in self.subobject_bytecode:
+                            return IRLabel(f"{arg_name}_data")
+                        # Fallback for other data sections
+                        return IRLabel(arg_name)
                     return IRLiteral(0)
                 
                 elif expr.name == "datasize" and len(expr.args) == 1:
@@ -809,14 +899,12 @@ class YulToVenom:
                     if isinstance(arg_expr, Literal) and isinstance(arg_expr.value, str):
                         arg_name = arg_expr.value.strip('"')
                         
-                        # Check if this is a known subobject
-                        if arg_name in self.subobject_info:
-                            # Return a placeholder label that will be resolved later
-                            size_name = f"{arg_name.upper()}_SIZE"
-                            # Use IRLabel with is_symbol=True to indicate it's a const reference
-                            return IRLabel(size_name, is_symbol=True)
+                        # Check if this is a pre-compiled subobject
+                        if arg_name in self.subobject_sizes:
+                            # Return the actual bytecode size
+                            return IRLiteral(self.subobject_sizes[arg_name])
                         else:
-                            # TODO: Implement proper handling of self-referential datasize
+                            # TODO: Handle other data sections
                             return IRLiteral(0)
                     return IRLiteral(0)
                 
@@ -842,7 +930,15 @@ class YulToVenom:
 
 def compile_to_venom(ast_nodes: YulObject) -> IRContext:
     builder = YulToVenom()
-    return builder.compile(ast_nodes)
+    ctx = builder.compile(ast_nodes)
+    
+    # If there's embedded bytecode, we need to handle it specially
+    # during assembly generation
+    if hasattr(ctx, 'embedded_bytecode'):
+        # Store the embedded bytecode info for the assembly generator
+        ctx.has_embedded_data = True
+    
+    return ctx
 
 
 if __name__ == "__main__":
