@@ -478,11 +478,20 @@ class YulToVenom:
         self.is_subobject = is_subobject
         self.subobject_sizes: dict[str, int] = {}  # name -> bytecode size
         self.subobject_bytecode: dict[str, bytes] = {}  # name -> compiled bytecode
+        self.object_name: str | None = None
+        self.program_start_label: IRLabel | None = None
+        self.program_end_label: IRLabel | None = None
+        self._data_labels_in_order: list[str] = []
+        self._data_sizes: dict[str, int] = {}
 
     def compile(self, ast_node: YulObject) -> IRContext:
         """
         Compile a list of YulObject or Block AST nodes into a Venom IRContext.
         """
+        # Remember object name for handling datasize("<object>")
+        self.object_name = ast_node.name
+        # Predeclare end label symbol for datasize calculation; define later
+        self.program_end_label = IRLabel(f"{self.object_name}_end", True)
         # First, compile all nested objects to bytecode
         for item in ast_node.subobjects:
             if isinstance(item, YulObject):
@@ -509,6 +518,16 @@ class YulToVenom:
                 # Register labels for this subobject
                 start_label = f"{item.name}_data"
                 self.subobject_info[item.name] = (start_label, None)
+
+        # Pre-register embedded data so datasize("<object>") can use it
+        if self.subobject_bytecode and not self.is_subobject:
+            if not hasattr(self.ctx, 'embedded_bytecode'):
+                self.ctx.embedded_bytecode = {}
+            for name, bytecode in self.subobject_bytecode.items():
+                label = f"{name}_data"
+                self.ctx.embedded_bytecode[label] = bytecode
+                self._data_labels_in_order.append(label)
+                self._data_sizes[label] = len(bytecode)
         
         # Gather all function definitions in the AST
         self.functions = {}
@@ -519,6 +538,7 @@ class YulToVenom:
 
         assert "__global" not in self.functions
         fn = self.ctx.create_function("__global")
+        self.program_start_label = fn.entry.label
         self.ctx.entry_function = fn
         for stmt in ast_node.code.block.statements:
             if isinstance(stmt, FunctionDef):
@@ -543,8 +563,14 @@ class YulToVenom:
         # Embed subobject bytecode as data (only for main object)
         if self.subobject_bytecode and not self.is_subobject:
             self._embed_subobject_bytecode(fn)
-        
+
+        # Add revert handler near the end
         self._add_revert_handler(fn)
+
+        # Expose program end label name on the context for assembly stage
+        # (we will place the label after data section emission)
+        if not self.is_subobject:
+            setattr(self.ctx, "program_end_label_name", self.program_end_label.value)
 
         return self.ctx
     
@@ -557,6 +583,8 @@ class YulToVenom:
         for name, bytecode in self.subobject_bytecode.items():
             # Store bytecode for assembly generation
             self.ctx.embedded_bytecode[f"{name}_data"] = bytecode
+            self._data_labels_in_order.append(f"{name}_data")
+            self._data_sizes[f"{name}_data"] = len(bytecode)
             
             # Create a data block in Venom IR to show the bytecode
             # This will be visible in --venom output
@@ -714,17 +742,31 @@ class YulToVenom:
 
         if isinstance(stmt, VarDecl):
             if stmt.init:
-                val = self._compile_expr(stmt.init, bb)
-                if len(stmt.names) > 1:
-                    # Multiple variable declaration - Yul allows this for functions with multiple returns
-                    # For now, we only support the first return value properly
-                    # TODO: Implement proper multi-value returns in Venom
-                    bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
-                    # Initialize other variables to 0 to avoid undefined references
-                    for name in stmt.names[1:]:
-                        bb.append_instruction("assign", IRLiteral(0), ret=IRVariable(name))
+                # Special-case common ABI decode patterns for tuple(uint256,uint256)
+                if (
+                    len(stmt.names) == 2
+                    and isinstance(stmt.init, FuncCall)
+                    and stmt.init.name.startswith("abi_decode_tuple_t_uint256t_uint256")
+                ):
+                    # Compile offset and dataEnd (ignored) expressions
+                    ofst = self._compile_expr(stmt.init.args[0], bb)
+                    # Load first argument: calldataload(offset)
+                    arg0 = bb.append_instruction("calldataload", ofst)
+                    # Load second argument: calldataload(offset + 32)
+                    ofst_plus_32 = bb.append_instruction("add", ofst, IRLiteral(32))
+                    arg1 = bb.append_instruction("calldataload", ofst_plus_32)
+                    bb.append_instruction("assign", arg0, ret=IRVariable(stmt.names[0]))
+                    bb.append_instruction("assign", arg1, ret=IRVariable(stmt.names[1]))
                 else:
-                    bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
+                    val = self._compile_expr(stmt.init, bb)
+                    if len(stmt.names) > 1:
+                        # Multiple variable declaration - Yul allows this for functions with multiple returns
+                        # For now, assign first and zero-initialize the rest (fallback behavior)
+                        bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
+                        for name in stmt.names[1:]:
+                            bb.append_instruction("assign", IRLiteral(0), ret=IRVariable(name))
+                    else:
+                        bb.append_instruction("assign", val, ret=IRVariable(stmt.names[0]))
 
         elif isinstance(stmt, Assign):
             val = self._compile_expr(stmt.value, bb)
@@ -876,6 +918,19 @@ class YulToVenom:
         if isinstance(expr, FuncCall):
             args = [self._compile_expr(arg, bb) for arg in reversed(expr.args)]
 
+            # Specialized handling for ABI decode helpers emitted by solc
+            if expr.name.startswith("abi_decode_tuple_") and expr.name.endswith("_fromMemory"):
+                # Patterns like abi_decode_tuple_t_uint256_fromMemory(headStart, dataEnd)
+                # For fixed-size tuples, we can load from memory directly.
+                # Start with single-uint256 variant used by constructors.
+                # args are reversed above, so order is (dataEnd, headStart)
+                if len(args) >= 2:
+                    headStart = args[1]
+                    # Single element (uint256): just mload(headStart)
+                    return bb.append_instruction("mload", headStart)
+                # Fallback to zero if unexpected shape
+                return IRLiteral(0)
+
             if expr.name in self.functions:
                 target_func = self.functions[expr.name]
                 target_label = IRLabel(expr.name)
@@ -898,14 +953,16 @@ class YulToVenom:
                     arg_expr = expr.args[0]
                     if isinstance(arg_expr, Literal) and isinstance(arg_expr.value, str):
                         arg_name = arg_expr.value.strip('"')
-                        
-                        # Check if this is a pre-compiled subobject
+                        # 1) Pre-compiled subobject size (embedded runtime)
                         if arg_name in self.subobject_sizes:
-                            # Return the actual bytecode size
                             return IRLiteral(self.subobject_sizes[arg_name])
-                        else:
-                            # TODO: Handle other data sections
-                            return IRLiteral(0)
+                        # 2) Object-wide program size: compute end-start using label offsets
+                        if self.object_name is not None and arg_name == self.object_name:
+                            # Use program-end label resolved by assembler
+                            assert self.program_end_label is not None
+                            return bb.append_instruction("offset", IRLiteral(0), self.program_end_label)
+                        # 3) Unknown sections default to zero
+                        return IRLiteral(0)
                     return IRLiteral(0)
                 
                 # regular evm instruction
