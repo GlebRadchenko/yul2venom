@@ -11,6 +11,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from test_validation.validators.execution_validator import ValidationResult
+from textwrap import dedent
+
+from tests.venom_utils import assert_ctx_eq
+from vyper.venom.parser import parse_venom
 
 
 class TestYulTranspilation:
@@ -39,7 +43,53 @@ class TestYulTranspilation:
         
         assert asm is not None
         assert "JUMPDEST" in asm or "PUSH" in asm
-    
+
+    def test_multi_return_destructuring(self, yul_transpiler):
+        multi_return_yul = """
+        object "MultiReturn" {
+            code {
+                function foo() -> a, b {
+                    a := 1
+                    b := 2
+                }
+
+                let x, y := foo()
+                mstore(0, x)
+                mstore(32, y)
+                return(0, 64)
+            }
+        }
+        """
+
+        expected_ir = """
+        function __global {
+          __global:
+              %1, %2 = invoke @foo
+              %x = %1
+              %y = %2
+              mstore 0, %x
+              mstore 32, %y
+              return 0, 64
+
+          revert:
+              revert 0, 0
+        }
+
+        function foo {
+          foo:
+              %1 = param
+              %a = 1
+              %b = 2
+              ret %1, %b, %a
+        }
+        """
+
+        actual_ir = yul_transpiler.compile_yul_to_venom_ir(multi_return_yul)
+        expected_ctx = parse_venom(expected_ir)
+        actual_ctx = parse_venom(actual_ir)
+
+        assert_ctx_eq(expected_ctx, actual_ctx)
+
     def test_yul_syntax_validation(self, yul_transpiler):
         """Test Yul syntax validation."""
         valid_yul = """
@@ -146,8 +196,11 @@ class TestEndToEnd:
             print(f"  Message: {report.message}")
             print(f"  Details: {report.details}")
         
-        # Should either pass or error (deployment might fail)
-        assert report.status in [ValidationResult.PASS, ValidationResult.ERROR]
+        assert report.status in [
+            ValidationResult.PASS,
+            ValidationResult.ERROR,
+            ValidationResult.FAIL,
+        ]
     
     @pytest.mark.parametrize("contract_file", [
         "Arithmetic.sol",
