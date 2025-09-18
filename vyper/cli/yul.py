@@ -224,7 +224,7 @@ literal: number (":" NAME)?
 yul_parser = Lark(yul_grammar, start="start", parser="lalr")
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 from lark import Token, Transformer, Tree
 
@@ -946,8 +946,23 @@ class YulToVenom:
         
         padded = b.ljust(32, b'\x00')        
         return int.from_bytes(padded, 'big')
-    
-    def _compile_expr(self, expr, bb: IRBasicBlock) -> IRVariable | IRLiteral:
+
+    def _flatten_operands(
+        self, operands: Iterable[IRLiteral | IRVariable | IRLabel | list]
+    ) -> list[IRLiteral | IRVariable | IRLabel]:
+        """Recursively flatten operand lists produced by multi-return invocations."""
+
+        flat: list[IRLiteral | IRVariable | IRLabel] = []
+        for operand in operands:
+            if isinstance(operand, list):
+                flat.extend(self._flatten_operands(operand))
+            else:
+                flat.append(operand)
+        return flat
+
+    def _compile_expr(
+        self, expr, bb: IRBasicBlock
+    ) -> IRVariable | IRLiteral | IRLabel | list[IRVariable | IRLiteral | IRLabel]:
         if isinstance(expr, Literal):
             # Handle string literals by converting to EVM representation
             if isinstance(expr.value, str):
@@ -978,7 +993,7 @@ class YulToVenom:
                 num_returns = len(target_func.returns)
                 # Pass 1 for single returns (backwards compatible), actual count for multi-returns
                 returns_param = 1 if num_returns == 1 else num_returns if num_returns > 1 else False
-                invoke_args = [target_label, *reversed(args)]
+                invoke_args = [target_label, *self._flatten_operands(list(reversed(args)))]
                 return bb.append_invoke_instruction(invoke_args, returns=returns_param)
             else:
                 # Handle dataoffset and datasize specially
@@ -1014,7 +1029,9 @@ class YulToVenom:
                 opcode = expr.name
                 if opcode.startswith("log"):
                     topic_count = int(opcode[3:])
-                    return bb.append_instruction("log", topic_count, *args)
+                    return bb.append_instruction(
+                        "log", topic_count, *self._flatten_operands(args)
+                    )
 
                 if opcode == "keccak256":
                     # vyper calls it sha3 internally
@@ -1024,7 +1041,7 @@ class YulToVenom:
                     # memoryguard reserves memory.. we could maybe
                     # call this 'reserve' (or reuse alloc)
                     opcode = "assign"
-                return bb.append_instruction(opcode, *args)
+                return bb.append_instruction(opcode, *self._flatten_operands(args))
 
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
 
