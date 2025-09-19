@@ -43,24 +43,25 @@ class SolcCompiler:
     def compile_to_yul(self, solidity_file: Path, optimize: bool = False) -> str:
         """
         Compile a Solidity file to Yul IR.
-        
+
         Args:
             solidity_file: Path to the Solidity source file
             optimize: Whether to enable optimizer
-        
+
         Returns:
             Yul IR code as string
         """
         if not solidity_file.exists():
             raise FileNotFoundError(f"Solidity file not found: {solidity_file}")
-        
+
         cmd = [
             self.solc_path,
             "--ir",  # Output Yul IR
+            "--via-ir",  # Use IR pipeline to avoid stack too deep errors
             "--no-color",
             str(solidity_file)
         ]
-        
+
         if optimize:
             cmd.extend(["--optimize", "--optimize-runs", "200"])
         
@@ -101,10 +102,11 @@ class SolcCompiler:
             self.solc_path,
             "--bin",
             "--bin-runtime",
+            "--via-ir",  # Use IR pipeline to avoid stack too deep errors
             "--no-color",
             str(solidity_file)
         ]
-        
+
         if optimize:
             cmd.extend(["--optimize", "--optimize-runs", "200"])
         
@@ -158,6 +160,7 @@ class SolcCompiler:
                 }
             },
             "settings": {
+                "viaIR": True,  # Use IR pipeline to avoid stack too deep errors
                 "optimizer": {
                     "enabled": optimize,
                     "runs": 200
