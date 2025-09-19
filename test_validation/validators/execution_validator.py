@@ -4,11 +4,12 @@ Execution-based validation framework for comparing Solidity and Yul-transpiled b
 Uses pyrevm to execute bytecode and compare actual behavior rather than superficial properties.
 """
 
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
-from pyrevm import EVM, Env
-from eth_utils import to_checksum_address, to_hex, to_bytes, keccak
+
+from pyrevm import EVM
+from eth_utils import keccak, to_bytes, to_checksum_address, to_hex
 
 
 class ValidationResult(Enum):
@@ -56,7 +57,7 @@ class ExecutionValidator:
         bytecode: str,
         deployer: str = None,
         constructor_args: bytes = b"",
-    ) -> Tuple[bool, str, bytes]:
+    ) -> Tuple[bool, Optional[str], bytes, Optional[int]]:
         """
         Deploy a contract and return its address.
         
@@ -65,7 +66,7 @@ class ExecutionValidator:
             deployer: Address of deployer (optional)
         
         Returns:
-            Tuple of (success, contract_address, output_data)
+            Tuple of (success, contract_address, output_data, gas_used)
         """
         if deployer is None:
             deployer = "0x1000000000000000000000000000000000000001"
@@ -87,23 +88,29 @@ class ExecutionValidator:
                 value=0,
                 gas=5_000_000
             )
-            
+            exec_result = getattr(self.evm, "result", None)
+            gas_used = exec_result.gas_used if exec_result is not None else None
+
             if contract_address:
                 # Get the deployed contract address
                 contract_address = to_checksum_address(contract_address)
-                return True, contract_address, b""
+                return True, contract_address, b"", gas_used
             else:
-                return False, None, b"No address returned"
+                return False, None, b"No address returned", gas_used
         except Exception as e:
             # Include the error message for debugging
-            return False, None, f"Deployment error: {str(e)}".encode()
+            exec_result = getattr(self.evm, "result", None)
+            gas_used = exec_result.gas_used if exec_result is not None else None
+            return False, None, f"Deployment error: {str(e)}".encode(), gas_used
     
-    def execute_call(self, 
-                    contract_address: str, 
-                    calldata: bytes,
-                    caller: str = None,
-                    value: int = 0,
-                    gas_limit: int = 1_000_000) -> Tuple[bool, bytes, Dict[int, int]]:
+    def execute_call(
+        self,
+        contract_address: str,
+        calldata: bytes,
+        caller: str = None,
+        value: int = 0,
+        gas_limit: int = 1_000_000,
+    ) -> Tuple[bool, bytes, Dict[int, int], Optional[int]]:
         """
         Execute a call to a contract.
         
@@ -140,10 +147,14 @@ class ExecutionValidator:
                 gas=gas_limit,
                 is_static=False,
             )
+            exec_result = getattr(self.evm, "result", None)
+            gas_used = exec_result.gas_used if exec_result is not None else None
             success = True
         except Exception:
             output = b""
             success = False
+            exec_result = getattr(self.evm, "result", None)
+            gas_used = exec_result.gas_used if exec_result is not None else None
         
         # Get storage after the call
         storage_after = {}
@@ -154,7 +165,7 @@ class ExecutionValidator:
             if storage_before[i] != storage_after[i]:
                 storage_changes[i] = storage_after[i]
         
-        return success, output if output else b"", storage_changes
+        return success, output if output else b"", storage_changes, gas_used
     
     def validate_execution(
         self,
@@ -177,7 +188,7 @@ class ExecutionValidator:
         reports = []
         
         # Deploy both contracts in separate EVM instances
-        success1, addr1, deploy_output1 = self.deploy_contract(
+        success1, addr1, deploy_output1, deploy_gas1 = self.deploy_contract(
             original_bytecode, constructor_args=constructor_args
         )
         if not success1:
@@ -185,7 +196,10 @@ class ExecutionValidator:
                 test_name="deployment",
                 status=ValidationResult.ERROR,
                 message="Failed to deploy original contract",
-                details={"output": to_hex(deploy_output1) if deploy_output1 else None}
+                details={
+                    "output": to_hex(deploy_output1) if deploy_output1 else None,
+                    "original_gas_used": deploy_gas1,
+                }
             ))
             return reports
         
@@ -194,7 +208,7 @@ class ExecutionValidator:
 
         # Use a fresh EVM for the transpiled contract
         self.evm = EVM()
-        success2, addr2, deploy_output2 = self.deploy_contract(
+        success2, addr2, deploy_output2, deploy_gas2 = self.deploy_contract(
             transpiled_bytecode, constructor_args=constructor_args
         )
         if not success2:
@@ -203,17 +217,24 @@ class ExecutionValidator:
                 test_name="deployment",
                 status=ValidationResult.ERROR,
                 message=f"Failed to deploy transpiled contract: {error_msg}",
-                details={"output": to_hex(deploy_output2) if deploy_output2 else None, "error": error_msg}
+                details={
+                    "output": to_hex(deploy_output2) if deploy_output2 else None,
+                    "error": error_msg,
+                    "original_gas_used": deploy_gas1,
+                    "transpiled_gas_used": deploy_gas2,
+                }
             ))
             return reports
-        
+
         reports.append(ExecutionReport(
             test_name="deployment",
             status=ValidationResult.PASS,
             message="Both contracts deployed successfully",
             details={
                 "original_address": addr1,
-                "transpiled_address": addr2
+                "transpiled_address": addr2,
+                "original_gas_used": deploy_gas1,
+                "transpiled_gas_used": deploy_gas2,
             }
         ))
         
@@ -228,7 +249,7 @@ class ExecutionValidator:
             # Execute on original
             # Original
             self.evm = evm_original
-            success1, output1, storage1 = self.execute_call(
+            success1, output1, storage1, gas_used1 = self.execute_call(
                 addr1, 
                 test_case.calldata,
                 value=test_case.value,
@@ -237,7 +258,7 @@ class ExecutionValidator:
             
             # Transpiled
             self.evm = evm_transpiled
-            success2, output2, storage2 = self.execute_call(
+            success2, output2, storage2, gas_used2 = self.execute_call(
                 addr2,
                 test_case.calldata,
                 value=test_case.value,
@@ -288,7 +309,9 @@ class ExecutionValidator:
                     "original_output": to_hex(output1) if output1 else None,
                     "transpiled_output": to_hex(output2) if output2 else None,
                     "original_storage": storage1,
-                    "transpiled_storage": storage2
+                    "transpiled_storage": storage2,
+                    "original_gas_used": gas_used1,
+                    "transpiled_gas_used": gas_used2,
                 }
             ))
         
@@ -309,13 +332,13 @@ class ExecutionValidator:
         # Reset EVM
         self.evm = EVM()
         
-        success1, addr1, output1 = self.deploy_contract(original)
-        
+        success1, addr1, output1, gas1 = self.deploy_contract(original)
+
         # Reset for second deployment
         self.evm = EVM()
-        
-        success2, addr2, output2 = self.deploy_contract(transpiled)
-        
+
+        success2, addr2, output2, gas2 = self.deploy_contract(transpiled)
+
         if success1 and success2:
             return ExecutionReport(
                 test_name="simple_deployment",
@@ -323,7 +346,9 @@ class ExecutionValidator:
                 message="Both contracts deployed successfully",
                 details={
                     "original_deployed": success1,
-                    "transpiled_deployed": success2
+                    "transpiled_deployed": success2,
+                    "original_gas_used": gas1,
+                    "transpiled_gas_used": gas2,
                 }
             )
         elif success1 != success2:
@@ -335,7 +360,9 @@ class ExecutionValidator:
                     "original_deployed": success1,
                     "transpiled_deployed": success2,
                     "original_output": to_hex(output1) if output1 else None,
-                    "transpiled_output": to_hex(output2) if output2 else None
+                    "transpiled_output": to_hex(output2) if output2 else None,
+                    "original_gas_used": gas1,
+                    "transpiled_gas_used": gas2,
                 }
             )
         else:
@@ -345,7 +372,9 @@ class ExecutionValidator:
                 message="Both contracts failed to deploy",
                 details={
                     "original_output": to_hex(output1) if output1 else None,
-                    "transpiled_output": to_hex(output2) if output2 else None
+                    "transpiled_output": to_hex(output2) if output2 else None,
+                    "original_gas_used": gas1,
+                    "transpiled_gas_used": gas2,
                 }
             )
 

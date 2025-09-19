@@ -31,6 +31,17 @@ def _hex_length_in_bytes(hex_string: str) -> int:
     return len(hex_string) // 2
 
 
+def _format_pct(pct: Optional[float], noun: str = "reduction") -> str:
+    if pct is None:
+        return ""
+    direction = noun
+    value = pct
+    if pct < 0:
+        direction = "increase" if noun == "reduction" else noun
+        value = abs(pct)
+    return f" ({value:.2f}% {direction})"
+
+
 @dataclass
 class TestCase:
     """Test case definition."""
@@ -57,6 +68,10 @@ class TestResult:
     venom_ir_size: Optional[int] = None
     reference_deploy_bytes: Optional[int] = None
     transpiled_deploy_bytes: Optional[int] = None
+    reference_deploy_gas: Optional[int] = None
+    transpiled_deploy_gas: Optional[int] = None
+    reference_call_gas: Optional[int] = None
+    transpiled_call_gas: Optional[int] = None
     
     def to_dict(self):
         """Convert to dictionary for JSON serialization."""
@@ -293,9 +308,32 @@ class TestOrchestrator:
             )
             
             # Print validation results
-            for report in validation_reports:
+            deploy_gas1 = None
+            deploy_gas2 = None
+            if validation_reports:
+                deploy_report = validation_reports[0]
+                symbol = "[OK]" if deploy_report.status == ValidationResult.PASS else "[FAIL]"
+                print(f"  {symbol} {deploy_report.test_name}: {deploy_report.message}")
+                deploy_details = deploy_report.details or {}
+                deploy_gas1 = deploy_details.get("original_gas_used")
+                deploy_gas2 = deploy_details.get("transpiled_gas_used")
+
+            total_original_gas = 0
+            total_transpiled_gas = 0
+            has_original_gas = False
+            has_transpiled_gas = False
+            for report in validation_reports[1:]:
                 symbol = "[OK]" if report.status == ValidationResult.PASS else "[FAIL]"
                 print(f"  {symbol} {report.test_name}: {report.message}")
+                details = report.details or {}
+                original_gas = details.get("original_gas_used")
+                transpiled_gas = details.get("transpiled_gas_used")
+                if original_gas is not None:
+                    total_original_gas += original_gas
+                    has_original_gas = True
+                if transpiled_gas is not None:
+                    total_transpiled_gas += transpiled_gas
+                    has_transpiled_gas = True
             
             # Determine overall status
             failed_count = sum(1 for r in validation_reports 
@@ -325,6 +363,10 @@ class TestOrchestrator:
                 venom_ir_size=venom_ir_size,
                 reference_deploy_bytes=reference_deploy_bytes,
                 transpiled_deploy_bytes=transpiled_deploy_bytes,
+                reference_deploy_gas=deploy_gas1,
+                transpiled_deploy_gas=deploy_gas2,
+                reference_call_gas=total_original_gas if has_original_gas else None,
+                transpiled_call_gas=total_transpiled_gas if has_transpiled_gas else None,
             )
             
         except Exception as e:
@@ -413,6 +455,66 @@ class TestOrchestrator:
 
         report["size_metrics"] = size_metrics
 
+        total_reference_gas = 0
+        total_transpiled_gas = 0
+        per_contract_gas_reductions: List[float] = []
+        total_reference_deploy_gas = 0
+        total_transpiled_deploy_gas = 0
+        total_reference_call_gas = 0
+        total_transpiled_call_gas = 0
+        per_contract_call_reductions: List[float] = []
+        per_contract_deploy_reductions: List[float] = []
+        for result in self.results:
+            ref_deploy_gas = result.reference_deploy_gas
+            trans_deploy_gas = result.transpiled_deploy_gas
+            if ref_deploy_gas is not None and trans_deploy_gas is not None:
+                total_reference_deploy_gas += ref_deploy_gas
+                total_transpiled_deploy_gas += trans_deploy_gas
+                if ref_deploy_gas > 0:
+                    per_contract_deploy_reductions.append(
+                        (ref_deploy_gas - trans_deploy_gas) / ref_deploy_gas * 100
+                    )
+
+            ref_call_gas = result.reference_call_gas
+            trans_call_gas = result.transpiled_call_gas
+            if ref_call_gas is not None and trans_call_gas is not None:
+                total_reference_call_gas += ref_call_gas
+                total_transpiled_call_gas += trans_call_gas
+                if ref_call_gas > 0:
+                    per_contract_call_reductions.append(
+                        (ref_call_gas - trans_call_gas) / ref_call_gas * 100
+                    )
+
+        gas_metrics: Dict[str, Any] = {
+            "total_reference_deploy_gas": total_reference_deploy_gas,
+            "total_transpiled_deploy_gas": total_transpiled_deploy_gas,
+            "total_reference_call_gas": total_reference_call_gas,
+            "total_transpiled_call_gas": total_transpiled_call_gas,
+        }
+        if total_reference_deploy_gas > 0:
+            gas_metrics["deploy_reduction_pct"] = (
+                (total_reference_deploy_gas - total_transpiled_deploy_gas)
+                / total_reference_deploy_gas
+                * 100
+            )
+        if per_contract_deploy_reductions:
+            gas_metrics["deploy_average_reduction_pct"] = (
+                sum(per_contract_deploy_reductions) / len(per_contract_deploy_reductions)
+            )
+
+        if total_reference_call_gas > 0:
+            gas_metrics["call_reduction_pct"] = (
+                (total_reference_call_gas - total_transpiled_call_gas)
+                / total_reference_call_gas
+                * 100
+            )
+        if per_contract_call_reductions:
+            gas_metrics["call_average_reduction_pct"] = (
+                sum(per_contract_call_reductions) / len(per_contract_call_reductions)
+            )
+
+        report["gas_metrics"] = gas_metrics
+
         if len(self.results) > 0:
             report["success_rate"] = report["passed"] / report["total_tests"]
         else:
@@ -444,13 +546,28 @@ class TestOrchestrator:
         trans_bytes = size_metrics.get("total_transpiled_bytes", 0)
         overall_pct = size_metrics.get("overall_reduction_pct")
         if ref_bytes and trans_bytes:
-            pct_str = f" ({overall_pct:+.2f}%)" if overall_pct is not None else ""
+            pct_str = _format_pct(overall_pct)
             print(
                 f"Bytecode size (deploy): {ref_bytes} → {trans_bytes} bytes{pct_str}"
             )
-            avg_pct = size_metrics.get("average_reduction_pct")
-            if avg_pct is not None:
-                print(f"Avg per-contract reduction: {avg_pct:.2f}%")
+        gas_metrics = report.get("gas_metrics", {})
+        ref_deploy_gas = gas_metrics.get("total_reference_deploy_gas", 0)
+        trans_deploy_gas = gas_metrics.get("total_transpiled_deploy_gas", 0)
+        deploy_pct = gas_metrics.get("deploy_reduction_pct")
+        if ref_deploy_gas and trans_deploy_gas:
+            pct_str = _format_pct(deploy_pct)
+            print(
+                f"Deploy gas: {ref_deploy_gas} → {trans_deploy_gas}{pct_str}"
+            )
+
+        ref_call_gas = gas_metrics.get("total_reference_call_gas", 0)
+        trans_call_gas = gas_metrics.get("total_transpiled_call_gas", 0)
+        call_pct = gas_metrics.get("call_reduction_pct")
+        if ref_call_gas and trans_call_gas:
+            pct_str = _format_pct(call_pct)
+            print(
+                f"Call gas: {ref_call_gas} → {trans_call_gas}{pct_str}"
+            )
         print(f"{'='*60}")
 
         # Print failed tests
