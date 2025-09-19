@@ -1,16 +1,16 @@
 /// @use-src 0:"test_validation/fixtures/solidity/AdvancedFeatures.sol"
-object "AdvancedFeatures_257" {
+object "AdvancedFeatures_256" {
     code {
-        /// @src 0:213:2087  "contract AdvancedFeatures {..."
+        /// @src 0:58:1932  "contract AdvancedFeatures {..."
         mstore(64, memoryguard(128))
         if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
 
-        constructor_AdvancedFeatures_257()
+        constructor_AdvancedFeatures_256()
 
         let _1 := allocate_unbounded()
-        codecopy(_1, dataoffset("AdvancedFeatures_257_deployed"), datasize("AdvancedFeatures_257_deployed"))
+        codecopy(_1, dataoffset("AdvancedFeatures_256_deployed"), datasize("AdvancedFeatures_256_deployed"))
 
-        return(_1, datasize("AdvancedFeatures_257_deployed"))
+        return(_1, datasize("AdvancedFeatures_256_deployed"))
 
         function allocate_unbounded() -> memPtr {
             memPtr := mload(64)
@@ -20,19 +20,19 @@ object "AdvancedFeatures_257" {
             revert(0, 0)
         }
 
-        /// @src 0:213:2087  "contract AdvancedFeatures {..."
-        function constructor_AdvancedFeatures_257() {
+        /// @src 0:58:1932  "contract AdvancedFeatures {..."
+        function constructor_AdvancedFeatures_256() {
 
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
         }
-        /// @src 0:213:2087  "contract AdvancedFeatures {..."
+        /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
     }
     /// @use-src 0:"test_validation/fixtures/solidity/AdvancedFeatures.sol"
-    object "AdvancedFeatures_257_deployed" {
+    object "AdvancedFeatures_256_deployed" {
         code {
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
             mstore(64, memoryguard(128))
 
             if iszero(lt(calldatasize(), 4))
@@ -44,49 +44,49 @@ object "AdvancedFeatures_257" {
                 {
                     // withdraw(uint256)
 
-                    external_fun_withdraw_84()
+                    external_fun_withdraw_83()
                 }
 
                 case 0x6f77926b
                 {
                     // getUser(address)
 
-                    external_fun_getUser_107()
+                    external_fun_getUser_106()
                 }
 
                 case 0x7649c433
                 {
                     // historyAverage()
 
-                    external_fun_historyAverage_161()
+                    external_fun_historyAverage_160()
                 }
 
                 case 0x83714834
                 {
                     // factorial(uint256)
 
-                    external_fun_factorial_198()
+                    external_fun_factorial_197()
                 }
 
                 case 0xb6b55f25
                 {
                     // deposit(uint256)
 
-                    external_fun_deposit_50()
+                    external_fun_deposit_49()
                 }
 
                 case 0xc557abe6
                 {
                     // historySum()
 
-                    external_fun_historySum_138()
+                    external_fun_historySum_137()
                 }
 
                 case 0xc6c2ea17
                 {
                     // fib(uint256)
 
-                    external_fun_fib_256()
+                    external_fun_fib_255()
                 }
 
                 default {}
@@ -147,11 +147,11 @@ object "AdvancedFeatures_257" {
 
             }
 
-            function external_fun_withdraw_84() {
+            function external_fun_withdraw_83() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())
-                fun_withdraw_84(param_0)
+                fun_withdraw_83(param_0)
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple__to__fromStack(memPos  )
                 return(memPos, sub(memEnd, memPos))
@@ -200,11 +200,11 @@ object "AdvancedFeatures_257" {
 
             }
 
-            function external_fun_getUser_107() {
+            function external_fun_getUser_106() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 let param_0 :=  abi_decode_tuple_t_address(4, calldatasize())
-                let ret_0, ret_1 :=  fun_getUser_107(param_0)
+                let ret_0, ret_1 :=  fun_getUser_106(param_0)
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple_t_uint256_t_uint256__to_t_uint256_t_uint256__fromStack(memPos , ret_0, ret_1)
                 return(memPos, sub(memEnd, memPos))
@@ -223,55 +223,55 @@ object "AdvancedFeatures_257" {
 
             }
 
-            function external_fun_historyAverage_161() {
+            function external_fun_historyAverage_160() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 abi_decode_tuple_(4, calldatasize())
-                let ret_0 :=  fun_historyAverage_161()
+                let ret_0 :=  fun_historyAverage_160()
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)
                 return(memPos, sub(memEnd, memPos))
 
             }
 
-            function external_fun_factorial_198() {
+            function external_fun_factorial_197() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())
-                let ret_0 :=  fun_factorial_198(param_0)
+                let ret_0 :=  fun_factorial_197(param_0)
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)
                 return(memPos, sub(memEnd, memPos))
 
             }
 
-            function external_fun_deposit_50() {
+            function external_fun_deposit_49() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())
-                fun_deposit_50(param_0)
+                fun_deposit_49(param_0)
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple__to__fromStack(memPos  )
                 return(memPos, sub(memEnd, memPos))
 
             }
 
-            function external_fun_historySum_138() {
+            function external_fun_historySum_137() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 abi_decode_tuple_(4, calldatasize())
-                let ret_0 :=  fun_historySum_138()
+                let ret_0 :=  fun_historySum_137()
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)
                 return(memPos, sub(memEnd, memPos))
 
             }
 
-            function external_fun_fib_256() {
+            function external_fun_fib_255() {
 
                 if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }
                 let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())
-                let ret_0 :=  fun_fib_256(param_0)
+                let ret_0 :=  fun_fib_255(param_0)
                 let memPos := allocate_unbounded()
                 let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)
                 return(memPos, sub(memEnd, memPos))
@@ -298,13 +298,13 @@ object "AdvancedFeatures_257" {
                 converted := convert_t_uint160_to_t_address(value)
             }
 
-            function mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$7_storage_$_of_t_address(slot , key) -> dataSlot {
+            function mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$6_storage_$_of_t_address(slot , key) -> dataSlot {
                 mstore(0, convert_t_address_to_t_address(key))
                 mstore(0x20, slot)
                 dataSlot := keccak256(0, 0x40)
             }
 
-            function convert_t_struct$_User_$7_storage_to_t_struct$_User_$7_storage_ptr(value) -> converted {
+            function convert_t_struct$_User_$6_storage_to_t_struct$_User_$6_storage_ptr(value) -> converted {
                 converted := value
             }
 
@@ -424,117 +424,117 @@ object "AdvancedFeatures_257" {
 
             }
 
-            /// @ast-id 84
-            /// @src 0:614:828  "function withdraw(uint256 amount) public {..."
-            function fun_withdraw_84(var_amount_52) {
+            /// @ast-id 83
+            /// @src 0:459:673  "function withdraw(uint256 amount) public {..."
+            function fun_withdraw_83(var_amount_51) {
 
-                /// @src 0:685:690  "users"
+                /// @src 0:530:535  "users"
                 let _1_slot := 0x00
-                let expr_58_slot := _1_slot
-                /// @src 0:691:701  "msg.sender"
-                let expr_60 := caller()
-                /// @src 0:685:702  "users[msg.sender]"
-                let _2 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$7_storage_$_of_t_address(expr_58_slot,expr_60)
+                let expr_57_slot := _1_slot
+                /// @src 0:536:546  "msg.sender"
+                let expr_59 := caller()
+                /// @src 0:530:547  "users[msg.sender]"
+                let _2 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$6_storage_$_of_t_address(expr_57_slot,expr_59)
                 let _3_slot := _2
-                let expr_61_slot := _3_slot
-                /// @src 0:665:702  "User storage user = users[msg.sender]"
-                let var_user_57_slot := convert_t_struct$_User_$7_storage_to_t_struct$_User_$7_storage_ptr(expr_61_slot)
-                /// @src 0:720:724  "user"
-                let _4_slot := var_user_57_slot
-                let expr_64_slot := _4_slot
-                /// @src 0:720:732  "user.balance"
-                let _5 := add(expr_64_slot, 0)
+                let expr_60_slot := _3_slot
+                /// @src 0:510:547  "User storage user = users[msg.sender]"
+                let var_user_56_slot := convert_t_struct$_User_$6_storage_to_t_struct$_User_$6_storage_ptr(expr_60_slot)
+                /// @src 0:565:569  "user"
+                let _4_slot := var_user_56_slot
+                let expr_63_slot := _4_slot
+                /// @src 0:565:577  "user.balance"
+                let _5 := add(expr_63_slot, 0)
                 let _6 := read_from_storage_split_offset_0_t_uint256(_5)
-                let expr_65 := _6
-                /// @src 0:736:742  "amount"
-                let _7 := var_amount_52
-                let expr_66 := _7
-                /// @src 0:720:742  "user.balance >= amount"
-                let expr_67 := iszero(lt(cleanup_t_uint256(expr_65), cleanup_t_uint256(expr_66)))
-                /// @src 0:712:759  "require(user.balance >= amount, \"insufficient\")"
-                require_helper_t_stringliteral_1d6424f41c888659cfd6cfa52fead9c914e6f8687116697f5c9ecb1e5532665d(expr_67)
-                /// @src 0:785:791  "amount"
-                let _8 := var_amount_52
-                let expr_74 := _8
-                /// @src 0:769:773  "user"
-                let _9_slot := var_user_57_slot
-                let expr_71_slot := _9_slot
-                /// @src 0:769:781  "user.balance"
-                let _10 := add(expr_71_slot, 0)
-                /// @src 0:769:791  "user.balance -= amount"
+                let expr_64 := _6
+                /// @src 0:581:587  "amount"
+                let _7 := var_amount_51
+                let expr_65 := _7
+                /// @src 0:565:587  "user.balance >= amount"
+                let expr_66 := iszero(lt(cleanup_t_uint256(expr_64), cleanup_t_uint256(expr_65)))
+                /// @src 0:557:604  "require(user.balance >= amount, \"insufficient\")"
+                require_helper_t_stringliteral_1d6424f41c888659cfd6cfa52fead9c914e6f8687116697f5c9ecb1e5532665d(expr_66)
+                /// @src 0:630:636  "amount"
+                let _8 := var_amount_51
+                let expr_73 := _8
+                /// @src 0:614:618  "user"
+                let _9_slot := var_user_56_slot
+                let expr_70_slot := _9_slot
+                /// @src 0:614:626  "user.balance"
+                let _10 := add(expr_70_slot, 0)
+                /// @src 0:614:636  "user.balance -= amount"
                 let _11 := read_from_storage_split_offset_0_t_uint256(_10)
-                let expr_75 := checked_sub_t_uint256(_11, expr_74)
+                let expr_74 := checked_sub_t_uint256(_11, expr_73)
 
-                update_storage_value_offset_0_t_uint256_to_t_uint256(_10, expr_75)
-                /// @src 0:820:821  "1"
-                let expr_80 := 0x01
-                /// @src 0:801:821  "user.operations += 1"
-                let _12 := convert_t_rational_1_by_1_to_t_uint256(expr_80)
-                /// @src 0:801:805  "user"
-                let _13_slot := var_user_57_slot
-                let expr_77_slot := _13_slot
-                /// @src 0:801:816  "user.operations"
-                let _14 := add(expr_77_slot, 1)
-                /// @src 0:801:821  "user.operations += 1"
+                update_storage_value_offset_0_t_uint256_to_t_uint256(_10, expr_74)
+                /// @src 0:665:666  "1"
+                let expr_79 := 0x01
+                /// @src 0:646:666  "user.operations += 1"
+                let _12 := convert_t_rational_1_by_1_to_t_uint256(expr_79)
+                /// @src 0:646:650  "user"
+                let _13_slot := var_user_56_slot
+                let expr_76_slot := _13_slot
+                /// @src 0:646:661  "user.operations"
+                let _14 := add(expr_76_slot, 1)
+                /// @src 0:646:666  "user.operations += 1"
                 let _15 := read_from_storage_split_offset_0_t_uint256(_14)
-                let expr_81 := checked_add_t_uint256(_15, _12)
+                let expr_80 := checked_add_t_uint256(_15, _12)
 
-                update_storage_value_offset_0_t_uint256_to_t_uint256(_14, expr_81)
+                update_storage_value_offset_0_t_uint256_to_t_uint256(_14, expr_80)
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
             function zero_value_for_split_t_uint256() -> ret {
                 ret := 0
             }
 
-            /// @ast-id 107
-            /// @src 0:834:1025  "function getUser(address account) public view returns (uint256 balance, uint256 operations) {..."
-            function fun_getUser_107(var_account_86) -> var_balance_89, var_operations_91 {
-                /// @src 0:889:904  "uint256 balance"
+            /// @ast-id 106
+            /// @src 0:679:870  "function getUser(address account) public view returns (uint256 balance, uint256 operations) {..."
+            function fun_getUser_106(var_account_85) -> var_balance_88, var_operations_90 {
+                /// @src 0:734:749  "uint256 balance"
                 let zero_t_uint256_16 := zero_value_for_split_t_uint256()
-                var_balance_89 := zero_t_uint256_16
-                /// @src 0:906:924  "uint256 operations"
+                var_balance_88 := zero_t_uint256_16
+                /// @src 0:751:769  "uint256 operations"
                 let zero_t_uint256_17 := zero_value_for_split_t_uint256()
-                var_operations_91 := zero_t_uint256_17
+                var_operations_90 := zero_t_uint256_17
 
-                /// @src 0:956:961  "users"
+                /// @src 0:801:806  "users"
                 let _18_slot := 0x00
-                let expr_96_slot := _18_slot
-                /// @src 0:962:969  "account"
-                let _19 := var_account_86
-                let expr_97 := _19
-                /// @src 0:956:970  "users[account]"
-                let _20 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$7_storage_$_of_t_address(expr_96_slot,expr_97)
+                let expr_95_slot := _18_slot
+                /// @src 0:807:814  "account"
+                let _19 := var_account_85
+                let expr_96 := _19
+                /// @src 0:801:815  "users[account]"
+                let _20 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$6_storage_$_of_t_address(expr_95_slot,expr_96)
                 let _21_slot := _20
-                let expr_98_slot := _21_slot
-                /// @src 0:936:970  "User storage user = users[account]"
-                let var_user_95_slot := convert_t_struct$_User_$7_storage_to_t_struct$_User_$7_storage_ptr(expr_98_slot)
-                /// @src 0:988:992  "user"
-                let _22_slot := var_user_95_slot
-                let expr_100_slot := _22_slot
-                /// @src 0:988:1000  "user.balance"
-                let _23 := add(expr_100_slot, 0)
+                let expr_97_slot := _21_slot
+                /// @src 0:781:815  "User storage user = users[account]"
+                let var_user_94_slot := convert_t_struct$_User_$6_storage_to_t_struct$_User_$6_storage_ptr(expr_97_slot)
+                /// @src 0:833:837  "user"
+                let _22_slot := var_user_94_slot
+                let expr_99_slot := _22_slot
+                /// @src 0:833:845  "user.balance"
+                let _23 := add(expr_99_slot, 0)
                 let _24 := read_from_storage_split_offset_0_t_uint256(_23)
-                let expr_101 := _24
-                /// @src 0:987:1018  "(user.balance, user.operations)"
-                let expr_104_component_1 := expr_101
-                /// @src 0:1002:1006  "user"
-                let _25_slot := var_user_95_slot
-                let expr_102_slot := _25_slot
-                /// @src 0:1002:1017  "user.operations"
-                let _26 := add(expr_102_slot, 1)
+                let expr_100 := _24
+                /// @src 0:832:863  "(user.balance, user.operations)"
+                let expr_103_component_1 := expr_100
+                /// @src 0:847:851  "user"
+                let _25_slot := var_user_94_slot
+                let expr_101_slot := _25_slot
+                /// @src 0:847:862  "user.operations"
+                let _26 := add(expr_101_slot, 1)
                 let _27 := read_from_storage_split_offset_0_t_uint256(_26)
-                let expr_103 := _27
-                /// @src 0:987:1018  "(user.balance, user.operations)"
-                let expr_104_component_2 := expr_103
-                /// @src 0:980:1018  "return (user.balance, user.operations)"
-                var_balance_89 := expr_104_component_1
-                var_operations_91 := expr_104_component_2
+                let expr_102 := _27
+                /// @src 0:832:863  "(user.balance, user.operations)"
+                let expr_103_component_2 := expr_102
+                /// @src 0:825:863  "return (user.balance, user.operations)"
+                var_balance_88 := expr_103_component_1
+                var_operations_90 := expr_103_component_2
                 leave
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
             function array_length_t_array$_t_uint256_$dyn_storage(value) -> length {
 
@@ -564,50 +564,50 @@ object "AdvancedFeatures_257" {
                 r := div(x, y)
             }
 
-            /// @ast-id 161
-            /// @src 0:1237:1438  "function historyAverage() public view returns (uint256) {..."
-            function fun_historyAverage_161() -> var__141 {
-                /// @src 0:1284:1291  "uint256"
+            /// @ast-id 160
+            /// @src 0:1082:1283  "function historyAverage() public view returns (uint256) {..."
+            function fun_historyAverage_160() -> var__140 {
+                /// @src 0:1129:1136  "uint256"
                 let zero_t_uint256_28 := zero_value_for_split_t_uint256()
-                var__141 := zero_t_uint256_28
+                var__140 := zero_t_uint256_28
 
-                /// @src 0:1320:1327  "history"
+                /// @src 0:1165:1172  "history"
                 let _29_slot := 0x01
-                let expr_145_slot := _29_slot
-                /// @src 0:1320:1334  "history.length"
-                let expr_146 := array_length_t_array$_t_uint256_$dyn_storage(expr_145_slot)
-                /// @src 0:1303:1334  "uint256 length = history.length"
-                let var_length_144 := expr_146
-                /// @src 0:1348:1354  "length"
-                let _30 := var_length_144
-                let expr_148 := _30
-                /// @src 0:1358:1359  "0"
-                let expr_149 := 0x00
-                /// @src 0:1348:1359  "length == 0"
-                let expr_150 := eq(cleanup_t_uint256(expr_148), convert_t_rational_0_by_1_to_t_uint256(expr_149))
-                /// @src 0:1344:1394  "if (length == 0) {..."
-                if expr_150 {
-                    /// @src 0:1382:1383  "0"
-                    let expr_151 := 0x00
-                    /// @src 0:1375:1383  "return 0"
-                    var__141 := convert_t_rational_0_by_1_to_t_uint256(expr_151)
+                let expr_144_slot := _29_slot
+                /// @src 0:1165:1179  "history.length"
+                let expr_145 := array_length_t_array$_t_uint256_$dyn_storage(expr_144_slot)
+                /// @src 0:1148:1179  "uint256 length = history.length"
+                let var_length_143 := expr_145
+                /// @src 0:1193:1199  "length"
+                let _30 := var_length_143
+                let expr_147 := _30
+                /// @src 0:1203:1204  "0"
+                let expr_148 := 0x00
+                /// @src 0:1193:1204  "length == 0"
+                let expr_149 := eq(cleanup_t_uint256(expr_147), convert_t_rational_0_by_1_to_t_uint256(expr_148))
+                /// @src 0:1189:1239  "if (length == 0) {..."
+                if expr_149 {
+                    /// @src 0:1227:1228  "0"
+                    let expr_150 := 0x00
+                    /// @src 0:1220:1228  "return 0"
+                    var__140 := convert_t_rational_0_by_1_to_t_uint256(expr_150)
                     leave
-                    /// @src 0:1344:1394  "if (length == 0) {..."
+                    /// @src 0:1189:1239  "if (length == 0) {..."
                 }
-                /// @src 0:1410:1422  "historySum()"
-                let expr_156 := fun_historySum_138()
-                /// @src 0:1425:1431  "length"
-                let _31 := var_length_144
-                let expr_157 := _31
-                /// @src 0:1410:1431  "historySum() / length"
-                let expr_158 := checked_div_t_uint256(expr_156, expr_157)
+                /// @src 0:1255:1267  "historySum()"
+                let expr_155 := fun_historySum_137()
+                /// @src 0:1270:1276  "length"
+                let _31 := var_length_143
+                let expr_156 := _31
+                /// @src 0:1255:1276  "historySum() / length"
+                let expr_157 := checked_div_t_uint256(expr_155, expr_156)
 
-                /// @src 0:1403:1431  "return historySum() / length"
-                var__141 := expr_158
+                /// @src 0:1248:1276  "return historySum() / length"
+                var__140 := expr_157
                 leave
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
             function cleanup_t_rational_2_by_1(value) -> cleaned {
                 cleaned := value
@@ -639,74 +639,74 @@ object "AdvancedFeatures_257" {
 
             }
 
-            /// @ast-id 198
-            /// @src 0:1444:1694  "function factorial(uint256 n) public pure returns (uint256) {..."
-            function fun_factorial_198(var_n_163) -> var__166 {
-                /// @src 0:1495:1502  "uint256"
+            /// @ast-id 197
+            /// @src 0:1289:1539  "function factorial(uint256 n) public pure returns (uint256) {..."
+            function fun_factorial_197(var_n_162) -> var__165 {
+                /// @src 0:1340:1347  "uint256"
                 let zero_t_uint256_32 := zero_value_for_split_t_uint256()
-                var__166 := zero_t_uint256_32
+                var__165 := zero_t_uint256_32
 
-                /// @src 0:1518:1519  "n"
-                let _33 := var_n_163
-                let expr_168 := _33
-                /// @src 0:1523:1524  "0"
-                let expr_169 := 0x00
-                /// @src 0:1518:1524  "n == 0"
-                let expr_170 := eq(cleanup_t_uint256(expr_168), convert_t_rational_0_by_1_to_t_uint256(expr_169))
-                /// @src 0:1514:1559  "if (n == 0) {..."
-                if expr_170 {
-                    /// @src 0:1547:1548  "1"
-                    let expr_171 := 0x01
-                    /// @src 0:1540:1548  "return 1"
-                    var__166 := convert_t_rational_1_by_1_to_t_uint256(expr_171)
+                /// @src 0:1363:1364  "n"
+                let _33 := var_n_162
+                let expr_167 := _33
+                /// @src 0:1368:1369  "0"
+                let expr_168 := 0x00
+                /// @src 0:1363:1369  "n == 0"
+                let expr_169 := eq(cleanup_t_uint256(expr_167), convert_t_rational_0_by_1_to_t_uint256(expr_168))
+                /// @src 0:1359:1404  "if (n == 0) {..."
+                if expr_169 {
+                    /// @src 0:1392:1393  "1"
+                    let expr_170 := 0x01
+                    /// @src 0:1385:1393  "return 1"
+                    var__165 := convert_t_rational_1_by_1_to_t_uint256(expr_170)
                     leave
-                    /// @src 0:1514:1559  "if (n == 0) {..."
+                    /// @src 0:1359:1404  "if (n == 0) {..."
                 }
-                /// @src 0:1585:1586  "1"
-                let expr_177 := 0x01
-                /// @src 0:1568:1586  "uint256 result = 1"
-                let var_result_176 := convert_t_rational_1_by_1_to_t_uint256(expr_177)
-                /// @src 0:1596:1665  "for (uint256 i = 2; i <= n; i++) {..."
+                /// @src 0:1430:1431  "1"
+                let expr_176 := 0x01
+                /// @src 0:1413:1431  "uint256 result = 1"
+                let var_result_175 := convert_t_rational_1_by_1_to_t_uint256(expr_176)
+                /// @src 0:1441:1510  "for (uint256 i = 2; i <= n; i++) {..."
                 for {
-                    /// @src 0:1613:1614  "2"
-                    let expr_181 := 0x02
-                    /// @src 0:1601:1614  "uint256 i = 2"
-                    let var_i_180 := convert_t_rational_2_by_1_to_t_uint256(expr_181)
+                    /// @src 0:1458:1459  "2"
+                    let expr_180 := 0x02
+                    /// @src 0:1446:1459  "uint256 i = 2"
+                    let var_i_179 := convert_t_rational_2_by_1_to_t_uint256(expr_180)
                     } 1 {
-                    /// @src 0:1624:1627  "i++"
-                    let _35 := var_i_180
+                    /// @src 0:1469:1472  "i++"
+                    let _35 := var_i_179
                     let _34 := increment_t_uint256(_35)
-                    var_i_180 := _34
-                    let expr_187 := _35
+                    var_i_179 := _34
+                    let expr_186 := _35
                 }
                 {
-                    /// @src 0:1616:1617  "i"
-                    let _36 := var_i_180
-                    let expr_183 := _36
-                    /// @src 0:1621:1622  "n"
-                    let _37 := var_n_163
-                    let expr_184 := _37
-                    /// @src 0:1616:1622  "i <= n"
-                    let expr_185 := iszero(gt(cleanup_t_uint256(expr_183), cleanup_t_uint256(expr_184)))
-                    if iszero(expr_185) { break }
-                    /// @src 0:1653:1654  "i"
-                    let _38 := var_i_180
-                    let expr_190 := _38
-                    /// @src 0:1643:1654  "result *= i"
-                    let _39 := var_result_176
-                    let expr_191 := checked_mul_t_uint256(_39, expr_190)
+                    /// @src 0:1461:1462  "i"
+                    let _36 := var_i_179
+                    let expr_182 := _36
+                    /// @src 0:1466:1467  "n"
+                    let _37 := var_n_162
+                    let expr_183 := _37
+                    /// @src 0:1461:1467  "i <= n"
+                    let expr_184 := iszero(gt(cleanup_t_uint256(expr_182), cleanup_t_uint256(expr_183)))
+                    if iszero(expr_184) { break }
+                    /// @src 0:1498:1499  "i"
+                    let _38 := var_i_179
+                    let expr_189 := _38
+                    /// @src 0:1488:1499  "result *= i"
+                    let _39 := var_result_175
+                    let expr_190 := checked_mul_t_uint256(_39, expr_189)
 
-                    var_result_176 := expr_191
+                    var_result_175 := expr_190
                 }
-                /// @src 0:1681:1687  "result"
-                let _40 := var_result_176
-                let expr_195 := _40
-                /// @src 0:1674:1687  "return result"
-                var__166 := expr_195
+                /// @src 0:1526:1532  "result"
+                let _40 := var_result_175
+                let expr_194 := _40
+                /// @src 0:1519:1532  "return result"
+                var__165 := expr_194
                 leave
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
             function store_literal_in_memory_7a4b27aca3817e208aeec5219b8023ae68f7f4a75daa22a4be89e1a2b2c69b92(memPtr) {
 
@@ -826,71 +826,71 @@ object "AdvancedFeatures_257" {
                 update_storage_value_t_uint256_to_t_uint256(slot, offset , value0)
 
             }
-            /// @ast-id 50
-            /// @src 0:399:608  "function deposit(uint256 amount) public {..."
-            function fun_deposit_50(var_amount_17) {
+            /// @ast-id 49
+            /// @src 0:244:453  "function deposit(uint256 amount) public {..."
+            function fun_deposit_49(var_amount_16) {
 
-                /// @src 0:457:463  "amount"
-                let _41 := var_amount_17
-                let expr_21 := _41
-                /// @src 0:466:467  "0"
-                let expr_22 := 0x00
-                /// @src 0:457:467  "amount > 0"
-                let expr_23 := gt(cleanup_t_uint256(expr_21), convert_t_rational_0_by_1_to_t_uint256(expr_22))
-                /// @src 0:449:483  "require(amount > 0, \"amount zero\")"
-                require_helper_t_stringliteral_7a4b27aca3817e208aeec5219b8023ae68f7f4a75daa22a4be89e1a2b2c69b92(expr_23)
-                /// @src 0:522:528  "amount"
-                let _42 := var_amount_17
-                let expr_32 := _42
-                /// @src 0:493:498  "users"
+                /// @src 0:302:308  "amount"
+                let _41 := var_amount_16
+                let expr_20 := _41
+                /// @src 0:311:312  "0"
+                let expr_21 := 0x00
+                /// @src 0:302:312  "amount > 0"
+                let expr_22 := gt(cleanup_t_uint256(expr_20), convert_t_rational_0_by_1_to_t_uint256(expr_21))
+                /// @src 0:294:328  "require(amount > 0, \"amount zero\")"
+                require_helper_t_stringliteral_7a4b27aca3817e208aeec5219b8023ae68f7f4a75daa22a4be89e1a2b2c69b92(expr_22)
+                /// @src 0:367:373  "amount"
+                let _42 := var_amount_16
+                let expr_31 := _42
+                /// @src 0:338:343  "users"
                 let _43_slot := 0x00
-                let expr_27_slot := _43_slot
-                /// @src 0:499:509  "msg.sender"
-                let expr_29 := caller()
-                /// @src 0:493:510  "users[msg.sender]"
-                let _44 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$7_storage_$_of_t_address(expr_27_slot,expr_29)
+                let expr_26_slot := _43_slot
+                /// @src 0:344:354  "msg.sender"
+                let expr_28 := caller()
+                /// @src 0:338:355  "users[msg.sender]"
+                let _44 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$6_storage_$_of_t_address(expr_26_slot,expr_28)
                 let _45_slot := _44
-                let expr_30_slot := _45_slot
-                /// @src 0:493:518  "users[msg.sender].balance"
-                let _46 := add(expr_30_slot, 0)
-                /// @src 0:493:528  "users[msg.sender].balance += amount"
+                let expr_29_slot := _45_slot
+                /// @src 0:338:363  "users[msg.sender].balance"
+                let _46 := add(expr_29_slot, 0)
+                /// @src 0:338:373  "users[msg.sender].balance += amount"
                 let _47 := read_from_storage_split_offset_0_t_uint256(_46)
-                let expr_33 := checked_add_t_uint256(_47, expr_32)
+                let expr_32 := checked_add_t_uint256(_47, expr_31)
 
-                update_storage_value_offset_0_t_uint256_to_t_uint256(_46, expr_33)
-                /// @src 0:570:571  "1"
-                let expr_40 := 0x01
-                /// @src 0:538:571  "users[msg.sender].operations += 1"
-                let _48 := convert_t_rational_1_by_1_to_t_uint256(expr_40)
-                /// @src 0:538:543  "users"
+                update_storage_value_offset_0_t_uint256_to_t_uint256(_46, expr_32)
+                /// @src 0:415:416  "1"
+                let expr_39 := 0x01
+                /// @src 0:383:416  "users[msg.sender].operations += 1"
+                let _48 := convert_t_rational_1_by_1_to_t_uint256(expr_39)
+                /// @src 0:383:388  "users"
                 let _49_slot := 0x00
-                let expr_35_slot := _49_slot
-                /// @src 0:544:554  "msg.sender"
-                let expr_37 := caller()
-                /// @src 0:538:555  "users[msg.sender]"
-                let _50 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$7_storage_$_of_t_address(expr_35_slot,expr_37)
+                let expr_34_slot := _49_slot
+                /// @src 0:389:399  "msg.sender"
+                let expr_36 := caller()
+                /// @src 0:383:400  "users[msg.sender]"
+                let _50 := mapping_index_access_t_mapping$_t_address_$_t_struct$_User_$6_storage_$_of_t_address(expr_34_slot,expr_36)
                 let _51_slot := _50
-                let expr_38_slot := _51_slot
-                /// @src 0:538:566  "users[msg.sender].operations"
-                let _52 := add(expr_38_slot, 1)
-                /// @src 0:538:571  "users[msg.sender].operations += 1"
+                let expr_37_slot := _51_slot
+                /// @src 0:383:411  "users[msg.sender].operations"
+                let _52 := add(expr_37_slot, 1)
+                /// @src 0:383:416  "users[msg.sender].operations += 1"
                 let _53 := read_from_storage_split_offset_0_t_uint256(_52)
-                let expr_41 := checked_add_t_uint256(_53, _48)
+                let expr_40 := checked_add_t_uint256(_53, _48)
 
-                update_storage_value_offset_0_t_uint256_to_t_uint256(_52, expr_41)
-                /// @src 0:581:588  "history"
+                update_storage_value_offset_0_t_uint256_to_t_uint256(_52, expr_40)
+                /// @src 0:426:433  "history"
                 let _54_slot := 0x01
-                let expr_43_slot := _54_slot
-                /// @src 0:581:593  "history.push"
-                let expr_45_self_slot := convert_array_t_array$_t_uint256_$dyn_storage_to_t_array$_t_uint256_$dyn_storage_ptr(expr_43_slot)
-                /// @src 0:594:600  "amount"
-                let _55 := var_amount_17
-                let expr_46 := _55
-                /// @src 0:581:601  "history.push(amount)"
-                array_push_from_t_uint256_to_t_array$_t_uint256_$dyn_storage_ptr(expr_45_self_slot, expr_46)
+                let expr_42_slot := _54_slot
+                /// @src 0:426:438  "history.push"
+                let expr_44_self_slot := convert_array_t_array$_t_uint256_$dyn_storage_to_t_array$_t_uint256_$dyn_storage_ptr(expr_42_slot)
+                /// @src 0:439:445  "amount"
+                let _55 := var_amount_16
+                let expr_45 := _55
+                /// @src 0:426:446  "history.push(amount)"
+                array_push_from_t_uint256_to_t_array$_t_uint256_$dyn_storage_ptr(expr_44_self_slot, expr_45)
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
             function increment_wrapping_t_uint256(value) -> ret {
                 ret := cleanup_t_uint256(add(value, 1))
@@ -930,176 +930,176 @@ object "AdvancedFeatures_257" {
 
             }
 
-            /// @ast-id 138
-            /// @src 0:1031:1231  "function historySum() public view returns (uint256) {..."
-            function fun_historySum_138() -> var__110 {
-                /// @src 0:1074:1081  "uint256"
+            /// @ast-id 137
+            /// @src 0:876:1076  "function historySum() public view returns (uint256) {..."
+            function fun_historySum_137() -> var__109 {
+                /// @src 0:919:926  "uint256"
                 let zero_t_uint256_56 := zero_value_for_split_t_uint256()
-                var__110 := zero_t_uint256_56
+                var__109 := zero_t_uint256_56
 
-                /// @src 0:1107:1108  "0"
-                let expr_114 := 0x00
-                /// @src 0:1093:1108  "uint256 sum = 0"
-                let var_sum_113 := convert_t_rational_0_by_1_to_t_uint256(expr_114)
-                /// @src 0:1118:1205  "for (uint256 i = 0; i < history.length; i++) {..."
+                /// @src 0:952:953  "0"
+                let expr_113 := 0x00
+                /// @src 0:938:953  "uint256 sum = 0"
+                let var_sum_112 := convert_t_rational_0_by_1_to_t_uint256(expr_113)
+                /// @src 0:963:1050  "for (uint256 i = 0; i < history.length; i++) {..."
                 for {
-                    /// @src 0:1135:1136  "0"
-                    let expr_118 := 0x00
-                    /// @src 0:1123:1136  "uint256 i = 0"
-                    let var_i_117 := convert_t_rational_0_by_1_to_t_uint256(expr_118)
+                    /// @src 0:980:981  "0"
+                    let expr_117 := 0x00
+                    /// @src 0:968:981  "uint256 i = 0"
+                    let var_i_116 := convert_t_rational_0_by_1_to_t_uint256(expr_117)
                     } 1 {
-                    /// @src 0:1158:1161  "i++"
-                    let _58 := var_i_117
+                    /// @src 0:1003:1006  "i++"
+                    let _58 := var_i_116
                     let _57 := increment_wrapping_t_uint256(_58)
-                    var_i_117 := _57
-                    let expr_125 := _58
+                    var_i_116 := _57
+                    let expr_124 := _58
                 }
                 {
-                    /// @src 0:1138:1139  "i"
-                    let _59 := var_i_117
-                    let expr_120 := _59
-                    /// @src 0:1142:1149  "history"
+                    /// @src 0:983:984  "i"
+                    let _59 := var_i_116
+                    let expr_119 := _59
+                    /// @src 0:987:994  "history"
                     let _60_slot := 0x01
-                    let expr_121_slot := _60_slot
-                    /// @src 0:1142:1156  "history.length"
-                    let expr_122 := array_length_t_array$_t_uint256_$dyn_storage(expr_121_slot)
-                    /// @src 0:1138:1156  "i < history.length"
-                    let expr_123 := lt(cleanup_t_uint256(expr_120), cleanup_t_uint256(expr_122))
-                    if iszero(expr_123) { break }
-                    /// @src 0:1184:1191  "history"
+                    let expr_120_slot := _60_slot
+                    /// @src 0:987:1001  "history.length"
+                    let expr_121 := array_length_t_array$_t_uint256_$dyn_storage(expr_120_slot)
+                    /// @src 0:983:1001  "i < history.length"
+                    let expr_122 := lt(cleanup_t_uint256(expr_119), cleanup_t_uint256(expr_121))
+                    if iszero(expr_122) { break }
+                    /// @src 0:1029:1036  "history"
                     let _61_slot := 0x01
-                    let expr_128_slot := _61_slot
-                    /// @src 0:1192:1193  "i"
-                    let _62 := var_i_117
-                    let expr_129 := _62
-                    /// @src 0:1184:1194  "history[i]"
+                    let expr_127_slot := _61_slot
+                    /// @src 0:1037:1038  "i"
+                    let _62 := var_i_116
+                    let expr_128 := _62
+                    /// @src 0:1029:1039  "history[i]"
 
-                    let _63, _64 := storage_array_index_access_t_array$_t_uint256_$dyn_storage(expr_128_slot, expr_129)
+                    let _63, _64 := storage_array_index_access_t_array$_t_uint256_$dyn_storage(expr_127_slot, expr_128)
                     let _65 := read_from_storage_split_dynamic_t_uint256(_63, _64)
-                    let expr_130 := _65
-                    /// @src 0:1177:1194  "sum += history[i]"
-                    let _66 := var_sum_113
-                    let expr_131 := checked_add_t_uint256(_66, expr_130)
+                    let expr_129 := _65
+                    /// @src 0:1022:1039  "sum += history[i]"
+                    let _66 := var_sum_112
+                    let expr_130 := checked_add_t_uint256(_66, expr_129)
 
-                    var_sum_113 := expr_131
+                    var_sum_112 := expr_130
                 }
-                /// @src 0:1221:1224  "sum"
-                let _67 := var_sum_113
-                let expr_135 := _67
-                /// @src 0:1214:1224  "return sum"
-                var__110 := expr_135
+                /// @src 0:1066:1069  "sum"
+                let _67 := var_sum_112
+                let expr_134 := _67
+                /// @src 0:1059:1069  "return sum"
+                var__109 := expr_134
                 leave
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
-            /// @ast-id 256
-            /// @src 0:1700:2085  "function fib(uint256 n) public pure returns (uint256) {..."
-            function fun_fib_256(var_n_200) -> var__203 {
-                /// @src 0:1745:1752  "uint256"
+            /// @ast-id 255
+            /// @src 0:1545:1930  "function fib(uint256 n) public pure returns (uint256) {..."
+            function fun_fib_255(var_n_199) -> var__202 {
+                /// @src 0:1590:1597  "uint256"
                 let zero_t_uint256_68 := zero_value_for_split_t_uint256()
-                var__203 := zero_t_uint256_68
+                var__202 := zero_t_uint256_68
 
-                /// @src 0:1768:1769  "n"
-                let _69 := var_n_200
-                let expr_205 := _69
-                /// @src 0:1773:1774  "0"
-                let expr_206 := 0x00
-                /// @src 0:1768:1774  "n == 0"
-                let expr_207 := eq(cleanup_t_uint256(expr_205), convert_t_rational_0_by_1_to_t_uint256(expr_206))
-                /// @src 0:1764:1809  "if (n == 0) {..."
-                if expr_207 {
-                    /// @src 0:1797:1798  "0"
-                    let expr_208 := 0x00
-                    /// @src 0:1790:1798  "return 0"
-                    var__203 := convert_t_rational_0_by_1_to_t_uint256(expr_208)
+                /// @src 0:1613:1614  "n"
+                let _69 := var_n_199
+                let expr_204 := _69
+                /// @src 0:1618:1619  "0"
+                let expr_205 := 0x00
+                /// @src 0:1613:1619  "n == 0"
+                let expr_206 := eq(cleanup_t_uint256(expr_204), convert_t_rational_0_by_1_to_t_uint256(expr_205))
+                /// @src 0:1609:1654  "if (n == 0) {..."
+                if expr_206 {
+                    /// @src 0:1642:1643  "0"
+                    let expr_207 := 0x00
+                    /// @src 0:1635:1643  "return 0"
+                    var__202 := convert_t_rational_0_by_1_to_t_uint256(expr_207)
                     leave
-                    /// @src 0:1764:1809  "if (n == 0) {..."
+                    /// @src 0:1609:1654  "if (n == 0) {..."
                 }
-                /// @src 0:1822:1823  "n"
-                let _70 := var_n_200
-                let expr_212 := _70
-                /// @src 0:1827:1828  "1"
-                let expr_213 := 0x01
-                /// @src 0:1822:1828  "n == 1"
-                let expr_214 := eq(cleanup_t_uint256(expr_212), convert_t_rational_1_by_1_to_t_uint256(expr_213))
-                /// @src 0:1818:1863  "if (n == 1) {..."
-                if expr_214 {
-                    /// @src 0:1851:1852  "1"
-                    let expr_215 := 0x01
-                    /// @src 0:1844:1852  "return 1"
-                    var__203 := convert_t_rational_1_by_1_to_t_uint256(expr_215)
+                /// @src 0:1667:1668  "n"
+                let _70 := var_n_199
+                let expr_211 := _70
+                /// @src 0:1672:1673  "1"
+                let expr_212 := 0x01
+                /// @src 0:1667:1673  "n == 1"
+                let expr_213 := eq(cleanup_t_uint256(expr_211), convert_t_rational_1_by_1_to_t_uint256(expr_212))
+                /// @src 0:1663:1708  "if (n == 1) {..."
+                if expr_213 {
+                    /// @src 0:1696:1697  "1"
+                    let expr_214 := 0x01
+                    /// @src 0:1689:1697  "return 1"
+                    var__202 := convert_t_rational_1_by_1_to_t_uint256(expr_214)
                     leave
-                    /// @src 0:1818:1863  "if (n == 1) {..."
+                    /// @src 0:1663:1708  "if (n == 1) {..."
                 }
-                /// @src 0:1887:1888  "0"
-                let expr_221 := 0x00
-                /// @src 0:1872:1888  "uint256 prev = 0"
-                let var_prev_220 := convert_t_rational_0_by_1_to_t_uint256(expr_221)
-                /// @src 0:1913:1914  "1"
-                let expr_225 := 0x01
-                /// @src 0:1898:1914  "uint256 curr = 1"
-                let var_curr_224 := convert_t_rational_1_by_1_to_t_uint256(expr_225)
-                /// @src 0:1924:2058  "for (uint256 i = 2; i <= n; i++) {..."
+                /// @src 0:1732:1733  "0"
+                let expr_220 := 0x00
+                /// @src 0:1717:1733  "uint256 prev = 0"
+                let var_prev_219 := convert_t_rational_0_by_1_to_t_uint256(expr_220)
+                /// @src 0:1758:1759  "1"
+                let expr_224 := 0x01
+                /// @src 0:1743:1759  "uint256 curr = 1"
+                let var_curr_223 := convert_t_rational_1_by_1_to_t_uint256(expr_224)
+                /// @src 0:1769:1903  "for (uint256 i = 2; i <= n; i++) {..."
                 for {
-                    /// @src 0:1941:1942  "2"
-                    let expr_229 := 0x02
-                    /// @src 0:1929:1942  "uint256 i = 2"
-                    let var_i_228 := convert_t_rational_2_by_1_to_t_uint256(expr_229)
+                    /// @src 0:1786:1787  "2"
+                    let expr_228 := 0x02
+                    /// @src 0:1774:1787  "uint256 i = 2"
+                    let var_i_227 := convert_t_rational_2_by_1_to_t_uint256(expr_228)
                     } 1 {
-                    /// @src 0:1952:1955  "i++"
-                    let _72 := var_i_228
+                    /// @src 0:1797:1800  "i++"
+                    let _72 := var_i_227
                     let _71 := increment_t_uint256(_72)
-                    var_i_228 := _71
-                    let expr_235 := _72
+                    var_i_227 := _71
+                    let expr_234 := _72
                 }
                 {
-                    /// @src 0:1944:1945  "i"
-                    let _73 := var_i_228
-                    let expr_231 := _73
-                    /// @src 0:1949:1950  "n"
-                    let _74 := var_n_200
-                    let expr_232 := _74
-                    /// @src 0:1944:1950  "i <= n"
-                    let expr_233 := iszero(gt(cleanup_t_uint256(expr_231), cleanup_t_uint256(expr_232)))
-                    if iszero(expr_233) { break }
-                    /// @src 0:1986:1990  "prev"
-                    let _75 := var_prev_220
-                    let expr_239 := _75
-                    /// @src 0:1993:1997  "curr"
-                    let _76 := var_curr_224
-                    let expr_240 := _76
-                    /// @src 0:1986:1997  "prev + curr"
-                    let expr_241 := checked_add_t_uint256(expr_239, expr_240)
+                    /// @src 0:1789:1790  "i"
+                    let _73 := var_i_227
+                    let expr_230 := _73
+                    /// @src 0:1794:1795  "n"
+                    let _74 := var_n_199
+                    let expr_231 := _74
+                    /// @src 0:1789:1795  "i <= n"
+                    let expr_232 := iszero(gt(cleanup_t_uint256(expr_230), cleanup_t_uint256(expr_231)))
+                    if iszero(expr_232) { break }
+                    /// @src 0:1831:1835  "prev"
+                    let _75 := var_prev_219
+                    let expr_238 := _75
+                    /// @src 0:1838:1842  "curr"
+                    let _76 := var_curr_223
+                    let expr_239 := _76
+                    /// @src 0:1831:1842  "prev + curr"
+                    let expr_240 := checked_add_t_uint256(expr_238, expr_239)
 
-                    /// @src 0:1971:1997  "uint256 next = prev + curr"
-                    let var_next_238 := expr_241
-                    /// @src 0:2018:2022  "curr"
-                    let _77 := var_curr_224
-                    let expr_244 := _77
-                    /// @src 0:2011:2022  "prev = curr"
-                    var_prev_220 := expr_244
-                    let expr_245 := expr_244
-                    /// @src 0:2043:2047  "next"
-                    let _78 := var_next_238
-                    let expr_248 := _78
-                    /// @src 0:2036:2047  "curr = next"
-                    var_curr_224 := expr_248
-                    let expr_249 := expr_248
+                    /// @src 0:1816:1842  "uint256 next = prev + curr"
+                    let var_next_237 := expr_240
+                    /// @src 0:1863:1867  "curr"
+                    let _77 := var_curr_223
+                    let expr_243 := _77
+                    /// @src 0:1856:1867  "prev = curr"
+                    var_prev_219 := expr_243
+                    let expr_244 := expr_243
+                    /// @src 0:1888:1892  "next"
+                    let _78 := var_next_237
+                    let expr_247 := _78
+                    /// @src 0:1881:1892  "curr = next"
+                    var_curr_223 := expr_247
+                    let expr_248 := expr_247
                 }
-                /// @src 0:2074:2078  "curr"
-                let _79 := var_curr_224
-                let expr_253 := _79
-                /// @src 0:2067:2078  "return curr"
-                var__203 := expr_253
+                /// @src 0:1919:1923  "curr"
+                let _79 := var_curr_223
+                let expr_252 := _79
+                /// @src 0:1912:1923  "return curr"
+                var__202 := expr_252
                 leave
 
             }
-            /// @src 0:213:2087  "contract AdvancedFeatures {..."
+            /// @src 0:58:1932  "contract AdvancedFeatures {..."
 
         }
 
-        data ".metadata" hex"a2646970667358221220d9234466089156ffcebf416f912754c3508f24a3e34c1530b890eea92bac1a5a64736f6c634300081e0033"
+        data ".metadata" hex"a2646970667358221220683440eed77eddf06cb420237aae43194a50c8813e867addbf3a8890b538524a64736f6c634300081e0033"
     }
 
 }

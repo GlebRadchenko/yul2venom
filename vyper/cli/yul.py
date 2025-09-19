@@ -753,21 +753,14 @@ class YulToVenom:
 
         if isinstance(stmt, VarDecl):
             if stmt.init:
-                # Special-case common ABI decode patterns for tuple(uint256,uint256)
+                # Check if this is an ABI decode pattern we can optimize
                 if (
-                    len(stmt.names) == 2
-                    and isinstance(stmt.init, FuncCall)
-                    and stmt.init.name.startswith("abi_decode_tuple_t_uint256t_uint256")
+                    isinstance(stmt.init, FuncCall)
+                    and stmt.init.name.startswith("abi_decode_tuple_t_")
+                    and self._try_optimize_abi_decode(stmt, bb)
                 ):
-                    # Compile offset and dataEnd (ignored) expressions
-                    ofst = self._compile_expr(stmt.init.args[0], bb)
-                    # Load first argument: calldataload(offset)
-                    arg0 = bb.append_instruction("calldataload", ofst)
-                    # Load second argument: calldataload(offset + 32)
-                    ofst_plus_32 = bb.append_instruction("add", ofst, IRLiteral(32))
-                    arg1 = bb.append_instruction("calldataload", ofst_plus_32)
-                    bb.append_instruction("assign", arg0, ret=IRVariable(stmt.names[0]))
-                    bb.append_instruction("assign", arg1, ret=IRVariable(stmt.names[1]))
+                    # Successfully optimized - skip normal processing
+                    pass
                 else:
                     val = self._compile_expr(stmt.init, bb)
                     if len(stmt.names) > 1:
@@ -937,15 +930,87 @@ class YulToVenom:
     def _string_to_evm_value(self, s: str) -> int:
         if s.startswith('"') and s.endswith('"'):
             s = s[1:-1]
-        
+
         b = s.encode('utf-8')
-        
+
         # Truncate to 32 bytes for now
         if len(b) > 32:
             b = b[:32]
-        
-        padded = b.ljust(32, b'\x00')        
+
+        padded = b.ljust(32, b'\x00')
         return int.from_bytes(padded, 'big')
+
+    def _try_optimize_abi_decode(self, stmt: VarDecl, bb: IRBasicBlock) -> bool:
+        """
+        Try to optimize ABI decode patterns by inlining them.
+
+        Returns True if optimization was applied, False otherwise.
+        """
+        if not isinstance(stmt.init, FuncCall):
+            return False
+
+        func_name = stmt.init.name
+        num_returns = len(stmt.names)
+
+        # Parse the function name to understand the pattern
+        if not func_name.startswith("abi_decode_tuple_t_"):
+            return False
+
+        # Check if it's a memory variant
+        is_memory = func_name.endswith("_fromMemory")
+
+        # For now, only optimize simple patterns with 1-4 parameters
+        if num_returns < 1 or num_returns > 4:
+            return False
+
+        # Check if we have the expected number of arguments (headStart, dataEnd)
+        if len(stmt.init.args) < 1:
+            return False
+
+        # Compile the offset argument
+        offset = self._compile_expr(stmt.init.args[0], bb)
+
+        # Determine the load instruction
+        load_op = "mload" if is_memory else "calldataload"
+
+        # Generate optimized loads for each parameter
+        for i, name in enumerate(stmt.names):
+            if i == 0:
+                # First parameter - load from offset directly
+                value = bb.append_instruction(load_op, offset)
+            else:
+                # Subsequent parameters - add 32 bytes per parameter
+                offset_plus = bb.append_instruction("add", offset, IRLiteral(32 * i))
+                value = bb.append_instruction(load_op, offset_plus)
+
+            # Handle special types that need masking or conversion
+            # For now, we'll handle the most common cases
+            if "address" in func_name:
+                # Mask to 20 bytes for address type
+                mask = IRLiteral(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+                value = bb.append_instruction("and", value, mask)
+            elif "bool" in func_name:
+                # Convert to bool with iszero(iszero(...))
+                value = bb.append_instruction("iszero", value)
+                value = bb.append_instruction("iszero", value)
+            elif "uint8" in func_name:
+                # Mask to 1 byte
+                mask = IRLiteral(0xFF)
+                value = bb.append_instruction("and", value, mask)
+            elif "uint16" in func_name:
+                # Mask to 2 bytes
+                mask = IRLiteral(0xFFFF)
+                value = bb.append_instruction("and", value, mask)
+            elif "uint32" in func_name:
+                # Mask to 4 bytes
+                mask = IRLiteral(0xFFFFFFFF)
+                value = bb.append_instruction("and", value, mask)
+            # uint256 and bytes32 need no masking
+
+            # Assign to the variable
+            bb.append_instruction("assign", value, ret=IRVariable(name))
+
+        return True
 
     def _flatten_operands(
         self, operands: Iterable[IRLiteral | IRVariable | IRLabel | list]
@@ -974,18 +1039,9 @@ class YulToVenom:
         if isinstance(expr, FuncCall):
             args = [self._compile_expr(arg, bb) for arg in reversed(expr.args)]
 
-            # Specialized handling for ABI decode helpers emitted by solc
-            if expr.name.startswith("abi_decode_tuple_") and expr.name.endswith("_fromMemory"):
-                # Patterns like abi_decode_tuple_t_uint256_fromMemory(headStart, dataEnd)
-                # For fixed-size tuples, we can load from memory directly.
-                # Start with single-uint256 variant used by constructors.
-                # args are reversed above, so order is (dataEnd, headStart)
-                if len(args) >= 2:
-                    headStart = args[1]
-                    # Single element (uint256): just mload(headStart)
-                    return bb.append_instruction("mload", headStart)
-                # Fallback to zero if unexpected shape
-                return IRLiteral(0)
+            # Note: ABI decode optimization is now handled in _try_optimize_abi_decode
+            # This path is kept for backwards compatibility but should be removed
+            # once we verify the new optimization works correctly
 
             if expr.name in self.functions:
                 target_func = self.functions[expr.name]
