@@ -135,6 +135,12 @@ class TestOrchestrator:
                 "tags": ["storage", "loops", "advanced"]
             },
             {
+                "file": "HeavyMath.sol",
+                "name": "HeavyMath",
+                "description": "Stress gas usage with heavy math",
+                "tags": ["math", "gas", "heavy"]
+            },
+            {
                 "file": "SimpleStorage.sol",
                 "name": "simple_storage",
                 "description": "Test basic storage operations",

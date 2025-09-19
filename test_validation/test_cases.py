@@ -142,6 +142,55 @@ TEST_CASES = {
         ),
     ],
 
+    "HeavyMath": [
+        TestCase(
+            name="sum_of_squares_350",
+            function_selector=function_signature_to_4byte_selector("sumOfSquares(uint256)").hex(),
+            calldata=create_function_calldata(
+                function_signature_to_4byte_selector("sumOfSquares(uint256)").hex(),
+                350,
+            ),
+            expected_return=(14352975).to_bytes(32, byteorder="big"),
+        ),
+        TestCase(
+            name="factorial_mod_45",
+            function_selector=function_signature_to_4byte_selector("factorialMod(uint256)").hex(),
+            calldata=create_function_calldata(
+                function_signature_to_4byte_selector("factorialMod(uint256)").hex(),
+                45,
+            ),
+            expected_return=(472639410).to_bytes(32, byteorder="big"),
+        ),
+        TestCase(
+            name="fibonacci_75",
+            function_selector=function_signature_to_4byte_selector("fibonacci(uint256)").hex(),
+            calldata=create_function_calldata(
+                function_signature_to_4byte_selector("fibonacci(uint256)").hex(),
+                75,
+            ),
+            expected_return=(2111485077978050).to_bytes(32, byteorder="big"),
+        ),
+        TestCase(
+            name="polynomial_reduce",
+            function_selector=function_signature_to_4byte_selector("polynomialReduce(uint256)").hex(),
+            calldata=create_function_calldata(
+                function_signature_to_4byte_selector("polynomialReduce(uint256)").hex(),
+                987654321,
+            ),
+            expected_return=(604495212).to_bytes(32, byteorder="big"),
+        ),
+        TestCase(
+            name="mixed_series_heavy",
+            function_selector=function_signature_to_4byte_selector("mixedSeries(uint256,uint256)").hex(),
+            calldata=create_function_calldata(
+                function_signature_to_4byte_selector("mixedSeries(uint256,uint256)").hex(),
+                17,
+                12,
+            ),
+            expected_return=(862282241).to_bytes(32, byteorder="big"),
+        ),
+    ],
+
     "SimpleStorage": [
         TestCase(
             name="store_42",
