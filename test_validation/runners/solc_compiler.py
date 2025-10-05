@@ -7,7 +7,7 @@ import json
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class SolcCompiler:
@@ -56,7 +56,7 @@ class SolcCompiler:
 
         cmd = [
             self.solc_path,
-            "--ir",  # Output Yul IR
+            "--ir-optimized",  # Output optimized Yul IR
             "--via-ir",  # Use IR pipeline to avoid stack too deep errors
             "--no-color",
             str(solidity_file)
@@ -74,7 +74,7 @@ class SolcCompiler:
             )
             
             # Extract Yul code from output
-            # solc outputs the Yul after "IR:" marker
+            # solc outputs the Yul after the IR/Optimized IR markers
             yul_code = self._extract_yul_from_output(result.stdout)
             return yul_code
             
@@ -195,31 +195,40 @@ class SolcCompiler:
             raise RuntimeError(f"Compilation failed: {e.stderr}")
     
     def _extract_yul_from_output(self, output: str) -> str:
-        """
-        Extract Yul code from solc output.
-        
-        Args:
-            output: Raw output from solc --ir
-        
-        Returns:
-            Extracted Yul code
-        """
-        # Look for the IR section
-        lines = output.split('\n')
-        yul_lines = []
-        in_yul = False
-        
+        """Extract one or more Yul sections from solc text output."""
+        lines = output.splitlines()
+
+        def flush_section(buffer: List[str], sections: List[str]) -> None:
+            if buffer and any(entry.strip() for entry in buffer):
+                sections.append("\n".join(buffer))
+            buffer.clear()
+
+        sections: List[str] = []
+        current_section: List[str] = []
+        capturing = False
+
+        start_markers = ("Optimized IR:", "IR:")
+        stop_markers = ("Binary:", "Binary of the runtime part:", "=======")
+
         for line in lines:
-            if line.strip().startswith("IR:"):
-                in_yul = True
+            stripped = line.strip()
+
+            if stripped.startswith(start_markers):
+                flush_section(current_section, sections)
+                capturing = True
                 continue
-            elif in_yul:
-                # Stop at the next section marker or end
-                if line.startswith("Binary:") or line.startswith("======="):
-                    break
-                yul_lines.append(line)
-        
-        return '\n'.join(yul_lines).strip()
+
+            if capturing and stripped.startswith(stop_markers):
+                flush_section(current_section, sections)
+                capturing = False
+                continue
+
+            if capturing:
+                current_section.append(line)
+
+        flush_section(current_section, sections)
+
+        return "\n\n".join(sections)
     
     def get_version(self) -> str:
         """Get the solc version."""
