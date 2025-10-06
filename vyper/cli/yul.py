@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import argparse
+import re
 import sys
 
 from lark import Lark
@@ -47,6 +48,79 @@ def inject_embedded_bytecode(
 
     return asm
 
+def _parse_link_library_args(
+    parser: argparse.ArgumentParser, entries: list[str] | None
+) -> dict[str, int]:
+    """Parse --link-library arguments into a mapping."""
+
+    link_libraries: dict[str, int] = {}
+
+    if not entries:
+        return link_libraries
+
+    for raw_entry in entries:
+        if "=" not in raw_entry:
+            parser.error(
+                f"Invalid --link-library value '{raw_entry}'. Expected format identifier=address"
+            )
+
+        identifier, address_str = raw_entry.split("=", 1)
+        identifier = identifier.strip()
+        if not identifier:
+            parser.error("--link-library identifier cannot be empty")
+
+        address_str = address_str.strip()
+        if not address_str:
+            parser.error(f"Missing address for --link-library {identifier}")
+
+        if address_str.startswith("0x") or address_str.startswith("0X"):
+            address_str = address_str[2:]
+
+        if not re.fullmatch(r"[0-9a-fA-F]+", address_str):
+            parser.error(
+                f"Invalid address '{address_str}' for --link-library {identifier}. Expected hex string"
+            )
+
+        if len(address_str) > 40:
+            parser.error(
+                f"Address for --link-library {identifier} is too long; expected 20 bytes (40 hex chars)"
+            )
+
+        # Left-pad to 20 bytes so users can provide short addresses like '1'.
+        address_str = address_str.rjust(40, "0")
+
+        address_value = int(address_str, 16)
+
+        if address_value >= 1 << 160:
+            parser.error(
+                f"Address for --link-library {identifier} exceeds 160 bits"
+            )
+
+        link_libraries[identifier] = address_value
+
+    return link_libraries
+
+
+def _handle_unresolved_link_refs(unresolved: set[str], link_libraries: dict[str, int]) -> None:
+    """Report unresolved linkersymbols, erroring when the user attempted to link."""
+    if not unresolved:
+        return
+
+    unresolved_list = ", ".join(sorted(unresolved))
+
+    if link_libraries:
+        print(
+            f"Error: unresolved linkersymbol references: {unresolved_list}. Provide matching --link-library entries.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    print(
+        f"Warning: unresolved linkersymbol references: {unresolved_list}. Addresses default to 0x0; supply --link-library to link them.",
+        file=sys.stderr,
+    )
+
+
 def _parse_cli_args():
     return _parse_args(sys.argv[1:])
 
@@ -66,8 +140,18 @@ def _parse_args(argv: list[str]):
     parser.add_argument("--stdin", action="store_true", help="whether to pull yul input from stdin")
     parser.add_argument("--venom", action="store_true", help="output Venom IR instead of bytecode")
     parser.add_argument("--asm", action="store_true", help="output assembly instead of bytecode")
+    parser.add_argument(
+        "--link-library",
+        dest="link_libraries",
+        action="append",
+        help=(
+            "Provide an address for a linkersymbol reference (repeatable). "
+            "Format: identifier=0x1234... or identifier=1234..."
+        ),
+    )
 
     args = parser.parse_args(argv)
+    link_libraries = _parse_link_library_args(parser, args.link_libraries)
 
     if args.evm_version is not None:
         set_global_settings(Settings(evm_version=args.evm_version))
@@ -100,29 +184,32 @@ def _parse_args(argv: list[str]):
         objects_to_compile = [ast]
 
     # For multiple objects, compile each and concatenate output
+    unresolved_symbols: set[str] = set()
+
     if len(objects_to_compile) > 1:
-        all_outputs = []
+        contexts: list[tuple[YulObject, IRContext]] = []
+        venom_outputs: list[str] = []
+
         for i, obj in enumerate(objects_to_compile):
-            ctx = compile_to_venom(obj)
+            ctx = compile_to_venom(obj, link_libraries=link_libraries)
+            unresolved_symbols.update(getattr(ctx, "unresolved_link_references", set()))
+            contexts.append((obj, ctx))
 
             if args.venom:
                 if i > 0:
-                    all_outputs.append(f"\n# === Object {i+1}: {obj.name} ===\n")
-                all_outputs.append(str(ctx))
-            else:
-                # For bytecode/asm, we need to handle them individually
-                # Store for later processing
-                all_outputs.append((obj, ctx))
+                    venom_outputs.append(f"\n# === Object {i+1}: {obj.name} ===\n")
+                venom_outputs.append(str(ctx))
 
         if args.venom:
-            print(''.join(all_outputs))
+            _handle_unresolved_link_refs(unresolved_symbols, link_libraries)
+            print(''.join(venom_outputs))
             return
 
         # For bytecode/asm output with multiple objects
         all_bytecode = []
         all_asm = []
 
-        for obj, ctx in all_outputs:
+        for obj, ctx in contexts:
             # Filter out data functions before optimization
             original_functions = ctx.functions.copy()
             ctx.functions = {name: fn for name, fn in ctx.functions.items()
@@ -147,6 +234,8 @@ def _parse_args(argv: list[str]):
                 bytecode, _ = generate_bytecode(asm)
                 all_bytecode.append(bytecode)
 
+        _handle_unresolved_link_refs(unresolved_symbols, link_libraries)
+
         if args.asm:
             for i, asm in enumerate(all_asm):
                 if i > 0:
@@ -156,10 +245,12 @@ def _parse_args(argv: list[str]):
             # Concatenate all bytecodes
             combined_bytecode = b''.join(all_bytecode)
             print(f"0x{combined_bytecode.hex()}")
+
         return
 
     # Single object case (original code path)
-    ctx = compile_to_venom(objects_to_compile[0])
+    ctx = compile_to_venom(objects_to_compile[0], link_libraries=link_libraries)
+    unresolved_symbols.update(getattr(ctx, "unresolved_link_references", set()))
 
     # check_venom_ctx(ctx)  # Skip check for now to see output
 
@@ -188,6 +279,7 @@ def _parse_args(argv: list[str]):
                     replacement = f"function {label} {{\n  {label}:  ; DATA\n" + "\n".join(db_lines)
                     output = re.sub(pattern, replacement, output, flags=re.DOTALL)
         
+        _handle_unresolved_link_refs(unresolved_symbols, link_libraries)
         print(output)
         return
 
@@ -211,6 +303,7 @@ def _parse_args(argv: list[str]):
         embedded_bytecode = getattr(ctx, "embedded_bytecode", None)
         program_end_label_name = getattr(ctx, "program_end_label_name", None)
         asm = inject_embedded_bytecode(asm, embedded_bytecode, program_end_label_name)
+        _handle_unresolved_link_refs(unresolved_symbols, link_libraries)
         print(asm)
         return
         
@@ -222,6 +315,7 @@ def _parse_args(argv: list[str]):
     program_end_label_name = getattr(ctx, "program_end_label_name", None)
     asm = inject_embedded_bytecode(asm, embedded_bytecode, program_end_label_name)
     bytecode, _ = generate_bytecode(asm)
+    _handle_unresolved_link_refs(unresolved_symbols, link_libraries)
     print(f"0x{bytecode.hex()}")
 
 
@@ -549,7 +643,9 @@ from vyper.venom.function import IRFunction
 
 
 class YulToVenom:
-    def __init__(self, is_subobject: bool = False):
+    def __init__(
+        self, is_subobject: bool = False, link_libraries: dict[str, int] | None = None
+    ):
         self.ctx = IRContext()
         self._break_target: IRBasicBlock | None = None
         self._continue_target: IRBasicBlock | None = None
@@ -565,6 +661,40 @@ class YulToVenom:
         self._data_sizes: dict[str, int] = {}
         self.immutable_offsets: dict[str, int] = {}  # Map immutable keys to offsets
         self.next_immutable_offset = 0
+        self.link_libraries: dict[str, int] = dict(link_libraries) if link_libraries else {}
+        self.used_link_libraries: dict[str, int] = {}
+        self.unresolved_link_references: set[str] = set()
+
+    def _resolve_link_address(self, identifier: str) -> int | None:
+        """Resolve a linkersymbol identifier to an address if provided."""
+        if not self.link_libraries:
+            return None
+
+        normalized = identifier.replace('\\', '/')
+        candidates: list[str] = []
+
+        def add_candidate(value: str) -> None:
+            if value and value not in candidates:
+                candidates.append(value)
+
+        add_candidate(identifier)
+        add_candidate(normalized)
+
+        if ':' in normalized:
+            path_part, name_part = normalized.rsplit(':', 1)
+            add_candidate(path_part)
+            add_candidate(name_part)
+            filename = path_part.split('/')[-1]
+            add_candidate(filename)
+            add_candidate(f"{filename}:{name_part}")
+        else:
+            add_candidate(normalized.split('/')[-1])
+
+        for candidate in candidates:
+            if candidate in self.link_libraries:
+                return self.link_libraries[candidate]
+
+        return None
 
     def compile(self, ast_node: YulObject) -> IRContext:
         """
@@ -582,7 +712,7 @@ class YulToVenom:
             if isinstance(item, YulObject):
                 # Compile the nested object as a completely independent module
                 # This is exactly like compiling a standalone Yul file
-                nested_compiler = YulToVenom()
+                nested_compiler = YulToVenom(link_libraries=self.link_libraries)
                 # Share the immutable offsets with nested compiler
                 nested_compiler.immutable_offsets = self.immutable_offsets.copy()
                 nested_compiler.next_immutable_offset = self.next_immutable_offset
@@ -605,10 +735,14 @@ class YulToVenom:
                 # Store the bytecode
                 self.subobject_bytecode[item.name] = bytecode
                 self.subobject_sizes[item.name] = len(bytecode)
-                
+
                 # Register labels for this subobject
                 start_label = f"{item.name}_data"
                 self.subobject_info[item.name] = (start_label, None)
+                self.used_link_libraries.update(nested_compiler.used_link_libraries)
+                self.unresolved_link_references.update(
+                    nested_compiler.unresolved_link_references
+                )
 
         # Pre-register embedded data so datasize("<object>") can use it
         if self.subobject_bytecode and not self.is_subobject:
@@ -1186,11 +1320,16 @@ class YulToVenom:
                     if not isinstance(arg_expr, Literal) or not isinstance(arg_expr.value, str):
                         raise Exception(f"linkersymbol expects a string literal, got {arg_expr}")
 
-                    # For now, return a placeholder address literal
-                    # In actual bytecode, this would be something like 
-                    # keccak256(library_name)[2:36] 
-                    # The linker would replace this with the actual address
-                    # which I currently have no idea how to go about implementing
+                    identifier = arg_expr.value.strip()
+                    if identifier.startswith('"') and identifier.endswith('"'):
+                        identifier = identifier[1:-1]
+
+                    resolved_address = self._resolve_link_address(identifier)
+                    if resolved_address is not None:
+                        self.used_link_libraries[identifier] = resolved_address
+                        return IRLiteral(resolved_address)
+
+                    self.unresolved_link_references.add(identifier)
                     return IRLiteral(0)
 
                 # regular evm instruction
@@ -1215,8 +1354,10 @@ class YulToVenom:
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
 
 
-def compile_to_venom(ast_nodes: YulObject) -> IRContext:
-    builder = YulToVenom()
+def compile_to_venom(
+    ast_nodes: YulObject, link_libraries: dict[str, int] | None = None
+) -> IRContext:
+    builder = YulToVenom(link_libraries=link_libraries)
     ctx = builder.compile(ast_nodes)
     
     # If there's embedded bytecode, we need to handle it specially
@@ -1225,6 +1366,9 @@ def compile_to_venom(ast_nodes: YulObject) -> IRContext:
         # Store the embedded bytecode info for the assembly generator
         ctx.has_embedded_data = True
     
+    ctx.used_link_libraries = dict(builder.used_link_libraries)
+    ctx.unresolved_link_references = set(builder.unresolved_link_references)
+
     return ctx
 
 
