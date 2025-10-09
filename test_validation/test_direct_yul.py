@@ -2,13 +2,7 @@
 """
 Test the validation infrastructure with known working Yul code.
 """
-
 import sys
-from pathlib import Path
-
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
 
 from test_validation.runners.yul_transpiler import YulTranspiler
 from test_validation.validators.execution_validator import ExecutionValidator, ValidationResult

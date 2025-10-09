@@ -1,9 +1,12 @@
 """Test individual components extracted from MainnetFlat patterns."""
 
-import pytest
-from pathlib import Path
 import subprocess
-import json
+from pathlib import Path
+
+import pytest
+
+from test_validation.revm_environment import RevmEnvironment
+from test_validation.runners.yul_transpiler import YulTranspiler
 
 
 def compile_component_to_yul(contract_name="SimpleStorage"):
@@ -41,13 +44,6 @@ def compile_component_to_yul(contract_name="SimpleStorage"):
 
 def test_simple_storage_compilation():
     """Test compiling SimpleStorage contract."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
-    from test_validation.revm_environment import RevmEnvironment
-
     yul_code = compile_component_to_yul("SimpleStorage")
 
     if not yul_code:
@@ -94,13 +90,6 @@ def test_simple_storage_compilation():
 
 def test_math_operations():
     """Test MathOperations contract with SafeMath library."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
-    from test_validation.revm_environment import RevmEnvironment
-
     yul_code = compile_component_to_yul("MathOperations")
 
     if not yul_code:
@@ -132,12 +121,6 @@ def test_math_operations():
 
 def test_abi_patterns():
     """Test ABI encoding/decoding patterns."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
-
     yul_code = compile_component_to_yul("ABIPatterns")
 
     if not yul_code:
@@ -156,12 +139,6 @@ def test_abi_patterns():
 
 def test_error_handling():
     """Test error handling patterns."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
-
     yul_code = compile_component_to_yul("ErrorHandling")
 
     if not yul_code:
@@ -188,12 +165,6 @@ def test_all_components():
         "MemoryPatterns",
         "ControlFlowPatterns"
     ]
-
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
 
     transpiler = YulTranspiler()
     results = {}
@@ -240,12 +211,6 @@ def test_all_components():
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-
-    # Add parent directory to path
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
     print("Testing MainnetFlat-style components...")
     print("=" * 60)
 

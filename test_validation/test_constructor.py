@@ -3,17 +3,12 @@
 Test Yul constructor transpilation to Venom.
 Tests that constructor functions are properly handled when converting from Yul to Venom IR.
 """
-
 import sys
 from pathlib import Path
 
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
-
+from test_validation.revm_environment import RevmEnvironment
 from test_validation.runners.yul_transpiler import YulTranspiler
 from test_validation.validators.execution_validator import ExecutionValidator
-from test_validation.revm_environment import RevmEnvironment
 
 def test_constructor_with_storage():
     """Test constructor that stores a value in storage."""

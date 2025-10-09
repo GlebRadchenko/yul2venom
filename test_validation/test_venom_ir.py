@@ -3,15 +3,7 @@
 Test to examine the Venom IR structure for problematic patterns.
 """
 
-import sys
-from pathlib import Path
-
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
-sys.path.insert(0, str(Path(__file__).parent.parent / "vyper" / "cli"))
-
-import yul as yul_module
+from yul_to_venom.cli import yul as yul_module
 
 def examine_venom_ir():
     """Examine the Venom IR for the problematic if pattern."""

@@ -2,18 +2,9 @@
 """
 Debug test to isolate the assertion error.
 """
-
-import sys
-from pathlib import Path
-
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
-sys.path.insert(0, str(Path(__file__).parent.parent / "vyper" / "cli"))
-
-import yul as yul_module
-from vyper.venom import generate_assembly_experimental
+from yul_to_venom.cli import yul as yul_module
 from vyper.compiler.settings import OptimizationLevel
+from vyper.venom import generate_assembly_experimental
 
 def test_patterns():
     """Test different Yul patterns to find the issue."""

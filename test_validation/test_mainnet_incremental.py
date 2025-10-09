@@ -1,10 +1,13 @@
 """Incremental testing of MainnetFlat.sol - test individual components."""
 
-import pytest
-from textwrap import dedent
-import subprocess
 import re
+import subprocess
 from pathlib import Path
+from textwrap import dedent
+
+import pytest
+
+from test_validation.runners.yul_transpiler import YulTranspiler
 
 
 def extract_yul_objects(yul_code):
@@ -55,12 +58,6 @@ def get_simple_libraries():
 
 def test_compile_simple_libraries():
     """Test compiling individual library objects."""
-    import sys
-    import os
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-    from test_validation.runners.yul_transpiler import YulTranspiler
-
     libraries = get_simple_libraries()
 
     if not libraries:
@@ -162,7 +159,6 @@ def test_extract_specific_functions():
         test_cases.append((func['name'], yul_obj))
 
     # Test compilation
-    from test_validation.runners.yul_transpiler import YulTranspiler
     transpiler = YulTranspiler()
 
     results = {}
@@ -268,12 +264,6 @@ def test_mainnet_patterns():
 
 
 if __name__ == "__main__":
-    import sys
-    import os
-
-    # Add parent directory to path
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
     print("Testing MainnetFlat.sol components incrementally...")
     print("=" * 60)
 

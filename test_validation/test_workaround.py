@@ -2,19 +2,10 @@
 """
 Test workarounds for the CFG issue.
 """
-
-import sys
-from pathlib import Path
-
-# Add paths
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
-sys.path.insert(0, str(Path(__file__).parent.parent / "vyper" / "cli"))
-
-import yul as yul_module
-from vyper.venom import generate_assembly_experimental
-from vyper.compiler.settings import OptimizationLevel
+from yul_to_venom.cli import yul as yul_module
 from vyper.compiler.phases import generate_bytecode
+from vyper.compiler.settings import OptimizationLevel
+from vyper.venom import generate_assembly_experimental
 
 def test_workarounds():
     """Test different Yul patterns that might work."""

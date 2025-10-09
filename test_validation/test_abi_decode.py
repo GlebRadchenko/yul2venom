@@ -16,11 +16,7 @@ def compile_yul_code(yul_code: str) -> bytes:
 
     try:
         # Run the yul compiler
-        cmd = [
-            'python',
-            'vyper/cli/yul.py',
-            yul_file
-        ]
+        cmd = ["python", "yul_to_venom/cli/yul.py", yul_file]
         env = os.environ.copy()
         env['PYTHONPATH'] = '/Users/harkal/projects/charles_cooper/repos/vyper:.'
 

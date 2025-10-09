@@ -16,12 +16,7 @@ def compile_yul_code(yul_code: str) -> str:
 
     try:
         # Get Venom IR output
-        cmd = [
-            'python',
-            'vyper/cli/yul.py',
-            '--venom',
-            yul_file
-        ]
+        cmd = ["python", "yul_to_venom/cli/yul.py", "--venom", yul_file]
         env = os.environ.copy()
         env['PYTHONPATH'] = '/Users/harkal/projects/charles_cooper/repos/vyper:.'
 

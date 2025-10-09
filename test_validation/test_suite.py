@@ -3,17 +3,12 @@
 Main test suite for Yul-to-Venom transpilation validation.
 """
 
-import pytest
-import sys
-from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from test_validation.validators.execution_validator import ValidationResult
 from textwrap import dedent
 
-from tests.venom_utils import assert_ctx_eq
+import pytest
+
+from test_validation.validators.execution_validator import ValidationResult
+from test_validation.venom_utils import assert_ctx_eq
 from vyper.venom.parser import parse_venom
 
 

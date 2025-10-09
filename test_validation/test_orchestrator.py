@@ -8,18 +8,20 @@ import json
 import time
 import traceback
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from test_validation.runners.solc_compiler import SolcCompiler
-from test_validation.runners.yul_transpiler import YulTranspiler
-from test_validation.validators.execution_validator import ExecutionValidator, ValidationResult
+from test_validation.runners.solc_compiler import SolcCompiler, ContractArtifact
+from test_validation.runners.yul_transpiler import YulTranspiler, YulBytecodeArtifact
+from test_validation.validators.execution_validator import (
+    DeploymentStep,
+    ExecutionValidator,
+    ValidationResult,
+)
 from eth_abi import encode
 from test_validation.test_cases import get_test_cases_for_contract, get_simple_test_cases
+from vyper.exceptions import StackTooDeep
 
 
 def _hex_length_in_bytes(hex_string: str) -> int:
@@ -29,6 +31,26 @@ def _hex_length_in_bytes(hex_string: str) -> int:
     if hex_string.startswith("0x"):
         hex_string = hex_string[2:]
     return len(hex_string) // 2
+
+
+def _address_to_int(address: str) -> int:
+    """Convert an EVM address string into an integer."""
+
+    normalized = address.strip().lower()
+    if normalized.startswith("0x"):
+        normalized = normalized[2:]
+    return int(normalized or "0", 16)
+
+
+def _normalize_dependency_name(identifier: str) -> str:
+    """Normalize a linkersymbol identifier to match solc artifact naming."""
+
+    if ":" not in identifier:
+        return identifier
+
+    prefix, contract = identifier.split(":", 1)
+    filename = Path(prefix).name
+    return f"{filename}:{contract}"
 
 
 def _format_pct(pct: Optional[float], noun: str = "reduction") -> str:
@@ -231,6 +253,77 @@ class TestOrchestrator:
                 f" ({reference_runtime_bytes} bytes)"
             )
 
+            artifacts = self.solc_compiler.compile_contract_artifacts(test_case.solidity_file)
+            deployable_artifacts = {
+                name: artifact
+                for name, artifact in artifacts.items()
+                if self._artifact_has_code(artifact)
+            }
+
+            if not deployable_artifacts:
+                print("  [SKIP] No deployable contract artifacts produced by solc")
+                duration = time.time() - start_time
+                return TestResult(
+                    test_case=test_case,
+                    status="skip",
+                    duration=duration,
+                    validation_reports=[],
+                    yul_size=yul_size,
+                )
+
+            primary_artifact = self.solc_compiler.select_primary_artifact(
+                test_case.solidity_file, deployable_artifacts
+            )
+            if primary_artifact is None:
+                print("  [SKIP] Unable to determine primary contract artifact")
+                duration = time.time() - start_time
+                return TestResult(
+                    test_case=test_case,
+                    status="skip",
+                    duration=duration,
+                    validation_reports=[],
+                    yul_size=yul_size,
+                )
+
+            object_infos = self.yul_transpiler.list_objects(yul_code)
+            object_lookup = self._build_object_lookup(object_infos)
+            target_object = self._select_object_info(object_lookup, primary_artifact.contract_name)
+
+            artifact_dependencies: Dict[str, Tuple[str, ...]] = {}
+            dependency_aliases: Dict[str, Dict[str, str]] = {}
+            zero_link_maps: Dict[str, Dict[str, int]] = {}
+            for fq_name, artifact in deployable_artifacts.items():
+                object_info_for_dep = self._select_object_info(
+                    object_lookup, artifact.contract_name
+                )
+                original_deps = self.yul_transpiler.get_linker_dependencies(
+                    yul_code, object_info_for_dep.name
+                )
+
+                alias_map: Dict[str, str] = {}
+                normalized_deps: List[str] = []
+                for original in original_deps:
+                    normalized = _normalize_dependency_name(original)
+                    alias_map[original] = normalized
+                    normalized_deps.append(normalized)
+
+                dependency_aliases[fq_name] = alias_map
+                artifact_dependencies[fq_name] = tuple(
+                    dep
+                    for dep in dict.fromkeys(normalized_deps)
+                    if dep in deployable_artifacts
+                )
+                zero_link_maps[fq_name] = {
+                    original: 0
+                    for original, normalized in alias_map.items()
+                    if normalized in deployable_artifacts
+                }
+
+            primary_dependencies = artifact_dependencies.get(
+                primary_artifact.fully_qualified_name, ()
+            )
+            zero_link_map = zero_link_maps.get(primary_artifact.fully_qualified_name, {})
+
             # Compute constructor args (default zero values) using solc JSON ABI
             ctor_args = b""
             try:
@@ -270,13 +363,37 @@ class TestOrchestrator:
             
             # Step 3: Transpile Yul to Venom IR
             print("\n[3/5] Transpiling Yul to Venom IR...")
-            venom_ir = self.yul_transpiler.compile_yul_to_venom_ir(yul_code)
+            try:
+                venom_ir = self.yul_transpiler.compile_yul_to_venom_ir(
+                    yul_code,
+                    object_name=target_object.name,
+                    link_libraries=zero_link_map if zero_link_map else None,
+                )
+            except StackTooDeep as exc:
+                print(f"  [SKIP] Venom IR generation failed: {exc}")
+                duration = time.time() - start_time
+                return TestResult(
+                    test_case=test_case,
+                    status="skip",
+                    duration=duration,
+                    validation_reports=[],
+                    yul_size=yul_size,
+                )
             venom_ir_size = len(venom_ir)
             print(f"  [OK] Generated Venom IR: {venom_ir_size} bytes")
             
             # Step 4: Generate bytecode from Venom
             print("\n[4/5] Generating bytecode from Venom...")
-            transpiled_bytecode = self.yul_transpiler.compile_yul_to_bytecode(yul_code)
+            compiled_bytecode_artifacts: Dict[str, YulBytecodeArtifact] = {}
+
+            bytecode_artifact = self.yul_transpiler.compile_yul_to_bytecode(
+                yul_code,
+                object_name=target_object.name,
+                link_libraries=zero_link_map if zero_link_map else None,
+                return_details=True,
+            )
+            compiled_bytecode_artifacts[primary_artifact.fully_qualified_name] = bytecode_artifact
+            transpiled_bytecode = bytecode_artifact.deploy_bytecode
             bytecode_size = len(transpiled_bytecode)
             transpiled_deploy_bytes = _hex_length_in_bytes(transpiled_bytecode)
             print(
@@ -285,7 +402,7 @@ class TestOrchestrator:
             )
             if reference_deploy_bytes:
                 size_delta_pct = (
-                    (reference_deploy_bytes - transpiled_deploy_bytes)
+                    (transpiled_deploy_bytes - reference_deploy_bytes)
                     / reference_deploy_bytes
                 ) * 100
                 print(
@@ -293,6 +410,129 @@ class TestOrchestrator:
                 )
             else:
                 print("  [INFO] Size delta vs solc deploy: n/a")
+
+            runtime_sections = bytecode_artifact.runtime_sections
+            primary_runtime_bytes = None
+            if runtime_sections:
+                primary_runtime_label, runtime_blob = next(iter(runtime_sections.items()))
+                primary_runtime_bytes = len(runtime_blob)
+                runtime_hex = "0x" + runtime_blob.hex()
+                runtime_char_len = len(runtime_hex)
+                label_hint = f" [{primary_runtime_label}]" if primary_runtime_label else ""
+                print(
+                    f"  [OK] Runtime bytecode (transpiled): {runtime_char_len} chars"
+                    f" ({primary_runtime_bytes} bytes){label_hint}"
+                )
+                if len(runtime_sections) > 1:
+                    extras = ", ".join(
+                        f"{label}:{len(data)}b" for label, data in list(runtime_sections.items())[1:]
+                    )
+                    print(f"  [INFO] Additional runtime sections: {extras}")
+            else:
+                print("  [INFO] Runtime bytecode (transpiled): n/a")
+
+            if reference_runtime_bytes and primary_runtime_bytes is not None:
+                runtime_delta_pct = (
+                    (primary_runtime_bytes - reference_runtime_bytes)
+                    / reference_runtime_bytes
+                ) * 100
+                print(
+                    f"  [INFO] Size delta vs solc runtime: {runtime_delta_pct:+.2f}%"
+                )
+            else:
+                print("  [INFO] Size delta vs solc runtime: n/a")
+
+            # Compile remaining artifacts to measure total size impact
+            for fq_name, artifact in deployable_artifacts.items():
+                if fq_name in compiled_bytecode_artifacts:
+                    continue
+                object_info = self._select_object_info(object_lookup, artifact.contract_name)
+                zero_map = zero_link_maps.get(fq_name, {})
+                compiled_bytecode_artifacts[fq_name] = self.yul_transpiler.compile_yul_to_bytecode(
+                    yul_code,
+                    object_name=object_info.name,
+                    link_libraries=zero_map if zero_map else None,
+                    return_details=True,
+                )
+
+            reference_total_deploy_bytes = sum(
+                _hex_length_in_bytes(artifact.bytecode)
+                for artifact in deployable_artifacts.values()
+                if artifact.bytecode
+            )
+            reference_total_runtime_bytes = sum(
+                _hex_length_in_bytes(artifact.runtime_bytecode)
+                for artifact in deployable_artifacts.values()
+                if artifact.runtime_bytecode
+            )
+
+            def _primary_runtime_len(artifact: YulBytecodeArtifact) -> int:
+                for data in artifact.runtime_sections.values():
+                    if isinstance(data, bytes):
+                        return len(data)
+                return 0
+
+            transpiled_total_deploy_bytes = sum(
+                _hex_length_in_bytes(compiled.deploy_bytecode)
+                for compiled in compiled_bytecode_artifacts.values()
+            )
+            transpiled_total_runtime_bytes = sum(
+                _primary_runtime_len(compiled)
+                for compiled in compiled_bytecode_artifacts.values()
+            )
+
+            print(
+                f"  [INFO] Reference deploy size (incl deps): {reference_total_deploy_bytes} bytes"
+            )
+            print(
+                f"  [INFO] Transpiled deploy size (incl deps): {transpiled_total_deploy_bytes} bytes"
+            )
+            if reference_total_deploy_bytes:
+                total_deploy_delta_pct = (
+                    (transpiled_total_deploy_bytes - reference_total_deploy_bytes)
+                    / reference_total_deploy_bytes
+                ) * 100
+                print(
+                    f"  [INFO] Total deploy delta vs solc: {total_deploy_delta_pct:+.2f}%"
+                )
+            else:
+                print("  [INFO] Total deploy delta vs solc: n/a")
+
+            print(
+                f"  [INFO] Reference runtime size (incl deps): {reference_total_runtime_bytes} bytes"
+            )
+            print(
+                f"  [INFO] Transpiled runtime size (incl deps): {transpiled_total_runtime_bytes} bytes"
+            )
+            if reference_total_runtime_bytes:
+                total_runtime_delta_pct = (
+                    (transpiled_total_runtime_bytes - reference_total_runtime_bytes)
+                    / reference_total_runtime_bytes
+                ) * 100
+                print(
+                    f"  [INFO] Total runtime delta vs solc: {total_runtime_delta_pct:+.2f}%"
+                )
+            else:
+                print("  [INFO] Total runtime delta vs solc: n/a")
+
+            deployment_order = self._topologically_sort_artifacts(
+                deployable_artifacts, artifact_dependencies
+            )
+            original_plan, transpiled_plan = self._build_deployment_plans(
+                yul_code,
+                deployable_artifacts,
+                artifact_dependencies,
+                dependency_aliases,
+                deployment_order,
+                object_lookup,
+            )
+
+            for step in original_plan:
+                if step.name == primary_artifact.fully_qualified_name:
+                    step.constructor_args = ctor_args
+            for step in transpiled_plan:
+                if step.name == primary_artifact.fully_qualified_name:
+                    step.constructor_args = ctor_args
 
             # Step 5: Validate bytecode through execution
             print("\n[5/5] Validating bytecode through execution...")
@@ -306,29 +546,43 @@ class TestOrchestrator:
             else:
                 print(f"  Running {len(test_cases)} test cases for {test_case.name}")
             
-            validation_reports = self.execution_validator.validate_execution(
-                deploy_bytecode, 
-                transpiled_bytecode,
-                test_cases,
-                constructor_args=ctor_args,
+            validation_reports = self.execution_validator.validate_execution_from_plans(
+                original_plan,
+                transpiled_plan,
+                target_name=primary_artifact.fully_qualified_name,
+                test_cases=test_cases,
             )
             
             # Print validation results
             deploy_gas1 = None
             deploy_gas2 = None
+            deploy_summary: Optional[Any] = None
+            step_reports: List[Any] = []
+            execution_reports: List[Any] = []
+
             if validation_reports:
-                deploy_report = validation_reports[0]
-                symbol = "[OK]" if deploy_report.status == ValidationResult.PASS else "[FAIL]"
-                print(f"  {symbol} {deploy_report.test_name}: {deploy_report.message}")
-                deploy_details = deploy_report.details or {}
+                deploy_summary = validation_reports[0]
+                symbol = "[OK]" if deploy_summary.status == ValidationResult.PASS else "[FAIL]"
+                print(f"  {symbol} {deploy_summary.test_name}: {deploy_summary.message}")
+                deploy_details = deploy_summary.details or {}
                 deploy_gas1 = deploy_details.get("original_gas_used")
                 deploy_gas2 = deploy_details.get("transpiled_gas_used")
+
+            for report in validation_reports[1:]:
+                if report.test_name.startswith("deploy["):
+                    step_reports.append(report)
+                else:
+                    execution_reports.append(report)
+
+            for report in step_reports:
+                symbol = "[OK]" if report.status == ValidationResult.PASS else "[FAIL]"
+                print(f"  {symbol} {report.test_name}: {report.message}")
 
             total_original_gas = 0
             total_transpiled_gas = 0
             has_original_gas = False
             has_transpiled_gas = False
-            for report in validation_reports[1:]:
+            for report in execution_reports:
                 symbol = "[OK]" if report.status == ValidationResult.PASS else "[FAIL]"
                 print(f"  {symbol} {report.test_name}: {report.message}")
                 details = report.details or {}
@@ -387,6 +641,124 @@ class TestOrchestrator:
                 validation_reports=[],
                 error_message=error_msg
             )
+
+    def _artifact_has_code(self, artifact: ContractArtifact) -> bool:
+        return bool(
+            self.solc_compiler._strip_0x(artifact.bytecode)
+            or self.solc_compiler._strip_0x(artifact.runtime_bytecode)
+        )
+
+    def _build_object_lookup(self, object_infos: Dict[str, Any]) -> Dict[str, List[Any]]:
+        lookup: Dict[str, List[Any]] = {}
+        for info in object_infos.values():
+            lookup.setdefault(info.base_name, []).append(info)
+
+        for infos in lookup.values():
+            infos.sort(key=lambda entry: (len(entry.name), entry.name))
+        return lookup
+
+    def _select_object_info(self, lookup: Dict[str, List[Any]], contract_name: str) -> Any:
+        infos = lookup.get(contract_name)
+        if not infos and "_" in contract_name:
+            base = contract_name.split("_", 1)[0]
+            infos = lookup.get(base)
+        if not infos:
+            available = ", ".join(sorted(lookup))
+            raise ValueError(
+                f"Unable to locate Yul object for contract '{contract_name}'. Available: {available}"
+            )
+        return infos[0]
+
+    def _topologically_sort_artifacts(
+        self,
+        artifacts: Dict[str, ContractArtifact],
+        dependencies: Dict[str, Tuple[str, ...]],
+    ) -> List[str]:
+        order: List[str] = []
+        temp_mark: set[str] = set()
+        perm_mark: set[str] = set()
+
+        def visit(name: str) -> None:
+            if name in perm_mark:
+                return
+            if name in temp_mark:
+                raise ValueError(
+                    f"Cycle detected in artifact dependencies involving {name}"
+                )
+            temp_mark.add(name)
+            for dep in dependencies.get(name, ()): 
+                if dep in artifacts:
+                    visit(dep)
+            temp_mark.remove(name)
+            perm_mark.add(name)
+            order.append(name)
+
+        for name in artifacts:
+            visit(name)
+
+        return order
+
+    def _build_deployment_plans(
+        self,
+        yul_code: str,
+        artifacts: Dict[str, ContractArtifact],
+        dependencies: Dict[str, Tuple[str, ...]],
+        dependency_aliases: Dict[str, Dict[str, str]],
+        order: List[str],
+        object_lookup: Dict[str, List[Any]],
+    ) -> Tuple[List[DeploymentStep], List[DeploymentStep]]:
+        original_plan: List[DeploymentStep] = []
+        transpiled_plan: List[DeploymentStep] = []
+
+        for fq_name in order:
+            artifact = artifacts[fq_name]
+            deps = tuple(dep for dep in dependencies.get(fq_name, ()) if dep in artifacts)
+            object_info = self._select_object_info(object_lookup, artifact.contract_name)
+            alias_map = dependency_aliases.get(fq_name, {})
+
+            def original_builder(
+                addresses: Dict[str, str],
+                artifact: ContractArtifact = artifact,
+                deps: Tuple[str, ...] = deps,
+            ) -> str:
+                if not deps:
+                    return artifact.bytecode
+                link_map = {dep: addresses[dep] for dep in deps}
+                return self.solc_compiler.link_bytecode(artifact, link_map)
+
+            def transpiled_builder(
+                addresses: Dict[str, str],
+                alias_map: Dict[str, str] = alias_map,
+                object_name: str = object_info.name,
+            ) -> str:
+                link_map: Dict[str, int] = {}
+                for original, normalized in alias_map.items():
+                    if normalized in addresses:
+                        link_map[original] = _address_to_int(addresses[normalized])
+
+                return self.yul_transpiler.compile_yul_to_bytecode(
+                    yul_code,
+                    object_name=object_name,
+                    link_libraries=link_map if link_map else None,
+                )
+
+            original_plan.append(
+                DeploymentStep(
+                    name=fq_name,
+                    bytecode_builder=original_builder,
+                    dependencies=deps,
+                )
+            )
+
+            transpiled_plan.append(
+                DeploymentStep(
+                    name=fq_name,
+                    bytecode_builder=transpiled_builder,
+                    dependencies=deps,
+                )
+            )
+
+        return original_plan, transpiled_plan
     
     def run_all_tests(self, test_filter: Optional[List[str]] = None) -> None:
         """

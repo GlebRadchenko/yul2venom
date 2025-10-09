@@ -6,21 +6,15 @@ Yul transpiler wrapper for compiling Yul to Venom IR and bytecode.
 from __future__ import annotations
 
 import os
-import sys
 import subprocess
+import sys
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-# Add parent directories to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
-
-# Import directly from the local yul.py file
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "vyper" / "cli"))
-import yul as yul_module
-from yul import (
+from yul_to_venom.cli import yul as yul_module
+from yul_to_venom.cli.yul import (
     Assign,
     Block,
     ExprStmt,
@@ -33,11 +27,9 @@ from yul import (
     VarDecl,
     YulObject,
 )
-
-# Import Vyper modules
-from vyper.venom import generate_assembly_experimental, run_passes_on
 from vyper.compiler.phases import generate_bytecode
 from vyper.compiler.settings import OptimizationLevel
+from vyper.venom import generate_assembly_experimental, run_passes_on
 
 
 @dataclass(frozen=True)
@@ -68,10 +60,6 @@ class YulTranspiler:
         self.vyper_path = Path(vyper_path)
         if not self.vyper_path.exists():
             raise ValueError(f"Vyper path does not exist: {vyper_path}")
-        
-        # Add Vyper to Python path
-        if str(self.vyper_path) not in sys.path:
-            sys.path.insert(0, str(self.vyper_path))
     
     def compile_yul_to_bytecode(
         self,
@@ -223,8 +211,6 @@ class YulTranspiler:
     def _find_runtime_data_labels(self, yul_object: Any) -> Tuple[str, ...]:
         """Best-effort detection of data sections returned by constructor code."""
 
-        from yul import Block, ForLoop, Switch
-
         runtime_labels: List[str] = []
         scope_stack: List[Dict[str, str]] = [{}]
 
@@ -361,7 +347,7 @@ class YulTranspiler:
         """
         cmd = [
             sys.executable,
-            str(Path(__file__).parent.parent.parent / "vyper" / "cli" / "yul.py"),
+            str(Path(__file__).parent.parent.parent / "yul_to_venom" / "cli" / "yul.py"),
             str(yul_file),
             "--evm-version", evm_version
         ]

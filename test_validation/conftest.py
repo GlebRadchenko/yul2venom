@@ -3,12 +3,7 @@ Pytest configuration and fixtures for Yul-to-Venom validation tests.
 """
 
 import pytest
-import sys
 from pathlib import Path
-
-# Add parent directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-sys.path.insert(0, "/Users/harkal/projects/charles_cooper/repos/vyper")
 
 from test_validation.runners.solc_compiler import SolcCompiler
 from test_validation.runners.yul_transpiler import YulTranspiler
