@@ -26,8 +26,25 @@ echo ""
 echo "Installing dependencies..."
 $PYTHON -m pip install -q -r requirements.txt
 
+# Resolve repository paths
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEFAULT_VYPER_REPO="$(cd "$REPO_ROOT" && realpath ../vyper 2>/dev/null || true)"
+
+if [[ -n "$DEFAULT_VYPER_REPO" && -d "$DEFAULT_VYPER_REPO" ]]; then
+    VYPER_REPO="${VYPER_REPO:-$DEFAULT_VYPER_REPO}"
+fi
+
+if [[ -z "$VYPER_REPO" || ! -d "$VYPER_REPO" ]]; then
+    echo "Warning: VYPER_REPO not set and ../vyper not found. Ensure Vyper is on PYTHONPATH."
+    VYPER_REPO=""
+fi
+
 # Run the test orchestrator
 echo ""
 echo "Running validation tests..."
 echo "========================================"
-$PYTHON test_validation/test_orchestrator.py "$@"
+if [[ -n "$VYPER_REPO" ]]; then
+    PYTHONPATH="$REPO_ROOT:$VYPER_REPO:${PYTHONPATH}" $PYTHON -m test_validation.test_orchestrator "$@"
+else
+    PYTHONPATH="$REPO_ROOT:${PYTHONPATH}" $PYTHON -m test_validation.test_orchestrator "$@"
+fi
