@@ -16,6 +16,7 @@ from vyper.venom.check_venom import check_venom_ctx
 from vyper.venom.context import IRContext
 from vyper.venom.function import IRFunction
 from vyper.venom.parser import parse_venom
+from eth_utils import keccak
 
 """
 Standalone entry point into venom compiler. Parses venom input and emits
@@ -642,6 +643,9 @@ from vyper.venom.context import IRContext
 from vyper.venom.function import IRFunction
 
 
+IMMUTABLE_SLOT_SIZE = 32
+
+
 class YulToVenom:
     def __init__(
         self, is_subobject: bool = False, link_libraries: dict[str, int] | None = None
@@ -664,6 +668,45 @@ class YulToVenom:
         self.link_libraries: dict[str, int] = dict(link_libraries) if link_libraries else {}
         self.used_link_libraries: dict[str, int] = {}
         self.unresolved_link_references: set[str] = set()
+        self.object_immutable_usage: dict[str | None, set[str]] = {}
+        self.immutable_labels: dict[str, str] = {}
+        self.subobject_immutable_sizes: dict[str, int] = {}
+        self.subobject_immutable_labels: dict[str, str] = {}
+        self.free_memory_base: int | None = None
+        self.immutable_storage_slots: dict[str, IRLiteral] = {}
+
+    def _immutable_label_for(self, object_name: str | None = None) -> str:
+        """Return the label name used for immutable data of the given object."""
+        if object_name is None:
+            object_name = self.object_name
+        if object_name is None:
+            raise ValueError("immutable label requested before object name set")
+        label = self.immutable_labels.get(object_name)
+        if label is None:
+            label = f"{object_name}_immutables"
+            self.immutable_labels[object_name] = label
+        return label
+
+    def _get_or_allocate_immutable_offset(self, key: str) -> int:
+        """Return the byte offset assigned to the immutable key, allocating if needed."""
+        if key not in self.immutable_offsets:
+            self.immutable_offsets[key] = self.next_immutable_offset
+            self.next_immutable_offset += IMMUTABLE_SLOT_SIZE
+        return self.immutable_offsets[key]
+
+    def _register_immutable_usage(self, key: str) -> None:
+        """Track which immutables each object references for sizing the data section."""
+        if self.object_name is not None:
+            self.object_immutable_usage.setdefault(self.object_name, set()).add(key)
+
+    @staticmethod
+    def _extract_string_literal(arg) -> str:
+        if not isinstance(arg, Literal) or not isinstance(arg.value, str):
+            raise ValueError(f"expected string literal, got {arg}")
+        value = arg.value.strip()
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        return value
 
     def _resolve_link_address(self, identifier: str) -> int | None:
         """Resolve a linkersymbol identifier to an address if provided."""
@@ -720,6 +763,10 @@ class YulToVenom:
                 # Update our immutable offsets from nested compilation
                 self.immutable_offsets.update(nested_compiler.immutable_offsets)
                 self.next_immutable_offset = max(self.next_immutable_offset, nested_compiler.next_immutable_offset)
+
+                # Merge immutable usage bookkeeping
+                for obj_name, keys in nested_compiler.object_immutable_usage.items():
+                    self.object_immutable_usage.setdefault(obj_name, set()).update(keys)
                 
                 # Run full optimization passes on the nested context
                 from vyper.venom import run_passes_on
@@ -727,9 +774,21 @@ class YulToVenom:
 
                 # Run full optimization including all essential passes
                 run_passes_on(nested_ctx, OptimizationLevel.default())
+
+                imm_keys = nested_compiler.object_immutable_usage.get(item.name, set())
+                imm_size = 0
+                if imm_keys:
+                    imm_size = (
+                        max(nested_compiler.immutable_offsets[key] for key in imm_keys)
+                        + IMMUTABLE_SLOT_SIZE
+                    )
+                    self.subobject_immutable_sizes[item.name] = imm_size
                 
                 # Generate assembly and bytecode with full optimization
                 asm = generate_assembly_experimental(nested_ctx)
+                embedded_bytecode = getattr(nested_ctx, "embedded_bytecode", None)
+                program_end_label_name = getattr(nested_ctx, "program_end_label_name", None)
+                asm = inject_embedded_bytecode(asm, embedded_bytecode, program_end_label_name)
                 bytecode, _ = generate_bytecode(asm)
                 
                 # Store the bytecode
@@ -750,9 +809,10 @@ class YulToVenom:
                 self.ctx.embedded_bytecode = {}
             for name, bytecode in self.subobject_bytecode.items():
                 label = f"{name}_data"
-                self.ctx.embedded_bytecode[label] = bytecode
-                self._data_labels_in_order.append(label)
-                self._data_sizes[label] = len(bytecode)
+                if label not in self.ctx.embedded_bytecode:
+                    self.ctx.embedded_bytecode[label] = bytecode
+                    self._data_labels_in_order.append(label)
+                    self._data_sizes[label] = len(bytecode)
         
         # Gather all function definitions in the AST
         self.functions = {}
@@ -807,13 +867,14 @@ class YulToVenom:
         
         for name, bytecode in self.subobject_bytecode.items():
             # Store bytecode for assembly generation
-            self.ctx.embedded_bytecode[f"{name}_data"] = bytecode
-            self._data_labels_in_order.append(f"{name}_data")
-            self._data_sizes[f"{name}_data"] = len(bytecode)
+            data_label = f"{name}_data"
+            self.ctx.embedded_bytecode[data_label] = bytecode
+            self._data_labels_in_order.append(data_label)
+            self._data_sizes[data_label] = len(bytecode)
             
             # Create a data block in Venom IR to show the bytecode
             # This will be visible in --venom output
-            data_fn = self.ctx.create_function(f"{name}_data")
+            data_fn = self.ctx.create_function(data_label)
             data_bb = data_fn.entry
             
             # Store the actual bytecode on the function for display
@@ -1248,6 +1309,44 @@ class YulToVenom:
                 flat.append(operand)
         return flat
 
+    def _get_immutable_storage_slot(self, key: str) -> IRLiteral:
+        """Derive a deterministic storage slot for an immutable identifier."""
+        slot = self.immutable_storage_slots.get(key)
+        if slot is None:
+            slot_bytes = keccak(text=key)
+            slot_value = int.from_bytes(slot_bytes, "big")
+            slot = IRLiteral(slot_value)
+            self.immutable_storage_slots[key] = slot
+        return slot
+
+    def _compile_setimmutable(self, expr: FuncCall, bb: IRBasicBlock) -> IRLiteral:
+        if len(expr.args) != 3:
+            raise ValueError(f"setimmutable expects 3 arguments, got {len(expr.args)}")
+
+        _ = self._compile_expr(expr.args[0], bb)  # evaluate pointer for side effects if any
+        key = self._extract_string_literal(expr.args[1])
+        value_operand = self._compile_expr(expr.args[2], bb)
+
+        self._get_or_allocate_immutable_offset(key)
+        slot_literal = self._get_immutable_storage_slot(key)
+
+        value_flat = self._flatten_operands([value_operand])
+        if len(value_flat) != 1:
+            raise ValueError("setimmutable value must resolve to single operand")
+        value_final = value_flat[0]
+
+        bb.append_instruction("sstore", value_final, slot_literal)
+        return IRLiteral(0)
+
+    def _compile_loadimmutable(self, expr: FuncCall, bb: IRBasicBlock):
+        if len(expr.args) != 1:
+            raise ValueError(f"loadimmutable expects 1 argument, got {len(expr.args)}")
+
+        key = self._extract_string_literal(expr.args[0])
+        self._get_or_allocate_immutable_offset(key)
+        slot_literal = self._get_immutable_storage_slot(key)
+        return bb.append_instruction("sload", slot_literal)
+
     def _compile_expr(
         self, expr, bb: IRBasicBlock
     ) -> IRVariable | IRLiteral | IRLabel | list[IRVariable | IRLiteral | IRLabel]:
@@ -1260,7 +1359,24 @@ class YulToVenom:
         if isinstance(expr, str):
             return IRVariable(expr)
         if isinstance(expr, FuncCall):
-            args = [self._compile_expr(arg, bb) for arg in reversed(expr.args)]
+            if expr.name == "setimmutable":
+                return self._compile_setimmutable(expr, bb)
+            if expr.name == "loadimmutable":
+                return self._compile_loadimmutable(expr, bb)
+            if expr.name == "memoryguard":
+                guard_operand = (
+                    self._compile_expr(expr.args[0], bb) if expr.args else IRLiteral(0)
+                )
+                if isinstance(guard_operand, IRLiteral):
+                    guard_val = guard_operand.value
+                    if not isinstance(guard_val, int):
+                        raise ValueError("memoryguard expects integer literal")
+                    if self.free_memory_base is None or guard_val > self.free_memory_base:
+                        self.free_memory_base = guard_val
+                return guard_operand
+
+            compiled_args_forward = [self._compile_expr(arg, bb) for arg in expr.args]
+            args = list(reversed(compiled_args_forward))
 
             # Note: ABI decode optimization is now handled in _try_optimize_abi_decode
             # This path is kept for backwards compatibility but should be removed
@@ -1272,7 +1388,7 @@ class YulToVenom:
                 num_returns = len(target_func.returns)
                 # Pass 1 for single returns (backwards compatible), actual count for multi-returns
                 returns_param = 1 if num_returns == 1 else num_returns if num_returns > 1 else False
-                invoke_args = [target_label, *self._flatten_operands(list(reversed(args)))]
+                invoke_args = [target_label, *self._flatten_operands(compiled_args_forward)]
                 return bb.append_invoke_instruction(invoke_args, returns=returns_param)
             else:
                 # Handle dataoffset and datasize specially
@@ -1301,17 +1417,8 @@ class YulToVenom:
                             return bb.append_instruction("offset", IRLiteral(0), self.program_end_label)
                         # 3) Unknown sections default to zero
                         return IRLiteral(0)
-                    return IRLiteral(0)
                 
                 # Handle immutable operations
-                # For now, treat these as no-ops/placeholders since proper immutable
-                # handling requires more infrastructure
-                elif expr.name == "setimmutable":
-                    return IRLiteral(0)
-
-                elif expr.name == "loadimmutable":
-                    return IRLiteral(0)
-
                 elif expr.name == "linkersymbol":
                     if len(expr.args) != 1:
                         raise Exception(f"linkersymbol expects 1 argument, got {len(expr.args)}")
@@ -1349,7 +1456,9 @@ class YulToVenom:
                     # memoryguard reserves memory.. we could maybe
                     # call this 'reserve' (or reuse alloc)
                     opcode = "assign"
-                return bb.append_instruction(opcode, *self._flatten_operands(args))
+                result = bb.append_instruction(opcode, *self._flatten_operands(args))
+
+                return result
 
         raise NotImplementedError(f"Expr {type(expr)} not implemented: {expr}")
 
