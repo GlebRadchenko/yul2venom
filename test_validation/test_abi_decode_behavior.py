@@ -77,7 +77,7 @@ def test_hardcoded_tuple_uint256_uint256_behavior():
                     value2 := abi_decode_t_uint256(add(headStart, 64), dataEnd)
                 }
 
-                // This pattern is NOT hardcoded - goes through normal function path
+                // This pattern exercises the mixed-type decode optimization path
                 let x, y, z := abi_decode_tuple_t_uint256t_uint256t_uint256(4, calldatasize())
 
                 // Store first two values for comparison
@@ -104,8 +104,8 @@ def test_hardcoded_tuple_uint256_uint256_behavior():
     assert output1 == output2, f"Outputs should match: {output1.hex()} vs {output2.hex()}"
 
 
-def test_mixed_type_decode_not_optimized():
-    """Test that mixed-type decodes are not optimized."""
+def test_mixed_type_decode_preserves_values():
+    """Ensure mixed-type ABI decodes preserve full-width values when optimized."""
     # Address + uint256 pattern - NOT hardcoded
     yul_code = dedent("""
         object "Test" {
@@ -137,7 +137,8 @@ def test_mixed_type_decode_not_optimized():
     calldata = bytes.fromhex("00000000")  # dummy selector
     # Address (padded to 32 bytes)
     calldata += bytes.fromhex("000000000000000000000000" + "1234567890123456789012345678901234567890")
-    calldata += (1000).to_bytes(32, 'big')  # amount
+    expected_amount = (1 << 240) + 0x123456  # value that exercises the high bits
+    calldata += expected_amount.to_bytes(32, 'big')
 
     success, output = compile_and_execute(yul_code, calldata)
     assert success, "Should compile and execute"
@@ -148,7 +149,44 @@ def test_mixed_type_decode_not_optimized():
 
     expected_addr = 0x1234567890123456789012345678901234567890
     assert addr_from_output == expected_addr, f"Address mismatch: {hex(addr_from_output)} vs {hex(expected_addr)}"
-    assert amount_from_output == 1000, f"Amount mismatch: {amount_from_output} vs 1000"
+    assert amount_from_output == expected_amount, (
+        f"Amount mismatch: {amount_from_output} vs {expected_amount}"
+    )
+
+
+def test_bool_and_uint_decode_behavior():
+    """Verify bool decodes normalise to {0,1} while preserving neighbouring values."""
+    yul_code = dedent("""
+        object "Test" {
+            code {
+                function abi_decode_tuple_t_boolt_uint256(headStart, dataEnd) -> flag, value {
+                    if iszero(slt(add(headStart, 63), dataEnd)) { revert(0, 0) }
+                    flag := calldataload(headStart)
+                    value := calldataload(add(headStart, 32))
+                }
+
+                let decodedFlag, decodedValue := abi_decode_tuple_t_boolt_uint256(4, calldatasize())
+
+                mstore(0, decodedFlag)
+                mstore(32, decodedValue)
+                return(0, 64)
+            }
+        }
+    """)
+
+    calldata = bytes.fromhex("00000000")
+    calldata += (2).to_bytes(32, "big")  # non-zero bool input should normalise to 1
+    expected_value = (1 << 200) + 0xABCD
+    calldata += expected_value.to_bytes(32, "big")
+
+    success, output = compile_and_execute(yul_code, calldata)
+    assert success, "Should compile and execute"
+
+    flag = int.from_bytes(output[:32], "big")
+    value = int.from_bytes(output[32:64], "big")
+
+    assert flag == 1, f"Bool normalisation failed: expected 1, got {flag}"
+    assert value == expected_value, f"Uint256 mismatch: {value} vs {expected_value}"
 
 
 def test_fromMemory_pattern_optimization():

@@ -8,6 +8,12 @@ from lark import Lark
 
 import vyper
 import vyper.evm.opcodes as evm
+from abi_decode_handler import (
+    get_load_instruction_for_type,
+    get_type_mask,
+    needs_special_handling,
+    parse_abi_decode_pattern,
+)
 from vyper.compiler.phases import generate_bytecode
 from vyper.compiler.settings import OptimizationLevel, Settings, set_global_settings
 from vyper.venom import generate_assembly_experimental, run_passes_on
@@ -1236,62 +1242,88 @@ class YulToVenom:
         func_name = stmt.init.name
         num_returns = len(stmt.names)
 
-        # Parse the function name to understand the pattern
-        if not func_name.startswith("abi_decode_tuple_t_"):
+        parse_result = parse_abi_decode_pattern(func_name)
+        if not parse_result:
             return False
 
-        # Check if it's a memory variant
-        is_memory = func_name.endswith("_fromMemory")
+        types, is_memory = parse_result
+
+        if len(types) != num_returns:
+            return False
 
         # For now, only optimize simple patterns with 1-4 parameters
         if num_returns < 1 or num_returns > 4:
             return False
 
-        # Check if we have the expected number of arguments (headStart, dataEnd)
+        # Only handle simple scalar types that can fit in a single word
+        supported_scalar_types = {
+            "uint256",
+            "uint128",
+            "uint64",
+            "uint32",
+            "uint16",
+            "uint8",
+            "int256",
+            "int128",
+            "int64",
+            "int32",
+            "int16",
+            "int8",
+            "address",
+            "bool",
+            "bytes32",
+            "bytes16",
+            "bytes8",
+            "bytes4",
+        }
+
+        if any(t not in supported_scalar_types for t in types):
+            return False
+
+        # Check if we have the expected offset argument (headStart)
         if len(stmt.init.args) < 1:
             return False
 
-        # Compile the offset argument
-        offset = self._compile_expr(stmt.init.args[0], bb)
+        offset_operand = self._compile_expr(stmt.init.args[0], bb)
+        offset_values = self._flatten_operands([offset_operand])
+        if len(offset_values) != 1:
+            return False
+        base_offset = offset_values[0]
 
-        # Determine the load instruction
-        load_op = "mload" if is_memory else "calldataload"
+        signextend_indices = {
+            "int8": 0,
+            "int16": 1,
+            "int32": 3,
+            "int64": 7,
+            "int128": 15,
+        }
 
         # Generate optimized loads for each parameter
-        for i, name in enumerate(stmt.names):
-            if i == 0:
-                # First parameter - load from offset directly
-                value = bb.append_instruction(load_op, offset)
-            else:
-                # Subsequent parameters - add 32 bytes per parameter
-                offset_plus = bb.append_instruction("add", offset, IRLiteral(32 * i))
-                value = bb.append_instruction(load_op, offset_plus)
+        for i, (name, type_name) in enumerate(zip(stmt.names, types)):
+            current_offset = base_offset
+            if i > 0:
+                current_offset = bb.append_instruction("add", base_offset, IRLiteral(32 * i))
 
-            # Handle special types that need masking or conversion
-            # For now, we'll handle the most common cases
-            if "address" in func_name:
-                # Mask to 20 bytes for address type
-                mask = IRLiteral(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
-                value = bb.append_instruction("and", value, mask)
-            elif "bool" in func_name:
-                # Convert to bool with iszero(iszero(...))
+            # Load the word from calldata or memory
+            load_op = get_load_instruction_for_type(type_name, is_memory)
+            value = bb.append_instruction(load_op, current_offset)
+
+            # Apply masking if required (e.g. address, bytes4)
+            mask_value = get_type_mask(type_name)
+            if mask_value is not None:
+                value = bb.append_instruction("and", value, IRLiteral(mask_value))
+
+            # Handle special post-processing such as booleans or signed ints
+            special_handling = needs_special_handling(type_name)
+            if special_handling == "bool":
                 value = bb.append_instruction("iszero", value)
                 value = bb.append_instruction("iszero", value)
-            elif "uint8" in func_name:
-                # Mask to 1 byte
-                mask = IRLiteral(0xFF)
-                value = bb.append_instruction("and", value, mask)
-            elif "uint16" in func_name:
-                # Mask to 2 bytes
-                mask = IRLiteral(0xFFFF)
-                value = bb.append_instruction("and", value, mask)
-            elif "uint32" in func_name:
-                # Mask to 4 bytes
-                mask = IRLiteral(0xFFFFFFFF)
-                value = bb.append_instruction("and", value, mask)
-            # uint256 and bytes32 need no masking
+            elif special_handling == "signext":
+                signextend_index = signextend_indices.get(type_name)
+                if signextend_index is None:
+                    return False
+                value = bb.append_instruction("signextend", IRLiteral(signextend_index), value)
 
-            # Assign to the variable
             bb.append_instruction("assign", value, ret=IRVariable(name))
 
         return True
