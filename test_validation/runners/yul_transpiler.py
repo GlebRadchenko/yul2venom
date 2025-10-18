@@ -49,17 +49,41 @@ class YulBytecodeArtifact:
 
 class YulTranspiler:
     """Wrapper for the Yul to Venom transpiler."""
-    
-    def __init__(self, vyper_path: str = "/Users/harkal/projects/charles_cooper/repos/vyper"):
+
+    def __init__(self, vyper_path: str | os.PathLike[str] | None = None):
         """
         Initialize the YulTranspiler.
-        
+
         Args:
-            vyper_path: Path to the Vyper repository
+            vyper_path: Optional path to the Vyper repository.
         """
-        self.vyper_path = Path(vyper_path)
-        if not self.vyper_path.exists():
-            raise ValueError(f"Vyper path does not exist: {vyper_path}")
+        candidate_paths: list[Path] = []
+
+        if vyper_path is not None:
+            candidate_paths.append(Path(vyper_path))
+        else:
+            env_path = os.environ.get("VYPER_REPO") or os.environ.get("VYPER_PATH")
+            if env_path:
+                candidate_paths.append(Path(env_path))
+
+            repo_root = Path(__file__).resolve().parents[2]
+            candidate_paths.append(repo_root / "vyper")
+            candidate_paths.append(repo_root.parent / "vyper")
+
+        resolved_path: Path | None = None
+        for candidate in candidate_paths:
+            if candidate and candidate.exists():
+                resolved_path = candidate.resolve()
+                break
+
+        if resolved_path is None:
+            tried = ", ".join(str(path) for path in candidate_paths if path)
+            raise ValueError(
+                f"Unable to locate Vyper repository. Tried: {tried or '<none>'}. "
+                "Specify the path explicitly via YulTranspiler(vyper_path=...) or set VYPER_REPO."
+            )
+
+        self.vyper_path = resolved_path
     
     def compile_yul_to_bytecode(
         self,
