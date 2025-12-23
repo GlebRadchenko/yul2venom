@@ -186,6 +186,42 @@ tests:
         args: [10]
         expected_return_int: 20
 
+  - id: immutable_simple
+    file: ImmutableSimple.sol
+    description: "Test immutable variable handling"
+    tags: [immutable, constructor, basic]
+    execution_tests:
+      - name: read_stored_immutable
+        function: "readStored()"
+        expected_return_int: 7
+
+  - id: simple_library_use
+    file: SimpleLibraryUse.sol
+    description: "Test library linking and delegation"
+    tags: [library, linking, pure]
+    execution_tests:
+      - name: double_5
+        function: "double(uint256)"
+        args: [5]
+        expected_return_int: 10
+      - name: double_0
+        function: "double(uint256)"
+        args: [0]
+        expected_return_int: 0
+      - name: double_100
+        function: "double(uint256)"
+        args: [100]
+        expected_return_int: 200
+
+  - id: minimal
+    file: Minimal.sol
+    description: "Test minimal contract with public state variable"
+    tags: [minimal, getter, basic]
+    execution_tests:
+      - name: get_x_initial
+        function: "x()"
+        expected_return_int: 42
+
   # Skipped tests
   - id: mainnetflat
     file: MainnetFlat.sol

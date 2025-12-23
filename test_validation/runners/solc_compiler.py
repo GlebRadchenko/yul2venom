@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
+from test_validation.utils.hex_utils import strip_0x
+
 
 @dataclass(frozen=True)
 class ContractArtifact:
@@ -159,8 +161,8 @@ class SolcCompiler:
 
         def _has_code(artifact: ContractArtifact) -> bool:
             return bool(
-                self._strip_0x(artifact.bytecode)
-                or self._strip_0x(artifact.runtime_bytecode)
+                strip_0x(artifact.bytecode)
+                or strip_0x(artifact.runtime_bytecode)
             )
 
         non_empty = [artifact for artifact in artifacts.values() if _has_code(artifact)]
@@ -178,8 +180,8 @@ class SolcCompiler:
         return max(
             non_empty,
             key=lambda art: max(
-                len(self._strip_0x(art.runtime_bytecode)),
-                len(self._strip_0x(art.bytecode)),
+                len(strip_0x(art.runtime_bytecode)),
+                len(strip_0x(art.bytecode)),
             ),
         )
     
@@ -289,10 +291,6 @@ class SolcCompiler:
         return value if not value or value.startswith("0x") else f"0x{value}"
 
     @staticmethod
-    def _strip_0x(value: str) -> str:
-        return value[2:] if value.startswith("0x") else value
-
-    @staticmethod
     def _parse_link_references(raw: Mapping[str, Mapping[str, List[Dict[str, int]]]]) -> Dict[str, List[Tuple[int, int]]]:
         link_refs: Dict[str, List[Tuple[int, int]]] = {}
         for file_path, contracts in (raw or {}).items():
@@ -318,7 +316,7 @@ class SolcCompiler:
         if not artifact.link_references:
             return artifact.bytecode
 
-        bytecode = self._strip_0x(artifact.bytecode)
+        bytecode = strip_0x(artifact.bytecode)
         if not bytecode:
             return artifact.bytecode
 
@@ -330,7 +328,7 @@ class SolcCompiler:
                     f"Missing address for library '{reference}' required by {artifact.fully_qualified_name}"
                 )
 
-            address_hex = self._strip_0x(library_addresses[reference]).lower()
+            address_hex = strip_0x(library_addresses[reference]).lower()
             expected_length = positions[0][1] if positions else 20
 
             if len(address_hex) > expected_length * 2:

@@ -8,6 +8,7 @@ import yaml
 from eth_abi import encode
 from eth_utils import function_signature_to_4byte_selector
 
+from test_validation.exceptions import ConfigurationError
 from test_validation.validators.execution_validator import (
     TestCase,
     create_function_calldata,
@@ -106,18 +107,24 @@ def load_test_config(force_reload: bool = False) -> TestConfig:
         return _config_cache
 
     config_path = _get_config_path()
-    with open(config_path) as f:
-        data = yaml.safe_load(f)
+    try:
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+    except (OSError, yaml.YAMLError) as e:
+        raise ConfigurationError(f"Failed to load test configuration from {config_path}: {e}")
 
-    tests = [_parse_test_definition(td) for td in data.get("tests", [])]
-    default_tests = [
-        _parse_execution_test(dt)
-        for dt in data.get("default_tests", [])
-    ]
-    default_caller = data.get(
-        "default_caller",
-        "0x2000000000000000000000000000000000000002"
-    )
+    try:
+        tests = [_parse_test_definition(td) for td in data.get("tests", [])]
+        default_tests = [
+            _parse_execution_test(dt)
+            for dt in data.get("default_tests", [])
+        ]
+        default_caller = data.get(
+            "default_caller",
+            "0x2000000000000000000000000000000000000002"
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        raise ConfigurationError(f"Invalid test configuration format: {e}")
 
     _config_cache = TestConfig(
         tests=tests,
@@ -161,7 +168,7 @@ def _execution_test_to_testcase(
 
     # Build calldata from function signature
     if et.function is None:
-        raise ValueError(f"ExecutionTest {et.name} has no function or calldata")
+        raise ConfigurationError(f"ExecutionTest {et.name} has no function or calldata")
 
     selector = function_signature_to_4byte_selector(et.function)
     selector_hex = selector.hex()

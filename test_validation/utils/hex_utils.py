@@ -29,3 +29,10 @@ def bytes_to_hex(data: bytes, with_prefix: bool = True) -> str:
 def hex_length_bytes(hex_str: str) -> int:
     """Get byte length of hex string."""
     return len(strip_0x(hex_str)) // 2
+
+
+def address_to_int(address: str) -> int:
+    """Convert an EVM address string to an integer."""
+    normalized = address.strip().lower()
+    normalized = strip_0x(normalized)
+    return int(normalized or "0", 16)
