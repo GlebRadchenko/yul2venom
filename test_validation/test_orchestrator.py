@@ -21,7 +21,7 @@ from test_validation.validators.execution_validator import (
 )
 from eth_abi import encode
 from test_validation.test_cases import get_test_cases_for_contract, get_simple_test_cases
-from vyper.exceptions import StackTooDeep
+from vyper.exceptions import CompilerPanic
 
 
 def _hex_length_in_bytes(hex_string: str) -> int:
@@ -369,7 +369,7 @@ class TestOrchestrator:
                     object_name=target_object.name,
                     link_libraries=zero_link_map if zero_link_map else None,
                 )
-            except StackTooDeep as exc:
+            except CompilerPanic as exc:
                 print(f"  [SKIP] Venom IR generation failed: {exc}")
                 duration = time.time() - start_time
                 return TestResult(
