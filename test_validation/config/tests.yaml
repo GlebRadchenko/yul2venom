@@ -1,0 +1,211 @@
+# Test configuration for Yul-to-Venom validation
+# Single source of truth for test metadata and execution cases
+
+tests:
+  - id: basic_math
+    file: BasicMath.sol
+    description: "Test basic math without strings"
+    tags: [math, simple, basic]
+    execution_tests:
+      - name: set_value_123
+        function: "setValue(uint256)"
+        args: [123]
+        expected_storage: {0: 123}
+      - name: get_value_after_set
+        function: "getValue()"
+        expected_return_int: 123
+      - name: add_10_20
+        function: "add(uint256,uint256)"
+        args: [10, 20]
+        expected_return_int: 30
+      - name: multiply_6_7
+        function: "multiply(uint256,uint256)"
+        args: [6, 7]
+        expected_return_int: 42
+
+  - id: AdvancedFeatures
+    file: AdvancedFeatures.sol
+    description: "Test advanced storage + control flow"
+    tags: [storage, loops, advanced]
+    execution_tests:
+      - name: deposit_amount_5
+        function: "deposit(uint256)"
+        args: [5]
+      - name: deposit_amount_7
+        function: "deposit(uint256)"
+        args: [7]
+      - name: get_user_after_deposits
+        function: "getUser(address)"
+        args_types: [address]
+        args: ["0x2000000000000000000000000000000000000002"]
+        expected_return_abi:
+          types: [uint256, uint256]
+          values: [12, 2]
+      - name: history_sum_after_deposits
+        function: "historySum()"
+        expected_return_abi:
+          types: [uint256]
+          values: [12]
+      - name: history_average_after_deposits
+        function: "historyAverage()"
+        expected_return_abi:
+          types: [uint256]
+          values: [6]
+      - name: withdraw_amount_4
+        function: "withdraw(uint256)"
+        args: [4]
+      - name: get_user_after_withdraw
+        function: "getUser(address)"
+        args_types: [address]
+        args: ["0x2000000000000000000000000000000000000002"]
+        expected_return_abi:
+          types: [uint256, uint256]
+          values: [8, 3]
+      - name: history_sum_after_withdraw
+        function: "historySum()"
+        expected_return_abi:
+          types: [uint256]
+          values: [12]
+      - name: factorial_six
+        function: "factorial(uint256)"
+        args: [6]
+        expected_return_abi:
+          types: [uint256]
+          values: [720]
+      - name: fib_seven
+        function: "fib(uint256)"
+        args: [7]
+        expected_return_abi:
+          types: [uint256]
+          values: [13]
+
+  - id: HeavyMath
+    file: HeavyMath.sol
+    description: "Stress gas usage with heavy math"
+    tags: [math, gas, heavy]
+    execution_tests:
+      - name: sum_of_squares_350
+        function: "sumOfSquares(uint256)"
+        args: [350]
+        expected_return_int: 14352975
+      - name: factorial_mod_45
+        function: "factorialMod(uint256)"
+        args: [45]
+        expected_return_int: 472639410
+      - name: fibonacci_75
+        function: "fibonacci(uint256)"
+        args: [75]
+        expected_return_int: 2111485077978050
+      - name: polynomial_reduce
+        function: "polynomialReduce(uint256)"
+        args: [987654321]
+        expected_return_int: 604495212
+      - name: mixed_series_heavy
+        function: "mixedSeries(uint256,uint256)"
+        args: [17, 12]
+        expected_return_int: 862282241
+
+  - id: simple_storage
+    file: SimpleStorage.sol
+    description: "Test basic storage operations"
+    tags: [storage, events, basic]
+    # Maps to "SimpleStorage" in TEST_CASES
+    test_case_key: SimpleStorage
+    execution_tests:
+      - name: store_42
+        function: "store(uint256)"
+        args: [42]
+        expected_storage: {0: 42}
+      - name: retrieve_after_store
+        function: "retrieve()"
+        expected_return_int: 42
+      - name: store_0
+        function: "store(uint256)"
+        args: [0]
+        expected_storage: {0: 0}
+      - name: store_max_uint256
+        function: "store(uint256)"
+        args: [0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff]
+        expected_storage: {0: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff}
+
+  - id: arithmetic
+    file: Arithmetic.sol
+    description: "Test arithmetic operations"
+    tags: [arithmetic, pure, basic]
+    execution_tests:
+      - name: add_5_3
+        function: "add(uint256,uint256)"
+        args: [5, 3]
+        expected_return_int: 8
+      - name: multiply_4_7
+        function: "multiply(uint256,uint256)"
+        args: [4, 7]
+        expected_return_int: 28
+      - name: add_0_0
+        function: "add(uint256,uint256)"
+        args: [0, 0]
+        expected_return_int: 0
+      - name: multiply_0_100
+        function: "multiply(uint256,uint256)"
+        args: [0, 100]
+        expected_return_int: 0
+
+  - id: control_flow
+    file: ControlFlow.sol
+    description: "Test control flow structures"
+    tags: [control, loops, conditions]
+    # Maps to "ControlFlow" in TEST_CASES
+    test_case_key: ControlFlow
+    execution_tests:
+      - name: for_loop_sum_5
+        function: "forLoopSum(uint256)"
+        args: [5]
+        expected_return_int: 15
+      - name: while_factorial_5
+        function: "whileLoopFactorial(uint256)"
+        args: [5]
+        expected_return_int: 120
+      - name: require_test_valid
+        function: "requireTest(uint256)"
+        args: [10]
+        expected_return_int: 20
+      - name: require_test_zero_reverts
+        function: "requireTest(uint256)"
+        args: [0]
+        expected_revert: true
+      - name: require_test_large_reverts
+        function: "requireTest(uint256)"
+        args: [5000]
+        expected_revert: true
+      - name: nested_loops_3
+        function: "nestedLoops(uint256)"
+        args: [3]
+        expected_return_int: 9
+      - name: assert_test_10
+        function: "assertTest(uint256)"
+        args: [10]
+        expected_return_int: 20
+
+  # Skipped tests
+  - id: mainnetflat
+    file: MainnetFlat.sol
+    description: "Test MainnetFlat"
+    tags: [mainnet, skipped]
+    skip_reason: >
+      MainnetSettler constructor requires DEPLOYER NFT ownership check.
+      pyrevm uses chainid=1 (not 31337), triggering the mainnet code path
+      which calls IERC721Owner(DEPLOYER).ownerOf(_tokenId()). This fails
+      because the DEPLOYER contract doesn't exist in the test environment.
+      This is a test environment limitation, not a compiler bug.
+
+# Default test cases for contracts without specific tests
+default_tests:
+  - name: empty_call
+    calldata: ""
+    expected_revert: true
+  - name: invalid_selector
+    calldata: "deadbeef"
+    expected_revert: true
+
+# Default caller address for tests
+default_caller: "0x2000000000000000000000000000000000000002"

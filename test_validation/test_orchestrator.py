@@ -20,7 +20,12 @@ from test_validation.validators.execution_validator import (
     ValidationResult,
 )
 from eth_abi import encode
-from test_validation.test_cases import get_test_cases_for_contract, get_simple_test_cases
+from test_validation.config import (
+    get_test_definitions,
+    get_execution_tests,
+    get_default_tests,
+    get_skip_tests,
+)
 from vyper.exceptions import CompilerPanic
 
 
@@ -30,19 +35,6 @@ class SkipTest(Exception):
         super().__init__(reason)
         self.reason = reason
         self.yul_size = yul_size
-
-
-# Tests to skip with reasons
-# Format: "test_name": "reason for skipping"
-SKIP_TESTS: Dict[str, str] = {
-    "mainnetflat": (
-        "MainnetSettler constructor requires DEPLOYER NFT ownership check. "
-        "pyrevm uses chainid=1 (not 31337), triggering the mainnet code path "
-        "which calls IERC721Owner(DEPLOYER).ownerOf(_tokenId()). This fails "
-        "because the DEPLOYER contract doesn't exist in the test environment. "
-        "This is a test environment limitation, not a compiler bug."
-    ),
-}
 
 
 def _hex_length_in_bytes(hex_string: str) -> int:
@@ -193,73 +185,38 @@ class TestOrchestrator:
     def discover_tests(self) -> List[TestCase]:
         """
         Discover test cases from fixtures directory.
-        
+
         Returns:
             List of test cases
         """
         test_cases = []
         solidity_dir = self.fixtures_dir / "solidity"
-        
+
         if not solidity_dir.exists():
             return test_cases
-        
-        # Define test cases with metadata
-        test_definitions = [
-            {
-                "file": "BasicMath.sol",
-                "name": "basic_math",
-                "description": "Test basic math without strings",
-                "tags": ["math", "simple", "basic"]
-            },
-            {
-                "file": "AdvancedFeatures.sol",
-                "name": "AdvancedFeatures",
-                "description": "Test advanced storage + control flow",
-                "tags": ["storage", "loops", "advanced"]
-            },
-            {
-                "file": "HeavyMath.sol",
-                "name": "HeavyMath",
-                "description": "Stress gas usage with heavy math",
-                "tags": ["math", "gas", "heavy"]
-            },
-            {
-                "file": "SimpleStorage.sol",
-                "name": "simple_storage",
-                "description": "Test basic storage operations",
-                "tags": ["storage", "events", "basic"]
-            },
-            {
-                "file": "Arithmetic.sol",
-                "name": "arithmetic",
-                "description": "Test arithmetic operations",
-                "tags": ["arithmetic", "pure", "basic"]
-            },
-            {
-                "file": "ControlFlow.sol",
-                "name": "control_flow",
-                "description": "Test control flow structures",
-                "tags": ["control", "loops", "conditions"]
-            }
-        ]
-        
+
+        # Load test definitions from YAML config
+        test_definitions = get_test_definitions()
+        skip_tests = get_skip_tests()
+        defined_files = set()
+
         for test_def in test_definitions:
-            sol_file = solidity_dir / test_def["file"]
+            sol_file = solidity_dir / test_def.file
+            defined_files.add(test_def.file)
             if sol_file.exists():
                 test_cases.append(TestCase(
-                    name=test_def["name"],
+                    name=test_def.id,
                     solidity_file=sol_file,
-                    description=test_def["description"],
-                    tags=test_def["tags"]
+                    description=test_def.description,
+                    tags=test_def.tags
                 ))
-        
-        # Also discover any additional .sol files
+
+        # Also discover any additional .sol files not in config
         for sol_file in solidity_dir.glob("*.sol"):
-            # Skip if already in test_definitions
-            if not any(sol_file.name == td["file"] for td in test_definitions):
+            if sol_file.name not in defined_files:
                 test_name = sol_file.stem.lower()
                 # Check if test is in skip list
-                if test_name in SKIP_TESTS:
+                if test_name in skip_tests:
                     continue  # Will be added to skipped results in run_all_tests
                 test_cases.append(TestCase(
                     name=test_name,
@@ -625,11 +582,11 @@ class TestOrchestrator:
         """Phase 5: Validate bytecode through execution."""
         print("\n[5/5] Validating bytecode through execution...")
 
-        # Get test cases for this contract
-        contract_test_cases = get_test_cases_for_contract(test_case.name)
+        # Get test cases for this contract from YAML config
+        contract_test_cases = get_execution_tests(test_case.name)
         if not contract_test_cases:
-            contract_test_cases = get_simple_test_cases()
-            print(f"  Using simple test cases (no specific tests for {test_case.name})")
+            contract_test_cases = get_default_tests()
+            print(f"  Using default test cases (no specific tests for {test_case.name})")
         else:
             print(f"  Running {len(contract_test_cases)} test cases for {test_case.name}")
 
@@ -924,8 +881,9 @@ class TestOrchestrator:
         if test_filter:
             test_cases = [tc for tc in test_cases if tc.name in test_filter]
 
-        # Count skipped tests
-        skipped_count = len(SKIP_TESTS)
+        # Get skipped tests from YAML config
+        skip_tests = get_skip_tests()
+        skipped_count = len(skip_tests)
         total_count = len(test_cases) + skipped_count
 
         print(f"\n{'='*60}")
@@ -933,7 +891,7 @@ class TestOrchestrator:
         print(f"{'='*60}")
 
         # Report skipped tests
-        for test_name, reason in SKIP_TESTS.items():
+        for test_name, reason in skip_tests.items():
             print(f"\n[SKIP] {test_name}: {reason[:80]}...")
             # Add a skip result
             self.results.append(TestResult(

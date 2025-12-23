@@ -4,7 +4,7 @@ from textwrap import dedent
 
 import pytest
 
-from test_validation.test_cases import get_test_cases_for_contract
+from test_validation.config import get_execution_tests
 from test_validation.validators.execution_validator import ValidationResult
 
 
@@ -27,7 +27,7 @@ def test_advanced_features_contract(
     transpiled_bytecode = yul_transpiler.compile_yul_to_bytecode(yul_code)
 
     # Load execution scenarios covering storage mutations and heavy control flow
-    test_cases = get_test_cases_for_contract("AdvancedFeatures")
+    test_cases = get_execution_tests("AdvancedFeatures")
     assert test_cases, "Expected execution test cases for AdvancedFeatures"
 
     reports = execution_validator.validate_execution(
