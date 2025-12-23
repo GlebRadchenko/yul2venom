@@ -95,7 +95,7 @@ def test_mainnet_flat_yul_to_venom():
 
 def test_mainnet_flat_basic_deployment():
     """Test that we can at least deploy the compiled MainnetFlat contract."""
-    from revm_environment import RevmEnvironment
+    from test_validation.validators.execution_validator import ExecutionValidator
 
     try:
         bytecode = test_mainnet_flat_yul_to_venom()
@@ -105,14 +105,14 @@ def test_mainnet_flat_basic_deployment():
         pytest.skip(f"Could not get bytecode: {e}")
 
     # Try to deploy
-    env = RevmEnvironment()
-    success, address = env.deploy_contract(bytecode)
+    env = ExecutionValidator()
+    success, address, _, _ = env.deploy_contract(bytecode)
 
     if not success:
         pytest.skip("Failed to deploy MainnetFlat contract")
 
     assert address is not None
-    print(f"✓ Successfully deployed MainnetFlat at {address}")
+    print(f"+ Successfully deployed MainnetFlat at {address}")
 
     # Try a simple call (will likely revert but tests the basics work)
     result = env.call_contract(address, b"")

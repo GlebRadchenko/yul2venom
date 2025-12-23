@@ -5,8 +5,8 @@ from textwrap import dedent
 import subprocess
 import tempfile
 import os
-from test_validation.revm_environment import RevmEnvironment
 from test_validation.runners.yul_transpiler import YulTranspiler
+from test_validation.validators.execution_validator import ExecutionValidator
 
 
 def compile_and_execute(yul_code: str, calldata: bytes = b"") -> tuple[bool, bytes]:
@@ -23,8 +23,8 @@ def compile_and_execute(yul_code: str, calldata: bytes = b"") -> tuple[bool, byt
         bytecode = transpiler.compile_yul_to_bytecode(yul_code)
 
         # Deploy and execute
-        env = RevmEnvironment()
-        success, address = env.deploy_contract(bytecode)
+        env = ExecutionValidator()
+        success, address, _, _ = env.deploy_contract(bytecode)
         if not success:
             return False, b""
 

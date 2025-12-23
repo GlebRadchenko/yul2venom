@@ -26,9 +26,19 @@ class ExecutionReport:
     status: ValidationResult
     message: str
     details: Dict[str, Any]
-    
+
     def __str__(self):
         return f"[{self.status.value.upper()}] {self.test_name}: {self.message}"
+
+
+@dataclass
+class ExecutionResult:
+    """Result of executing a transaction."""
+    success: bool
+    output: bytes
+    gas_used: int
+    storage_changes: Dict[int, int]
+    logs: List[Any]
 
 
 @dataclass
@@ -179,7 +189,118 @@ class ExecutionValidator:
                 storage_changes[i] = storage_after[i]
         
         return success, output if output else b"", storage_changes, gas_used
-    
+
+    def call_function(
+        self,
+        contract_address: str,
+        function_sig: str,
+        args: List[Any] = None,
+        caller: str = None,
+        value: int = 0,
+        gas_limit: int = 1_000_000,
+    ) -> ExecutionResult:
+        """
+        Call a contract function with signature parsing.
+
+        Args:
+            contract_address: Address of the contract
+            function_sig: Function signature like "transfer(address,uint256)"
+            args: Function arguments
+            caller: Name or address of caller
+            value: Wei to send
+            gas_limit: Gas limit for execution
+
+        Returns:
+            ExecutionResult with success, output, gas_used, storage_changes, logs
+        """
+        from eth_utils import function_signature_to_4byte_selector
+
+        # Map named accounts to addresses
+        account_map = {
+            "deployer": "0x1000000000000000000000000000000000000001",
+            "alice": "0x2000000000000000000000000000000000000002",
+            "bob": "0x3000000000000000000000000000000000000003",
+        }
+
+        if caller is None:
+            caller = "0x2000000000000000000000000000000000000002"
+        else:
+            caller = account_map.get(caller, caller)
+
+        # Create calldata
+        if function_sig:
+            selector = function_signature_to_4byte_selector(function_sig)
+            calldata = selector
+
+            if args:
+                for arg in args:
+                    if isinstance(arg, int):
+                        calldata += arg.to_bytes(32, byteorder='big')
+                    elif isinstance(arg, str) and len(arg) == 42:
+                        addr_bytes = bytes.fromhex(arg[2:] if arg.startswith("0x") else arg)
+                        calldata += b'\x00' * 12 + addr_bytes
+                    elif isinstance(arg, bytes):
+                        calldata += arg
+        else:
+            calldata = b""
+
+        success, output, storage_changes, gas_used = self.execute_call(
+            contract_address, calldata, caller, value, gas_limit
+        )
+
+        return ExecutionResult(
+            success=success,
+            output=output,
+            gas_used=gas_used or 0,
+            storage_changes=storage_changes,
+            logs=[]
+        )
+
+    def call_contract(
+        self,
+        contract_address: str,
+        calldata: bytes,
+        caller: str = None,
+        value: int = 0,
+        gas_limit: int = 1_000_000,
+    ) -> ExecutionResult:
+        """
+        Call a contract with raw calldata.
+
+        Args:
+            contract_address: Address of the contract
+            calldata: Raw calldata bytes
+            caller: Name or address of caller
+            value: Wei to send
+            gas_limit: Gas limit for execution
+
+        Returns:
+            ExecutionResult with success, output, gas_used, storage_changes, logs
+        """
+        # Map named accounts to addresses
+        account_map = {
+            "deployer": "0x1000000000000000000000000000000000000001",
+            "alice": "0x2000000000000000000000000000000000000002",
+            "bob": "0x3000000000000000000000000000000000000003",
+        }
+
+        if caller is None:
+            caller = "0x2000000000000000000000000000000000000002"
+        else:
+            caller = account_map.get(caller, caller)
+
+        success, output, storage_changes, gas_used = self.execute_call(
+            contract_address, calldata, caller, value, gas_limit
+        )
+
+        return ExecutionResult(
+            success=success,
+            output=output,
+            gas_used=gas_used or 0,
+            storage_changes=storage_changes,
+            logs=[]
+        )
+
     def _deploy_plan(
         self,
         plan: Sequence[DeploymentStep],

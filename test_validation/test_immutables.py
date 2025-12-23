@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from test_validation.revm_environment import RevmEnvironment
 from test_validation.runners.solc_compiler import SolcCompiler
 from test_validation.runners.yul_transpiler import YulTranspiler
+from test_validation.validators.execution_validator import ExecutionValidator
 
 
 SOLIDITY_FIXTURES = Path(__file__).parent / "fixtures" / "solidity"
@@ -53,13 +53,9 @@ def test_immutable_value_matches_solc() -> None:
     transpiler = YulTranspiler()
     transpiled_bytecode = transpiler.compile_yul_to_bytecode(yul_code, optimize=False)
 
-    env = RevmEnvironment()
-    solc_ok, solc_address = env.deploy_contract(
-        reference_bytecode, name="ImmutableSimple (solc)"
-    )
-    transpiled_ok, transpiled_address = env.deploy_contract(
-        transpiled_bytecode, name="ImmutableSimple (transpiled)"
-    )
+    env = ExecutionValidator()
+    solc_ok, solc_address, _, _ = env.deploy_contract(reference_bytecode)
+    transpiled_ok, transpiled_address, _, _ = env.deploy_contract(transpiled_bytecode)
 
     if not solc_ok or solc_address is None:
         pytest.skip("failed to deploy reference ImmutableSimple contract")

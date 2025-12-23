@@ -7,7 +7,7 @@ import pytest
 
 from test_validation.runners.solc_compiler import SolcCompiler
 from test_validation.runners.yul_transpiler import YulTranspiler
-from test_validation.revm_environment import RevmEnvironment
+from test_validation.validators.execution_validator import ExecutionValidator
 
 
 SOLIDITY_FIXTURES = Path(__file__).parent / "fixtures" / "solidity"
@@ -72,8 +72,8 @@ def test_math512_harness_behaves_with_solc() -> None:
     if not creation_bytecode:
         pytest.skip("solc did not produce deployment bytecode")
 
-    env = RevmEnvironment()
-    success, address = env.deploy_contract(creation_bytecode, name="Math512Harness")
+    env = ExecutionValidator()
+    success, address, _, _ = env.deploy_contract(creation_bytecode)
     if not success or address is None:
         pytest.skip("failed to deploy Math512Harness via solc bytecode")
 
@@ -180,11 +180,9 @@ def test_math512_transpiled_matches_solc_behavior() -> None:
     transpiler = YulTranspiler()
     transpiled_bytecode = transpiler.compile_yul_to_bytecode(yul_code, optimize=False)
 
-    env = RevmEnvironment()
-    solc_ok, solc_address = env.deploy_contract(creation_bytecode, name="Math512Harness (solc)")
-    transpiled_ok, transpiled_address = env.deploy_contract(
-        transpiled_bytecode, name="Math512Harness (transpiled)"
-    )
+    env = ExecutionValidator()
+    solc_ok, solc_address, _, _ = env.deploy_contract(creation_bytecode)
+    transpiled_ok, transpiled_address, _, _ = env.deploy_contract(transpiled_bytecode)
 
     if not solc_ok or solc_address is None:
         pytest.skip("failed to deploy reference Math512Harness")

@@ -6,7 +6,6 @@ Tests that constructor functions are properly handled when converting from Yul t
 import sys
 from pathlib import Path
 
-from test_validation.revm_environment import RevmEnvironment
 from test_validation.runners.yul_transpiler import YulTranspiler
 from test_validation.validators.execution_validator import ExecutionValidator
 
@@ -53,12 +52,12 @@ def test_constructor_with_storage():
     # Test 3: Deploy and test execution
     print("\n3. Deploying and testing contract execution...")
     try:
-        # Initialize REVM environment
-        env = RevmEnvironment()
-        
+        # Initialize execution environment
+        env = ExecutionValidator()
+
         # Deploy the contract (constructor runs here)
         try:
-            success, contract_address = env.deploy_contract(bytecode)
+            success, contract_address, _, _ = env.deploy_contract(bytecode)
         except Exception as deploy_error:
             print(f"   ✗ Deployment error: {deploy_error}")
             import traceback

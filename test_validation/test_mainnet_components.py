@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from test_validation.revm_environment import RevmEnvironment
 from test_validation.runners.yul_transpiler import YulTranspiler
+from test_validation.validators.execution_validator import ExecutionValidator
 
 
 def compile_component_to_yul(contract_name="SimpleStorage"):
@@ -61,8 +61,8 @@ def test_simple_storage_compilation():
         pytest.skip(f"Failed to compile: {str(e)[:200]}")
 
     # Try to deploy
-    env = RevmEnvironment()
-    success, address = env.deploy_contract(bytecode)
+    env = ExecutionValidator()
+    success, address, _, _ = env.deploy_contract(bytecode)
 
     if not success:
         print("✗ Failed to deploy")
@@ -105,14 +105,14 @@ def test_math_operations():
     except Exception as e:
         pytest.skip(f"Failed to compile: {str(e)[:200]}")
 
-    env = RevmEnvironment()
-    success, address = env.deploy_contract(bytecode)
+    env = ExecutionValidator()
+    success, address, _, _ = env.deploy_contract(bytecode)
 
     if not success:
-        print("✗ Failed to deploy")
+        print("x Failed to deploy")
         return
 
-    print(f"✓ Deployed at {address}")
+    print(f"+ Deployed at {address}")
 
     # Test testAdd(10, 20)
     # Note: Function selectors would need to be calculated
