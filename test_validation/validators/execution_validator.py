@@ -24,17 +24,29 @@ FORK_RPC_URLS: Dict[int, str] = {
 }
 
 
-def _create_evm(fork_chain_id: Optional[int] = None) -> EVM:
+def _create_evm(
+    fork_chain_id: Optional[int] = None,
+    local_chain_id: Optional[int] = None,
+    code_size_limit: Optional[int] = None,
+) -> EVM:
     """Create an EVM instance with the configured chain_id.
 
     Args:
         fork_chain_id: Optional chain ID to fork from. When provided,
                        looks up the RPC URL and forks that chain's state.
                        If DEFAULT_CHAIN_ID (31337), uses local EVM without forking.
+        local_chain_id: Optional override for block.chainid when forking.
+                        Useful for bypassing on-chain deployment checks while
+                        still having access to forked state.
+        code_size_limit: Optional override for EIP-170 contract size limit (24KB).
+                         Set to a higher value for testing large contracts.
     """
     if fork_chain_id is None or fork_chain_id == DEFAULT_CHAIN_ID:
         # Local devnet - no forking
-        return EVM(env=Env(cfg=CfgEnv(chain_id=DEFAULT_CHAIN_ID)))
+        return EVM(env=Env(cfg=CfgEnv(
+            chain_id=DEFAULT_CHAIN_ID,
+            limit_contract_code_size=code_size_limit,
+        )))
 
     fork_url = FORK_RPC_URLS.get(fork_chain_id)
     if not fork_url:
@@ -42,9 +54,14 @@ def _create_evm(fork_chain_id: Optional[int] = None) -> EVM:
             f"No RPC URL configured for chain_id {fork_chain_id}. "
             f"Supported chains: {list(FORK_RPC_URLS.keys())}"
         )
+    # Use local_chain_id if specified, otherwise use fork's chain_id
+    effective_chain_id = local_chain_id if local_chain_id is not None else fork_chain_id
     return EVM(
         fork_url=fork_url,
-        env=Env(cfg=CfgEnv(chain_id=fork_chain_id))
+        env=Env(cfg=CfgEnv(
+            chain_id=effective_chain_id,
+            limit_contract_code_size=code_size_limit,
+        ))
     )
 
 
@@ -106,14 +123,23 @@ class DeploymentStep:
 class ExecutionValidator:
     """Validator for comparing bytecode outputs through actual execution."""
 
-    def __init__(self, fork_chain_id: Optional[int] = None):
+    def __init__(
+        self,
+        fork_chain_id: Optional[int] = None,
+        local_chain_id: Optional[int] = None,
+        code_size_limit: Optional[int] = None,
+    ):
         """Initialize the ExecutionValidator with pyrevm.
 
         Args:
             fork_chain_id: Optional chain ID to fork from (e.g., 1 for mainnet).
+            local_chain_id: Optional override for block.chainid when forking.
+            code_size_limit: Optional override for EIP-170 contract size limit.
         """
         self.fork_chain_id = fork_chain_id
-        self.evm = _create_evm(fork_chain_id)
+        self.local_chain_id = local_chain_id
+        self.code_size_limit = code_size_limit
+        self.evm = _create_evm(fork_chain_id, local_chain_id, code_size_limit)
     
     def deploy_contract(
         self,
@@ -134,8 +160,8 @@ class ExecutionValidator:
         if deployer is None:
             deployer = "0x1000000000000000000000000000000000000001"
         
-        # Ensure deployer has balance
-        self.evm.set_balance(deployer, 10**18)  # 1 ETH
+        # Ensure deployer has enough balance for deployment
+        self.evm.set_balance(deployer, 10**21)  # 1000 ETH for large contracts
         
         # Remove 0x prefix if present
         if bytecode.startswith("0x"):
@@ -149,7 +175,7 @@ class ExecutionValidator:
                 deployer=deployer,
                 code=code_bytes,
                 value=0,
-                gas=5_000_000
+                gas=30_000_000  # Large contracts need more gas
             )
             exec_result = getattr(self.evm, "result", None)
             gas_used = exec_result.gas_used if exec_result is not None else None
@@ -431,7 +457,7 @@ class ExecutionValidator:
         step_reports: List[ExecutionReport] = []
 
         # Deploy original plan
-        self.evm = _create_evm(self.fork_chain_id)
+        self.evm = _create_evm(self.fork_chain_id, self.local_chain_id, self.code_size_limit)
         success_orig, orig_addresses, orig_gas, orig_reports = self._deploy_plan(
             original_plan, label="original"
         )
@@ -454,7 +480,7 @@ class ExecutionValidator:
         evm_original = self.evm
 
         # Deploy transpiled plan
-        self.evm = _create_evm(self.fork_chain_id)
+        self.evm = _create_evm(self.fork_chain_id, self.local_chain_id, self.code_size_limit)
         success_transp, transp_addresses, transp_gas, transp_reports = self._deploy_plan(
             transpiled_plan, label="transpiled"
         )
@@ -613,12 +639,12 @@ class ExecutionValidator:
             ExecutionReport
         """
         # Reset EVM
-        self.evm = _create_evm(self.fork_chain_id)
+        self.evm = _create_evm(self.fork_chain_id, self.local_chain_id, self.code_size_limit)
 
         success1, addr1, output1, gas1 = self.deploy_contract(original)
 
         # Reset for second deployment
-        self.evm = _create_evm(self.fork_chain_id)
+        self.evm = _create_evm(self.fork_chain_id, self.local_chain_id, self.code_size_limit)
 
         success2, addr2, output2, gas2 = self.deploy_contract(transpiled)
 

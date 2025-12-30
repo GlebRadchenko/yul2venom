@@ -41,6 +41,8 @@ class TestDefinition:
     test_case_key: Optional[str] = None
     execution_tests: List[ExecutionTest] = field(default_factory=list)
     fork_chain_id: Optional[int] = None  # Chain ID to fork (e.g., 1 for mainnet)
+    local_chain_id: Optional[int] = None  # Override block.chainid when forking
+    code_size_limit: Optional[int] = None  # Override EIP-170 24KB contract size limit
 
 
 @dataclass
@@ -91,6 +93,8 @@ def _parse_test_definition(data: Dict[str, Any]) -> TestDefinition:
         test_case_key=data.get("test_case_key"),
         execution_tests=execution_tests,
         fork_chain_id=data.get("fork_chain_id"),
+        local_chain_id=data.get("local_chain_id"),
+        code_size_limit=data.get("code_size_limit"),
     )
 
 

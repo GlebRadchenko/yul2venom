@@ -68,6 +68,8 @@ class TestDefinition:
     tags: List[str]
     expected_result: str = "pass"
     fork_chain_id: Optional[int] = None  # Chain ID to fork (e.g., 1 for mainnet)
+    local_chain_id: Optional[int] = None  # Override block.chainid when forking
+    code_size_limit: Optional[int] = None  # Override EIP-170 24KB contract size limit
 
     def __str__(self):
         return f"{self.name}: {self.description}"
@@ -194,6 +196,8 @@ class TestOrchestrator:
                     description=test_def.description,
                     tags=test_def.tags,
                     fork_chain_id=test_def.fork_chain_id,
+                    local_chain_id=test_def.local_chain_id,
+                    code_size_limit=test_def.code_size_limit,
                 ))
 
         # Also discover any additional .sol files not in config
@@ -338,7 +342,7 @@ class TestOrchestrator:
                 abi = item.get("abi", [])
                 ctor = next((e for e in abi if e.get("type") == "constructor"), None)
                 if ctor is None or not ctor.get("inputs"):
-                    break
+                    continue  # Skip contracts without constructors with inputs
                 types = [inp["type"] for inp in ctor["inputs"]]
 
                 def _default_for(t: str):
@@ -567,12 +571,19 @@ class TestOrchestrator:
     def _validate_execution(
         self, test_case: TestDefinition, comp: CompilationResult, bytecode: BytecodeResult,
         fork_chain_id: Optional[int] = None,
+        local_chain_id: Optional[int] = None,
+        code_size_limit: Optional[int] = None,
     ) -> List[Any]:
         """Phase 5: Validate bytecode through execution."""
         print("\n[5/5] Validating bytecode through execution...")
 
         if fork_chain_id is not None:
-            print(f"  Using fork of chain {fork_chain_id}")
+            chain_info = f"chain {fork_chain_id}"
+            if local_chain_id is not None:
+                chain_info += f" (local chain_id={local_chain_id})"
+            if code_size_limit is not None:
+                chain_info += f" (code_size_limit={code_size_limit})"
+            print(f"  Using fork of {chain_info}")
 
         # Get test cases for this contract from YAML config
         contract_test_cases = get_execution_tests(test_case.name)
@@ -582,10 +593,10 @@ class TestOrchestrator:
         else:
             print(f"  Running {len(contract_test_cases)} test cases for {test_case.name}")
 
-        # Use fork-enabled validator if fork_chain_id is specified
+        # Use custom validator if fork_chain_id or code_size_limit is specified
         validator = (
-            ExecutionValidator(fork_chain_id)
-            if fork_chain_id is not None
+            ExecutionValidator(fork_chain_id, local_chain_id, code_size_limit)
+            if fork_chain_id is not None or code_size_limit is not None
             else self.execution_validator
         )
 
@@ -720,7 +731,10 @@ class TestOrchestrator:
 
             # Phase 5: Validate execution
             validation_reports = self._validate_execution(
-                test_case, comp, bytecode, fork_chain_id=test_case.fork_chain_id
+                test_case, comp, bytecode,
+                fork_chain_id=test_case.fork_chain_id,
+                local_chain_id=test_case.local_chain_id,
+                code_size_limit=test_case.code_size_limit,
             )
 
             # Build final result
