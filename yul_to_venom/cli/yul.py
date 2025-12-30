@@ -1472,6 +1472,10 @@ class YulToVenom:
                     # vyper calls it sha3 internally
                     opcode = "sha3"
 
+                if opcode == "datacopy":
+                    # Yul's datacopy copies from the code section to memory
+                    opcode = "codecopy"
+
                 if opcode == "memoryguard":
                     # memoryguard reserves memory.. we could maybe
                     # call this 'reserve' (or reuse alloc)
