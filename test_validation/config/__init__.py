@@ -8,6 +8,7 @@ from test_validation.config.loader import (
     get_execution_tests,
     get_default_tests,
     get_skip_tests,
+    get_excluded_files,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "get_execution_tests",
     "get_default_tests",
     "get_skip_tests",
+    "get_excluded_files",
 ]

@@ -245,3 +245,11 @@ default_tests:
 
 # Default caller address for tests
 default_caller: "0x2000000000000000000000000000000000000002"
+
+# Library-only files (no deployable contract, used as dependencies)
+# These are excluded from test discovery - their code is tested via
+# contracts that import them (e.g., Math512WithDeps tests 512Math code)
+exclude_files:
+  - 512Math.sol      # Library-only, tested via Math512WithDeps
+  - UnsafeMath.sol   # Library-only, tested via Math512WithDeps
+  - Panic.sol        # Library-only, tested via Math512WithDeps

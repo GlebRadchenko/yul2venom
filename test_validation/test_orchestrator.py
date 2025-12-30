@@ -27,6 +27,7 @@ from test_validation.config import (
     get_execution_tests,
     get_default_tests,
     get_skip_tests,
+    get_excluded_files,
 )
 from test_validation.exceptions import (
     SkipTest,
@@ -179,6 +180,7 @@ class TestOrchestrator:
         # Load test definitions from YAML config
         test_definitions = get_test_definitions()
         skip_tests = get_skip_tests()
+        excluded_files = set(get_excluded_files())
         defined_files = set()
 
         for test_def in test_definitions:
@@ -194,17 +196,20 @@ class TestOrchestrator:
 
         # Also discover any additional .sol files not in config
         for sol_file in solidity_dir.glob("*.sol"):
-            if sol_file.name not in defined_files:
-                test_name = sol_file.stem.lower()
-                # Check if test is in skip list
-                if test_name in skip_tests:
-                    continue  # Will be added to skipped results in run_all_tests
-                test_cases.append(TestDefinition(
-                    name=test_name,
-                    solidity_file=sol_file,
-                    description=f"Test {sol_file.stem}",
-                    tags=["auto-discovered"]
-                ))
+            if sol_file.name in defined_files:
+                continue
+            if sol_file.name in excluded_files:
+                continue  # Library-only file, tested via dependent contracts
+            test_name = sol_file.stem.lower()
+            # Check if test is in skip list
+            if test_name in skip_tests:
+                continue  # Will be added to skipped results in run_all_tests
+            test_cases.append(TestDefinition(
+                name=test_name,
+                solidity_file=sol_file,
+                description=f"Test {sol_file.stem}",
+                tags=["auto-discovered"]
+            ))
 
         return test_cases
 

@@ -48,6 +48,7 @@ class TestConfig:
     tests: List[TestDefinition]
     default_tests: List[ExecutionTest]
     default_caller: str
+    exclude_files: List[str] = field(default_factory=list)
 
 
 _config_cache: Optional[TestConfig] = None
@@ -123,6 +124,7 @@ def load_test_config(force_reload: bool = False) -> TestConfig:
             "default_caller",
             "0x2000000000000000000000000000000000000002"
         )
+        exclude_files = data.get("exclude_files", [])
     except (KeyError, TypeError, ValueError) as e:
         raise ConfigurationError(f"Invalid test configuration format: {e}")
 
@@ -130,6 +132,7 @@ def load_test_config(force_reload: bool = False) -> TestConfig:
         tests=tests,
         default_tests=default_tests,
         default_caller=default_caller,
+        exclude_files=exclude_files,
     )
     return _config_cache
 
@@ -148,6 +151,12 @@ def get_skip_tests() -> Dict[str, str]:
         for t in config.tests
         if t.skip_reason
     }
+
+
+def get_excluded_files() -> List[str]:
+    """Get list of files to exclude from test discovery (library-only files)."""
+    config = load_test_config()
+    return config.exclude_files
 
 
 def _execution_test_to_testcase(
