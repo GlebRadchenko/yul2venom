@@ -326,6 +326,45 @@ def _parse_library_arg(value: str) -> Tuple[str, str]:
     return name.strip(), address.strip()
 
 
+def _load_remappings_file(path: Path) -> List[str]:
+    """Load remappings from a remappings.txt file."""
+    remappings = []
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            # Skip empty lines and comments
+            if line and not line.startswith("#"):
+                remappings.append(line)
+    return remappings
+
+
+def _get_remappings(
+    solidity_file: Path,
+    base_path: Optional[Path],
+    cli_remappings: List[str],
+) -> Optional[List[str]]:
+    """
+    Get remappings by combining auto-detected remappings.txt with CLI arguments.
+    CLI remappings take precedence (are added last).
+    """
+    # Try to find remappings.txt
+    search_dirs = []
+    if base_path:
+        search_dirs.append(base_path)
+    search_dirs.append(solidity_file.parent)
+
+    auto_remappings = []
+    for search_dir in search_dirs:
+        remappings_file = search_dir / "remappings.txt"
+        if remappings_file.exists():
+            auto_remappings = _load_remappings_file(remappings_file)
+            break
+
+    # Combine: auto-detected first, then CLI (CLI takes precedence)
+    all_remappings = auto_remappings + cli_remappings
+    return all_remappings if all_remappings else None
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="solvenom",
@@ -427,6 +466,14 @@ Examples:
         help="Verbose output",
     )
 
+    parser.add_argument(
+        "--output", "-o",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="Write output to FILE instead of stdout",
+    )
+
     # Import resolution options
     parser.add_argument(
         "--base-path",
@@ -484,7 +531,10 @@ Examples:
     # Prepare import resolution options
     base_path = args.base_path
     include_paths = args.include_paths if args.include_paths else None
-    remappings = args.remappings if args.remappings else None
+    remappings = _get_remappings(args.solidity_file, base_path, args.remappings)
+
+    # Determine output destination
+    output_file = open(args.output, "w") if args.output else sys.stdout
 
     try:
         if args.all:
@@ -516,12 +566,12 @@ Examples:
                     "primaryContract": result.primary_contract,
                     "warnings": result.warnings,
                 }
-                print(json.dumps(output, indent=2))
+                print(json.dumps(output, indent=2), file=output_file)
             else:
                 for name, r in result.contracts.items():
-                    print(f"# {name}")
-                    print(r.deploy_bytecode)
-                    print()
+                    print(f"# {name}", file=output_file)
+                    print(r.deploy_bytecode, file=output_file)
+                    print(file=output_file)
 
                 if result.warnings:
                     for w in result.warnings:
@@ -553,15 +603,15 @@ Examples:
                     "venomIR": result.venom_ir,
                     "assembly": result.assembly,
                 }
-                print(json.dumps(output, indent=2))
+                print(json.dumps(output, indent=2), file=output_file)
             elif args.abi:
-                print(json.dumps(result.abi, indent=2))
+                print(json.dumps(result.abi, indent=2), file=output_file)
             elif args.venom:
-                print(result.venom_ir)
+                print(result.venom_ir, file=output_file)
             elif args.asm:
-                print(result.assembly)
+                print(result.assembly, file=output_file)
             else:
-                print(result.deploy_bytecode)
+                print(result.deploy_bytecode, file=output_file)
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -569,6 +619,10 @@ Examples:
             import traceback
             traceback.print_exc()
         sys.exit(1)
+
+    finally:
+        if args.output:
+            output_file.close()
 
 
 if __name__ == "__main__":
