@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-commit hook for security audit
+# Install: ln -sf ../../scripts/pre-commit .git/hooks/pre-commit
+
+SCRIPT_DIR="$(dirname "$0")"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+python3 "$REPO_ROOT/scripts/security_audit.py" "$REPO_ROOT" --strict
+
+if [ $? -ne 0 ]; then
+    echo ""
+    echo "❌ Commit blocked due to security issues."
+    echo "Fix the issues above or use --no-verify to skip."
+    exit 1
+fi

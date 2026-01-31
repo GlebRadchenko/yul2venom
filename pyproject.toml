@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yul2venom"
+version = "0.1.0"
+description = "Yul-to-Venom IR transpiler for Vyper's optimization pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Gleb Radchenko"}
+]
+keywords = ["ethereum", "yul", "venom", "vyper", "solidity", "transpiler", "compiler"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Compilers",
+]
+
+dependencies = [
+    "lark>=1.1.0",
+    "cbor2>=5.4.0",
+    "pycryptodome>=3.15.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "py-evm>=0.7.0",
+]
+
+[project.scripts]
+yul2venom = "yul2venom:main"
+
+[project.urls]
+"Homepage" = "https://github.com/GlebRadchenko/yul2venom"
+"Repository" = "https://github.com/GlebRadchenko/yul2venom"
+
+[tool.setuptools]
+py-modules = ["yul2venom", "transpiler", "venom_generator", "yul_parser", "yul_extractor", "optimizer", "run_venom"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ir*", "testing*"]

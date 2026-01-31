@@ -1,0 +1,11 @@
+{
+    "yul": "tests/manual_yul/Debug.yul",
+    "output_dir": "output",
+    "contract_name": "Debug",
+    "optimize": true,
+    "debug": true,
+    "deployment": {
+        "deployer": "0x1234567890123456789012345678901234567890",
+        "nonce": 0
+    }
+}

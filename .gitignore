@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+.env/
+.env
+env/
+
+# Logs
+*.log
+parser_debug.log
+generator_debug.log
+
+# Build artifacts
+*.bin
+output/*.bin
+output_native/*.bin
+
+# Foundry
+foundry/out/
+foundry/cache/
+foundry/lib/
+foundry/*.lock
+
+# Debug (keep structure, ignore binary artifacts)
+debug/*.bin
+debug/*.asm
+debug/transpile_results.json
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Testing artifacts
+*.coverage
+.pytest_cache/
+.tox/
+htmlcov/
+
+# Misc
+*.bak
+*.tmp
+*.temp

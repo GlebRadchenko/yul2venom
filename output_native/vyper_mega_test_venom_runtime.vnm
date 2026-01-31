@@ -1,0 +1,2128 @@
+function __main_entry {
+  __main_entry:  ; OUT=[selector_bucket_0, selector_bucket_1, fallback, selector_bucket_3, selector_bucket_4, selector_bucket_5, selector_bucket_6, fallback, selector_bucket_8, selector_bucket_9, selector_bucket_10, selector_bucket_11, selector_bucket_12, selector_bucket_13, selector_bucket_14, selector_bucket_15, selector_bucket_16, selector_bucket_17, selector_bucket_18, fallback, fallback, selector_bucket_21, selector_bucket_22, selector_bucket_23, selector_bucket_24, selector_bucket_25, fallback, selector_bucket_27, selector_bucket_28, selector_bucket_29, selector_bucket_30, selector_bucket_31, fallback, fallback, fallback, selector_bucket_35, selector_bucket_36, selector_bucket_37, fallback, selector_bucket_39, selector_bucket_40]
+      %1073 = 2
+      %1070 = 41
+      %1068 = 0
+      %1 = calldataload %1068
+      %1069 = 224
+      %2 = shr %1069, %1
+      %1071 = %2
+      %4 = mod %1071, %1070
+      %1072 = 1
+      %5 = shl %1072, %4
+      %6 = add @selector_buckets, %5
+      %1074 = 30
+      codecopy %1074, %6, %1073
+      %1075 = 0
+      %7 = mload %1075
+      djmp %7, @selector_bucket_0, @selector_bucket_1, @fallback, @selector_bucket_3, @selector_bucket_4, @selector_bucket_5, @selector_bucket_6, @fallback, @selector_bucket_8, @selector_bucket_9, @selector_bucket_10, @selector_bucket_11, @selector_bucket_12, @selector_bucket_13, @selector_bucket_14, @selector_bucket_15, @selector_bucket_16, @selector_bucket_17, @selector_bucket_18, @fallback, @fallback, @selector_bucket_21, @selector_bucket_22, @selector_bucket_23, @selector_bucket_24, @selector_bucket_25, @fallback, @selector_bucket_27, @selector_bucket_28, @selector_bucket_29, @selector_bucket_30, @selector_bucket_31, @fallback, @fallback, @fallback, @selector_bucket_35, @selector_bucket_36, @selector_bucket_37, @fallback, @selector_bucket_39, @selector_bucket_40
+    ; (__main_entry)
+
+
+  selector_bucket_6:  ; OUT=[5_if_exit, 2_then]
+      %1076 = %2
+      %1077 = 0x17fafa3b
+      %1014 = xor %1077, %1076
+      jnz %1014, @5_if_exit, @2_then
+    ; (__main_entry)
+
+
+  2_then:  ; OUT=[]
+      %10 = calldatasize
+      %1078 = 68
+      %11 = gt %1078, %10
+      %9 = callvalue
+      %12 = or %9, %11
+      %13 = iszero %12
+      assert %13
+      %1079 = 4
+      %16 = calldataload %1079
+      %1082 = %16
+      %1080 = 36
+      %19 = calldataload %1080
+      %1081 = %16
+      %21 = sub %1081, %19
+      %1083 = %21
+      %23 = gt %1083, %1082
+      %24 = iszero %23
+      assert %24
+      %1084 = %21
+      %1085 = 64
+      mstore %1085, %1084
+      %1086 = 32
+      %1087 = 64
+      return %1087, %1086
+    ; (__main_entry)
+
+
+  5_if_exit:  ; OUT=[19_if_exit, 6_then]
+      %1088 = %2
+      %1089 = 0x42ada7ea
+      %1015 = xor %1089, %1088
+      jnz %1015, @19_if_exit, @6_then
+    ; (__main_entry)
+
+
+  6_then:  ; OUT=[9_condition]
+      %29 = calldatasize
+      %1090 = 68
+      %30 = gt %1090, %29
+      %28 = callvalue
+      %31 = or %28, %30
+      %32 = iszero %31
+      assert %32
+      %alloca_52_33_1 = 0
+      %40 = 0
+      %1091 = 4
+      %35 = calldataload %1091
+      %1092 = %35
+      %1093 = 50
+      %41 = lt %1093, %1092
+      %42 = iszero %41
+      assert %42
+      jmp @9_condition
+    ; (__main_entry)
+
+
+  9_condition:  ; OUT=[10_body, 12_exit]
+      %alloca_52_33_1:1 = phi @6_then, %alloca_52_33_1, @11_incr, %alloca_52_33_1:2
+      %40:1:1 = phi @6_then, %40, @11_incr, %40:2
+      %1094 = %40:1:1
+      %1095 = %35
+      %44 = xor %1095, %1094
+      jnz %44, @10_body, @12_exit
+    ; (__main_entry)
+
+
+  10_body:  ; OUT=[14_condition]
+      %53 = 0
+      %1096 = 36
+      %48 = calldataload %1096
+      %1097 = %48
+      %1098 = 50
+      %54 = lt %1098, %1097
+      %55 = iszero %54
+      assert %55
+      jmp @14_condition
+    ; (__main_entry)
+
+
+  14_condition:  ; OUT=[15_body, 11_incr]
+      %alloca_52_33_1:2 = phi @10_body, %alloca_52_33_1:1, @15_body, %alloca_52_33_1:3
+      %53:1:1 = phi @10_body, %53, @15_body, %53:2
+      %1099 = %53:1:1
+      %1100 = %48
+      %57 = xor %1100, %1099
+      jnz %57, @15_body, @11_incr
+    ; (__main_entry)
+
+
+  15_body:  ; OUT=[14_condition]
+      %1106 = %53:1:1
+      %70 = iszero %1106
+      %1103 = %53:1:1
+      %1101 = %53:1:1
+      %1102 = %40:1:1
+      %66 = mul %1102, %1101
+      %1104 = %66
+      %68 = div %1104, %1103
+      %1105 = %40:1:1
+      %69 = eq %1105, %68
+      %71 = or %69, %70
+      assert %71
+      %60 = %alloca_52_33_1:2
+      %1109 = %60
+      %1107 = %66
+      %1108 = %60
+      %73 = add %1108, %1107
+      %1110 = %73
+      %75 = lt %1110, %1109
+      %76 = iszero %75
+      assert %76
+      %alloca_52_33_1:3 = %73
+      %1111 = %53:1:1
+      %1112 = 1
+      %53:2 = add %1112, %1111
+      jmp @14_condition
+    ; (__main_entry)
+
+
+  11_incr:  ; OUT=[9_condition]
+      %1113 = %40:1:1
+      %1114 = 1
+      %40:2 = add %1114, %1113
+      jmp @9_condition
+    ; (__main_entry)
+
+
+  12_exit:  ; OUT=[]
+      %1115 = %alloca_52_33_1:1
+      %1116 = 64
+      mstore %1116, %1115
+      %1117 = 32
+      %1118 = 64
+      return %1118, %1117
+    ; (__main_entry)
+
+
+  19_if_exit:  ; OUT=[]
+      %1119 = %2
+      %1120 = 0x79502c55
+      %1016 = xor %1120, %1119
+      %78 = iszero %1016
+      assert %78
+      %79 = callvalue
+      %81 = iszero %79
+      assert %81
+      %1121 = 2
+      %86 = sload %1121
+      %1122 = 64
+      mstore %1122, %86
+      %1123 = 3
+      %89 = sload %1123
+      %1124 = 96
+      mstore %1124, %89
+      %1125 = 4
+      %92 = sload %1125
+      %1126 = 128
+      mstore %1126, %92
+      %1127 = 96
+      %1128 = 64
+      return %1128, %1127
+    ; (__main_entry)
+
+
+  selector_bucket_16:  ; OUT=[27_if_exit, 24_then]
+      %1129 = %2
+      %1130 = 0xf21b1150
+      %1017 = xor %1130, %1129
+      jnz %1017, @27_if_exit, @24_then
+    ; (__main_entry)
+
+
+  24_then:  ; OUT=[]
+      %97 = calldatasize
+      %1131 = 68
+      %98 = gt %1131, %97
+      %96 = callvalue
+      %99 = or %96, %98
+      %100 = iszero %99
+      assert %100
+      %1133 = 36
+      %106 = calldataload %1133
+      %1134 = %106
+      assert %1134
+      %1135 = %106
+      %1132 = 4
+      %103 = calldataload %1132
+      %109 = div %103, %1135
+      %1136 = 64
+      mstore %1136, %109
+      %1137 = 32
+      %1138 = 64
+      return %1138, %1137
+    ; (__main_entry)
+
+
+  27_if_exit:  ; OUT=[]
+      %1139 = %2
+      %1140 = 0x7099ff0d
+      %1018 = xor %1140, %1139
+      %113 = iszero %1018
+      assert %113
+      %114 = callvalue
+      %116 = iszero %114
+      assert %116
+      %118 = gasprice
+      %1141 = 64
+      mstore %1141, %118
+      %120 = origin
+      %1142 = 96
+      mstore %1142, %120
+      %1143 = 64
+      %1144 = 64
+      return %1144, %1143
+    ; (__main_entry)
+
+
+  selector_bucket_39:  ; OUT=[34_then, 36_if_exit]
+      %1145 = %2
+      %1146 = 0x62d2c41d
+      %1019 = xor %1146, %1145
+      %123 = iszero %1019
+      assert %123
+      %125 = calldatasize
+      %1147 = 68
+      %126 = gt %1147, %125
+      %124 = callvalue
+      %127 = or %124, %126
+      %128 = iszero %127
+      assert %128
+      %1149 = 36
+      %132 = calldataload %1149
+      %1148 = 4
+      %130 = calldataload %1148
+      %133 = lt %130, %132
+      jnz %133, @34_then, @36_if_exit
+    ; (__main_entry)
+
+
+  34_then:  ; OUT=["external 2 test_lt(uint256,uint256)_cleanup"]
+      %1150 = 1
+      %1151 = 64
+      mstore %1151, %1150
+      %ret_ofst:4 = 64
+      jmp @"external 2 test_lt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  36_if_exit:  ; OUT=["external 2 test_lt(uint256,uint256)_cleanup"]
+      %1152 = 0
+      %1153 = 96
+      mstore %1153, %1152
+      %ret_ofst:3 = 96
+      jmp @"external 2 test_lt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 2 test_lt(uint256,uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:2 = phi @34_then, %ret_ofst:4, @36_if_exit, %ret_ofst:3
+      %1154 = 32
+      return %ret_ofst:2, %1154
+    ; (__main_entry)
+
+
+  selector_bucket_14:  ; OUT=[45_if_exit, 39_then]
+      %1155 = %2
+      %1156 = 0x12daf456
+      %1020 = xor %1156, %1155
+      jnz %1020, @45_if_exit, @39_then
+    ; (__main_entry)
+
+
+  39_then:  ; OUT=[41_then, 43_if_exit]
+      %142 = calldatasize
+      %1157 = 68
+      %143 = gt %1157, %142
+      %141 = callvalue
+      %144 = or %141, %143
+      %145 = iszero %144
+      assert %145
+      %1159 = 36
+      %149 = calldataload %1159
+      %1158 = 4
+      %147 = calldataload %1158
+      %150 = gt %147, %149
+      jnz %150, @41_then, @43_if_exit
+    ; (__main_entry)
+
+
+  41_then:  ; OUT=["external 3 test_gt(uint256,uint256)_cleanup"]
+      %1160 = 1
+      %1161 = 64
+      mstore %1161, %1160
+      %ret_ofst:40 = 64
+      jmp @"external 3 test_gt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  43_if_exit:  ; OUT=["external 3 test_gt(uint256,uint256)_cleanup"]
+      %1162 = 0
+      %1163 = 96
+      mstore %1163, %1162
+      %ret_ofst:39 = 96
+      jmp @"external 3 test_gt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 3 test_gt(uint256,uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:38 = phi @41_then, %ret_ofst:40, @43_if_exit, %ret_ofst:39
+      %1164 = 32
+      return %ret_ofst:38, %1164
+    ; (__main_entry)
+
+
+  45_if_exit:  ; OUT=[]
+      %1165 = %2
+      %1166 = 0x1c0abae8
+      %1021 = xor %1166, %1165
+      %157 = iszero %1021
+      assert %157
+      %159 = calldatasize
+      %1167 = 36
+      %160 = gt %1167, %159
+      %158 = callvalue
+      %161 = or %158, %160
+      %162 = iszero %161
+      assert %162
+      %1168 = 4
+      %164 = calldataload %1168
+      %1173 = %164
+      %1169 = %164
+      %1170 = 1
+      %inl0_7 = shl %1170, %1169     ; from "internal 11 _double(uint256)_runtime"
+      %1171 = %inl0_7
+      %1172 = 1
+      %inl0_9 = shr %1172, %1171     ; from "internal 11 _double(uint256)_runtime"
+      %1022 = xor %inl0_9, %1173
+      %inl0_10 = iszero %1022        ; from "internal 11 _double(uint256)_runtime"
+      assert %inl0_10                ; from "internal 11 _double(uint256)_runtime"
+      %1176 = %inl0_7
+      %1174 = %164
+      %1175 = %inl0_7
+      %inl1_11 = add %1175, %1174    ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1177 = %inl1_11
+      %inl1_13 = lt %1177, %1176     ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %inl1_14 = iszero %inl1_13     ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      assert %inl1_14                ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1178 = 32
+      %988 = offset @code_end, 0
+      %1179 = 0
+      codecopy %1179, %988, %1178
+      %1180 = 0
+      %inl1_16 = mload %1180         ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1186 = %inl1_16
+      %inl1_22 = iszero %1186        ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1185 = %inl1_11
+      %1183 = %inl1_16
+      %1181 = %inl1_16
+      %1182 = %inl1_11
+      %inl1_18 = mul %1182, %1181    ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1184 = %inl1_18
+      %inl1_20 = div %1184, %1183    ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %inl1_21 = eq %inl1_20, %1185  ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %inl1_23 = or %inl1_21, %inl1_22 ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      assert %inl1_23                ; from "internal 12 _add_with_mul(uint256,uint256)_runtime"
+      %1187 = %inl1_18
+      %1188 = 192
+      mstore %1188, %1187
+      %1189 = 32
+      %1190 = 192
+      return %1190, %1189
+    ; 45_if_exit
+    ; (__main_entry)
+
+
+  selector_bucket_11:  ; OUT=[]
+      %1191 = %2
+      %1192 = 0x5d6c9250
+      %1023 = xor %1192, %1191
+      %181 = iszero %1023
+      assert %181
+      %183 = calldatasize
+      %1193 = 68
+      %184 = gt %1193, %183
+      %182 = callvalue
+      %185 = or %182, %184
+      %186 = iszero %185
+      assert %186
+      %1195 = 36
+      %191 = calldataload %1195
+      %1194 = 4
+      %189 = calldataload %1194
+      %192 = shl %189, %191
+      %1196 = 64
+      mstore %1196, %192
+      %1197 = 32
+      %1198 = 64
+      return %1198, %1197
+    ; (__main_entry)
+
+
+  selector_bucket_35:  ; OUT=[60_if_exit, 54_then]
+      %1199 = %2
+      %1200 = 0x35d7a7cf
+      %1024 = xor %1200, %1199
+      jnz %1024, @60_if_exit, @54_then
+    ; (__main_entry)
+
+
+  54_then:  ; OUT=[56_then, 58_if_exit]
+      %197 = calldatasize
+      %1201 = 68
+      %198 = gt %1201, %197
+      %196 = callvalue
+      %199 = or %196, %198
+      %200 = iszero %199
+      assert %200
+      %1202 = 4
+      %202 = calldataload %1202
+      %1203 = %202
+      %1204 = 255
+      %204 = shr %1204, %1203
+      %205 = iszero %204
+      assert %205
+      %1205 = 36
+      %208 = calldataload %1205
+      %1206 = %208
+      %1207 = 255
+      %210 = shr %1207, %1206
+      %211 = iszero %210
+      assert %211
+      %1208 = %208
+      %1209 = %202
+      %215 = slt %1209, %1208
+      jnz %215, @56_then, @58_if_exit
+    ; (__main_entry)
+
+
+  56_then:  ; OUT=["external 5 test_slt(uint256,uint256)_cleanup"]
+      %1210 = 1
+      %1211 = 128
+      mstore %1211, %1210
+      %ret_ofst:11 = 128
+      jmp @"external 5 test_slt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  58_if_exit:  ; OUT=["external 5 test_slt(uint256,uint256)_cleanup"]
+      %1212 = 0
+      %1213 = 160
+      mstore %1213, %1212
+      %ret_ofst:10 = 160
+      jmp @"external 5 test_slt(uint256,uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 5 test_slt(uint256,uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:9 = phi @56_then, %ret_ofst:11, @58_if_exit, %ret_ofst:10
+      %1214 = 32
+      return %ret_ofst:9, %1214
+    ; (__main_entry)
+
+
+  60_if_exit:  ; OUT=[64_condition]
+      %1215 = %2
+      %1216 = 0x59a11321
+      %1025 = xor %1216, %1215
+      %222 = iszero %1025
+      assert %222
+      %224 = calldatasize
+      %1217 = 36
+      %225 = gt %1217, %224
+      %223 = callvalue
+      %226 = or %223, %225
+      %227 = iszero %226
+      assert %227
+      %alloca_21_228_10 = 0
+      %235 = 0
+      %1218 = 4
+      %230 = calldataload %1218
+      %1219 = %230
+      %1220 = 100
+      %236 = lt %1220, %1219
+      %237 = iszero %236
+      assert %237
+      jmp @64_condition
+    ; (__main_entry)
+
+
+  64_condition:  ; OUT=[65_body, 67_exit]
+      %alloca_21_228_10:1 = phi @60_if_exit, %alloca_21_228_10, @65_body, %alloca_21_228_10:2
+      %235:1:1 = phi @60_if_exit, %235, @65_body, %235:2
+      %1221 = %235:1:1
+      %1222 = %230
+      %239 = xor %1222, %1221
+      jnz %239, @65_body, @67_exit
+    ; (__main_entry)
+
+
+  65_body:  ; OUT=[64_condition]
+      %1223 = %alloca_21_228_10:1
+      %1224 = 1
+      %244 = add %1224, %1223
+      %1226 = %244
+      %1225 = %alloca_21_228_10:1
+      %246 = gt %1225, %1226
+      %247 = iszero %246
+      assert %247
+      %alloca_21_228_10:2 = %244
+      %1227 = %235:1:1
+      %1228 = 1
+      %235:2 = add %1228, %1227
+      jmp @64_condition
+    ; (__main_entry)
+
+
+  67_exit:  ; OUT=[]
+      %1229 = %alloca_21_228_10:1
+      %1230 = 64
+      mstore %1230, %1229
+      %1231 = 32
+      %1232 = 64
+      return %1232, %1231
+    ; (__main_entry)
+
+
+  selector_bucket_17:  ; OUT=[74_if_exit, 72_then]
+      %1233 = %2
+      %1234 = 0x24c61d38
+      %1026 = xor %1234, %1233
+      %249 = iszero %1026
+      assert %249
+      %251 = calldatasize
+      %1235 = 36
+      %252 = gt %1235, %251
+      %250 = callvalue
+      %253 = or %250, %252
+      %254 = iszero %253
+      assert %254
+      %1236 = 4
+      %258 = calldataload %1236
+      %1237 = 11
+      %259 = gt %1237, %258
+      jnz %259, @74_if_exit, @72_then
+    ; (__main_entry)
+
+
+  72_then:  ; OUT=["external 6 test_lt_literal(uint256)_cleanup"]
+      %1238 = 1
+      %1239 = 96
+      mstore %1239, %1238
+      %ret_ofst:33 = 96
+      jmp @"external 6 test_lt_literal(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  74_if_exit:  ; OUT=["external 6 test_lt_literal(uint256)_cleanup"]
+      %1240 = 0
+      %1241 = 128
+      mstore %1241, %1240
+      %ret_ofst:32 = 128
+      jmp @"external 6 test_lt_literal(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 6 test_lt_literal(uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:31 = phi @72_then, %ret_ofst:33, @74_if_exit, %ret_ofst:32
+      %1242 = 32
+      return %ret_ofst:31, %1242
+    ; (__main_entry)
+
+
+  selector_bucket_23:  ; OUT=[]
+      %1243 = %2
+      %1244 = 0x5a0db89e
+      %1027 = xor %1244, %1243
+      %266 = iszero %1027
+      assert %266
+      %268 = calldatasize
+      %1245 = 68
+      %269 = gt %1245, %268
+      %267 = callvalue
+      %270 = or %267, %269
+      %271 = iszero %270
+      assert %271
+      %1247 = 36
+      %277 = calldataload %1247
+      %1253 = %277
+      %283 = iszero %1253
+      %1246 = 4
+      %274 = calldataload %1246
+      %1252 = %274
+      %1250 = %277
+      %1248 = %277
+      %1249 = %274
+      %279 = mul %1249, %1248
+      %1251 = %279
+      %281 = div %1251, %1250
+      %282 = eq %281, %1252
+      %284 = or %282, %283
+      assert %284
+      %1254 = %279
+      %1255 = 64
+      mstore %1255, %1254
+      %1256 = 32
+      %1257 = 64
+      return %1257, %1256
+    ; selector_bucket_23
+    ; (__main_entry)
+
+
+  selector_bucket_0:  ; OUT=[]
+      %1258 = %2
+      %1259 = 0x914cb243
+      %1028 = xor %1259, %1258
+      %287 = iszero %1028
+      assert %287
+      %289 = calldatasize
+      %1260 = 36
+      %290 = gt %1260, %289
+      %288 = callvalue
+      %291 = or %288, %290
+      %292 = iszero %291
+      assert %292
+      %1261 = 4
+      %294 = calldataload %1261
+      %1266 = %294
+      %1264 = 10
+      %1262 = %294
+      %1263 = 10
+      %inl2_11 = mul %1263, %1262    ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %1265 = %inl2_11
+      %inl2_13 = div %1265, %1264    ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %1029 = xor %inl2_13, %1266
+      %inl2_14 = iszero %1029        ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      assert %inl2_14                ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %1269 = %inl2_11
+      %1267 = %inl2_11
+      %1268 = 1
+      %inl2_18 = add %1268, %1267    ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %1270 = %inl2_18
+      %inl2_20 = lt %1270, %1269     ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %inl2_21 = iszero %inl2_20     ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      assert %inl2_21                ; from "internal 9 _internal_calc(uint256,uint256)_runtime"
+      %1271 = %inl2_18
+      %1272 = 128
+      mstore %1272, %1271
+      %1273 = 32
+      %1274 = 128
+      return %1274, %1273
+    ; selector_bucket_0
+    ; (__main_entry)
+
+
+  selector_bucket_22:  ; OUT=[]
+      %1275 = %2
+      %1276 = 0x4edd1483
+      %1030 = xor %1276, %1275
+      %302 = iszero %1030
+      assert %302
+      %304 = calldatasize
+      %1277 = 36
+      %305 = gt %1277, %304
+      %303 = callvalue
+      %306 = or %303, %305
+      %307 = iszero %306
+      assert %307
+      %1278 = 4
+      %309 = calldataload %1278
+      %1279 = 0
+      sstore %1279, %309
+      stop
+    ; (__main_entry)
+
+
+  selector_bucket_4:  ; OUT=[92_if_exit, 89_then]
+      %1280 = %2
+      %1281 = 0x19bdf84d
+      %1031 = xor %1281, %1280
+      jnz %1031, @92_if_exit, @89_then
+    ; (__main_entry)
+
+
+  89_then:  ; OUT=[]
+      %312 = callvalue
+      %314 = iszero %312
+      assert %314
+      %1282 = 0
+      %316 = sload %1282
+      %1283 = 64
+      mstore %1283, %316
+      %1284 = 32
+      %1285 = 64
+      return %1285, %1284
+    ; (__main_entry)
+
+
+  92_if_exit:  ; OUT=[]
+      %1286 = %2
+      %1287 = 0xd09de08a
+      %1032 = xor %1287, %1286
+      %319 = iszero %1032
+      assert %319
+      %320 = callvalue
+      %322 = iszero %320
+      assert %322
+      %1288 = 0
+      %323 = sload %1288
+      %1291 = %323
+      %1289 = %323
+      %1290 = 1
+      %325 = add %1290, %1289
+      %1292 = %325
+      %327 = lt %1292, %1291
+      %328 = iszero %327
+      assert %328
+      %1293 = %325
+      %1294 = 0
+      sstore %1294, %1293
+      %1295 = %325
+      %1296 = 64
+      mstore %1296, %1295
+      %1297 = 32
+      %1298 = 64
+      return %1298, %1297
+    ; (__main_entry)
+
+
+  selector_bucket_10:  ; OUT=[100_if_exit, 97_then]
+      %1299 = %2
+      %1300 = 0x776e4fa
+      %1033 = xor %1300, %1299
+      jnz %1033, @100_if_exit, @97_then
+    ; (__main_entry)
+
+
+  97_then:  ; OUT=[]
+      %335 = calldatasize
+      %1301 = 68
+      %336 = gt %1301, %335
+      %334 = callvalue
+      %337 = or %334, %336
+      %338 = iszero %337
+      assert %338
+      %1302 = 4
+      %340 = calldataload %1302
+      %1303 = %340
+      %1304 = 160
+      %342 = shr %1304, %1303
+      %343 = iszero %342
+      assert %343
+      %1307 = 36
+      %348 = calldataload %1307
+      %1305 = %340
+      %1306 = 5
+      %346 = sha3_64 %1306, %1305
+      sstore %346, %348
+      stop
+    ; (__main_entry)
+
+
+  100_if_exit:  ; OUT=[104_if_exit, 101_then]
+      %1308 = %2
+      %1309 = 0xa48f9a25
+      %1034 = xor %1309, %1308
+      jnz %1034, @104_if_exit, @101_then
+    ; (__main_entry)
+
+
+  101_then:  ; OUT=[]
+      %352 = calldatasize
+      %1310 = 68
+      %353 = gt %1310, %352
+      %351 = callvalue
+      %354 = or %351, %353
+      %355 = iszero %354
+      assert %355
+      %1311 = 4
+      %358 = calldataload %1311
+      %1312 = 2
+      sstore %1312, %358
+      %1313 = 36
+      %361 = calldataload %1313
+      %1314 = 3
+      sstore %1314, %361
+      stop
+    ; (__main_entry)
+
+
+  104_if_exit:  ; OUT=[108_condition]
+      %1315 = %2
+      %1316 = 0xc37df448
+      %1035 = xor %1316, %1315
+      %363 = iszero %1035
+      assert %363
+      %365 = calldatasize
+      %1317 = 36
+      %366 = gt %1317, %365
+      %364 = callvalue
+      %367 = or %364, %366
+      %368 = iszero %367
+      assert %368
+      %1318 = 4
+      %370 = calldataload %1318
+      %1319 = 4
+      %371 = add %1319, %370
+      %1320 = %371
+      %373 = calldataload %1320
+      %1321 = %373
+      %1322 = 50
+      %374 = lt %1322, %1321
+      %375 = iszero %374
+      assert %375
+      %388 = 0
+      %1323 = %373
+      %1324 = 6
+      %378 = shl %1324, %1323
+      %1325 = 32
+      %379 = add %1325, %378
+      %1326 = %371
+      %1327 = 64
+      calldatacopy %1327, %1326, %379
+      %1328 = 0
+      %1329 = 0xce0
+      mstore %1329, %1328
+      %1330 = 64
+      %383 = mload %1330
+      %1331 = %383
+      %1332 = 50
+      %389 = lt %1332, %1331
+      %390 = iszero %389
+      assert %390
+      jmp @108_condition
+    ; 104_if_exit
+    ; (__main_entry)
+
+
+  108_condition:  ; OUT=[109_body, 111_exit]
+      %388:1:1 = phi @104_if_exit, %388, @109_body, %388:2
+      %1333 = %388:1:1
+      %1334 = %383
+      %392 = xor %1334, %1333
+      jnz %392, @109_body, @111_exit
+    ; (__main_entry)
+
+
+  109_body:  ; OUT=[108_condition]
+      %1335 = 64
+      %399 = mload %1335
+      %1336 = %388:1:1
+      %400 = lt %1336, %399
+      assert %400
+      %1340 = 64
+      %1337 = %388:1:1
+      %1338 = 6
+      %404 = shl %1338, %1337
+      %1339 = 96
+      %405 = add %1339, %404
+      %1341 = 0x19a0
+      mcopy %1341, %405, %1340
+      %1342 = %388:1:1
+      %1343 = 0x19e0
+      mstore %1343, %1342
+      %1344 = 0x19a0
+      %412 = mload %1344
+      %1345 = 64
+      %1346 = 0x19a0
+      %1347 = 0x1a00
+      mcopy %1347, %1346, %1345
+      %1348 = 0xe7c90b1217c6ca44657d4c7c6c446668aa220a414855efd93cfa979f1610bc1c
+      %1349 = 96
+      %1350 = 0x19e0
+      log %1350, %1349, %1348, 1
+      %1351 = 0xce0
+      %417 = mload %1351
+      %1352 = %417
+      %1353 = 49
+      %419 = lt %1353, %1352
+      %985 = iszero %419
+      assert %985
+      %1354 = %417
+      %1355 = 6
+      %421 = shl %1355, %1354
+      %1356 = 0xd00
+      %422 = add %1356, %421
+      %1357 = %422
+      mstore %1357, %412
+      %1358 = 0x19c0
+      %428 = mload %1358
+      %1363 = %428
+      %1359 = %428
+      %1360 = 1
+      %430 = shl %1360, %1359
+      %1361 = %430
+      %1362 = 1
+      %432 = shr %1362, %1361
+      %1036 = xor %432, %1363
+      %433 = iszero %1036
+      assert %433
+      %1366 = %430
+      %1364 = %422
+      %1365 = 32
+      %436 = add %1365, %1364
+      mstore %436, %1366
+      %1367 = %417
+      %1368 = 1
+      %437 = add %1368, %1367
+      %1369 = 0xce0
+      mstore %1369, %437
+      %1370 = %388:1:1
+      %1371 = 1
+      %388:2 = add %1371, %1370
+      jmp @108_condition
+    ; 109_body
+    ; (__main_entry)
+
+
+  111_exit:  ; OUT=[113_condition]
+      %1372 = 32
+      %1373 = 0x1a40
+      mstore %1373, %1372
+      %1374 = 0xce0
+      %444 = mload %1374
+      %1375 = %444
+      %1376 = 0x1a60
+      mstore %1376, %1375
+      %1377 = %444
+      %1378 = 6
+      %446 = shl %1378, %1377
+      %448 = 0
+      %1379 = %444
+      %1380 = 50
+      %449 = lt %1380, %1379
+      %450 = iszero %449
+      assert %450
+      jmp @113_condition
+    ; (__main_entry)
+
+
+  113_condition:  ; OUT=[114_body, 116_exit]
+      %448:1:1 = phi @111_exit, %448, @114_body, %448:2
+      %1381 = %448:1:1
+      %1382 = %444
+      %452 = xor %1382, %1381
+      jnz %452, @114_body, @116_exit
+    ; (__main_entry)
+
+
+  114_body:  ; OUT=[113_condition]
+      %1389 = 64
+      %1383 = %448:1:1
+      %1384 = 6
+      %455 = shl %1384, %1383
+      %1385 = %455
+      %1386 = 0xd00
+      %456 = add %1386, %1385
+      %1387 = %455
+      %1388 = 0x1a80
+      %460 = add %1388, %1387
+      mcopy %460, %456, %1389
+      %1390 = %448:1:1
+      %1391 = 1
+      %448:2 = add %1391, %1390
+      jmp @113_condition
+    ; (__main_entry)
+
+
+  116_exit:  ; OUT=[]
+      %1392 = 32
+      %463 = add %1392, %446
+      %1393 = 32
+      %464 = add %1393, %463
+      %1394 = 0x1a40
+      return %1394, %464
+    ; (__main_entry)
+
+
+  selector_bucket_30:  ; OUT=[122_if_exit, 119_then]
+      %1395 = %2
+      %1396 = 0x1e279a37
+      %1037 = xor %1396, %1395
+      jnz %1037, @122_if_exit, @119_then
+    ; (__main_entry)
+
+
+  119_then:  ; OUT=[]
+      %468 = calldatasize
+      %1397 = 36
+      %469 = gt %1397, %468
+      %467 = callvalue
+      %470 = or %467, %469
+      %471 = iszero %470
+      assert %471
+      %1398 = 4
+      %473 = calldataload %1398
+      %1399 = %473
+      %1400 = 160
+      %475 = shr %1400, %1399
+      %476 = iszero %475
+      assert %476
+      %1401 = %473
+      %1402 = 5
+      %480 = sha3_64 %1402, %1401
+      %481 = sload %480
+      %1403 = 96
+      mstore %1403, %481
+      %1404 = 32
+      %1405 = 96
+      return %1405, %1404
+    ; (__main_entry)
+
+
+  122_if_exit:  ; OUT=[]
+      %1406 = %2
+      %1407 = 0xba5b5cc3
+      %1038 = xor %1407, %1406
+      %484 = iszero %1038
+      assert %484
+      %486 = calldatasize
+      %1408 = 68
+      %487 = gt %1408, %486
+      %485 = callvalue
+      %488 = or %485, %487
+      %489 = iszero %488
+      assert %489
+      %1410 = 36
+      %494 = calldataload %1410
+      %1409 = 4
+      %492 = calldataload %1409
+      %495 = or %492, %494
+      %1411 = 64
+      mstore %1411, %495
+      %1412 = 32
+      %1413 = 64
+      return %1413, %1412
+    ; (__main_entry)
+
+
+  selector_bucket_31:  ; OUT=[131_if_exit, 129_then]
+      %1414 = %2
+      %1415 = 0xa8bc9fc8
+      %1039 = xor %1415, %1414
+      %498 = iszero %1039
+      assert %498
+      %500 = calldatasize
+      %1416 = 36
+      %501 = gt %1416, %500
+      %499 = callvalue
+      %502 = or %499, %501
+      %503 = iszero %502
+      assert %503
+      %1417 = 4
+      %505 = calldataload %1417
+      %1418 = %505
+      %1419 = 4
+      %507 = shr %1419, %1418
+      %508 = iszero %507
+      assert %508
+      %1420 = %505
+      %1421 = 8
+      %986 = xor %1421, %1420
+      jnz %986, @131_if_exit, @129_then
+    ; (__main_entry)
+
+
+  129_then:  ; OUT=[]
+      %1422 = 32
+      %1423 = 192
+      mstore %1423, %1422
+      %1424 = 11
+      %1425 = 96
+      mstore %1425, %1424
+      %1426 = 0x43616e6e6f742073746f70000000000000000000000000000000000000000000
+      %1427 = 128
+      mstore %1427, %1426
+      %1428 = 43
+      %1429 = 96
+      %1430 = 224
+      mcopy %1430, %1429, %1428
+      %1431 = 224
+      %524 = mload %1431
+      %1434 = %524
+      %1435 = 0
+      %530 = sub %1435, %1434
+      %1436 = 31
+      %531 = and %1436, %530
+      %529 = calldatasize
+      %1432 = %524
+      %1433 = 256
+      %527 = add %1433, %1432
+      calldatacopy %527, %529, %531
+      %1437 = 224
+      %532 = mload %1437
+      %1442 = 0x8c379a0
+      %1443 = 160
+      mstore %1443, %1442
+      %1438 = 32
+      %533 = add %1438, %532
+      %1439 = 31
+      %534 = add %1439, %533
+      %1440 = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
+      %536 = and %1440, %534
+      %1441 = 32
+      %537 = add %1441, %536
+      %1444 = 4
+      %540 = add %1444, %537
+      %1445 = 188
+      revert %1445, %540
+    ; 129_then
+    ; (__main_entry)
+
+
+  131_if_exit:  ; OUT=[]
+      %1446 = 1
+      %542 = sload %1446
+      %1447 = %505
+      %1448 = 1
+      sstore %1448, %1447
+      %1449 = 320
+      mstore %1449, %542
+      %1450 = %505
+      %1451 = 352
+      mstore %1451, %1450
+      %550 = caller
+      %1452 = 384
+      mstore %1452, %550
+      %1453 = 0xbc7917920280b3fd9dbc7e92398cf96d915bfd40fff01b96f51556fbc16e3d54
+      %1454 = 96
+      %1455 = 320
+      log %1455, %1454, %1453, 1
+      stop
+    ; (__main_entry)
+
+
+  selector_bucket_12:  ; OUT=[]
+      %1456 = %2
+      %1457 = 0x1a8012e4
+      %1040 = xor %1457, %1456
+      %553 = iszero %1040
+      assert %553
+      %554 = callvalue
+      %556 = iszero %554
+      assert %556
+      %1458 = 1
+      %558 = sload %1458
+      %1459 = 2
+      %559 = eq %1459, %558
+      %1460 = 64
+      mstore %1460, %559
+      %1461 = 32
+      %1462 = 64
+      return %1462, %1461
+    ; (__main_entry)
+
+
+  selector_bucket_21:  ; OUT=[144_if_exit, 138_then]
+      %1463 = %2
+      %1464 = 0x22e28704
+      %1041 = xor %1464, %1463
+      jnz %1041, @144_if_exit, @138_then
+    ; (__main_entry)
+
+
+  138_then:  ; OUT=[141_else, 140_then]
+      %564 = calldatasize
+      %1465 = 36
+      %565 = gt %1465, %564
+      %563 = callvalue
+      %566 = or %563, %565
+      %567 = iszero %566
+      assert %567
+      %1467 = 2
+      %572 = sload %1467
+      %1466 = 4
+      %570 = calldataload %1466
+      %573 = lt %570, %572
+      jnz %573, @141_else, @140_then
+    ; (__main_entry)
+
+
+  140_then:  ; OUT=[142_if_exit]
+      %1469 = 3
+      %578 = sload %1469
+      %1468 = 4
+      %576 = calldataload %1468
+      %579 = gt %576, %578
+      %580 = iszero %579
+      %582:2 = %580
+      jmp @142_if_exit
+    ; (__main_entry)
+
+
+  141_else:  ; OUT=[142_if_exit]
+      %582:1 = 0
+      jmp @142_if_exit
+    ; (__main_entry)
+
+
+  142_if_exit:  ; OUT=[]
+      %582 = phi @140_then, %582:2, @141_else, %582:1
+      %1470 = 64
+      mstore %1470, %582
+      %1471 = 32
+      %1472 = 64
+      return %1472, %1471
+    ; (__main_entry)
+
+
+  144_if_exit:  ; OUT=[]
+      %1473 = %2
+      %1474 = 0x97122b5a
+      %1042 = xor %1474, %1473
+      %585 = iszero %1042
+      assert %585
+      %586 = callvalue
+      %588 = iszero %586
+      assert %588
+      %1475 = 123
+      %1476 = 64
+      mstore %1476, %1475
+      %1477 = 32
+      %1478 = 64
+      return %1478, %1477
+    ; (__main_entry)
+
+
+  selector_bucket_3:  ; OUT=[157_if_exit, 149_then]
+      %1479 = %2
+      %1480 = 0x2aaf918f
+      %1043 = xor %1480, %1479
+      jnz %1043, @157_if_exit, @149_then
+    ; (__main_entry)
+
+
+  149_then:  ; OUT=[152_condition]
+      %594 = calldatasize
+      %1481 = 36
+      %595 = gt %1481, %594
+      %593 = callvalue
+      %596 = or %593, %595
+      %597 = iszero %596
+      assert %597
+      %1482 = 4
+      %599 = calldataload %1482
+      %1483 = 4
+      %600 = add %1483, %599
+      %1484 = %600
+      %602 = calldataload %1484
+      %1485 = %602
+      %1486 = 100
+      %603 = lt %1486, %1485
+      %604 = iszero %603
+      assert %604
+      %alloca_40_611_29 = 0
+      %613 = 0
+      %1487 = %602
+      %1488 = 5
+      %607 = shl %1488, %1487
+      %1489 = 32
+      %608 = add %1489, %607
+      %1490 = %600
+      %1491 = 64
+      calldatacopy %1491, %1490, %608
+      %1492 = 64
+      %612 = mload %1492
+      %1493 = %612
+      %1494 = 100
+      %614 = lt %1494, %1493
+      %615 = iszero %614
+      assert %615
+      jmp @152_condition
+    ; 149_then
+    ; (__main_entry)
+
+
+  152_condition:  ; OUT=[153_body, 155_exit]
+      %alloca_40_611_29:1 = phi @149_then, %alloca_40_611_29, @153_body, %alloca_40_611_29:2
+      %613:1:1 = phi @149_then, %613, @153_body, %613:2
+      %1495 = %613:1:1
+      %1496 = %612
+      %617 = xor %1496, %1495
+      jnz %617, @153_body, @155_exit
+    ; (__main_entry)
+
+
+  153_body:  ; OUT=[152_condition]
+      %1497 = %613:1:1
+      %1498 = 5
+      %620 = shl %1498, %1497
+      %1499 = 96
+      %621 = add %1499, %620
+      %622 = mload %621
+      %1500 = %alloca_40_611_29:1
+      %628 = add %1500, %622
+      %1502 = %628
+      %1501 = %alloca_40_611_29:1
+      %630 = gt %1501, %1502
+      %631 = iszero %630
+      assert %631
+      %alloca_40_611_29:2 = %628
+      %1503 = %613:1:1
+      %1504 = 1
+      %613:2 = add %1504, %1503
+      jmp @152_condition
+    ; (__main_entry)
+
+
+  155_exit:  ; OUT=[]
+      %1505 = %alloca_40_611_29:1
+      %1506 = 0xce0
+      mstore %1506, %1505
+      %1507 = 32
+      %1508 = 0xce0
+      return %1508, %1507
+    ; (__main_entry)
+
+
+  157_if_exit:  ; OUT=[161_if_exit, 158_then]
+      %1509 = %2
+      %1510 = 0xa1dc3570
+      %1044 = xor %1510, %1509
+      jnz %1044, @161_if_exit, @158_then
+    ; (__main_entry)
+
+
+  158_then:  ; OUT=[]
+      %635 = calldatasize
+      %1511 = 36
+      %636 = gt %1511, %635
+      %634 = callvalue
+      %637 = or %634, %636
+      %638 = iszero %637
+      assert %638
+      %1512 = 6
+      %639 = sload %1512
+      %1513 = %639
+      %1514 = 99
+      %641 = lt %1514, %1513
+      %987 = iszero %641
+      assert %987
+      %1517 = 4
+      %646 = calldataload %1517
+      %1515 = %639
+      %1516 = 7
+      %644 = add %1516, %1515
+      sstore %644, %646
+      %1518 = %639
+      %1519 = 1
+      %647 = add %1519, %1518
+      %1520 = 6
+      sstore %1520, %647
+      stop
+    ; (__main_entry)
+
+
+  161_if_exit:  ; OUT=[]
+      %1521 = %2
+      %1522 = 0x5639e72f
+      %1045 = xor %1522, %1521
+      %649 = iszero %1045
+      assert %649
+      %650 = callvalue
+      %652 = iszero %650
+      assert %652
+      %1523 = 32
+      %989 = offset @code_end, 0
+      %1524 = 64
+      codecopy %1524, %989, %1523
+      %1525 = 123
+      %1526 = 96
+      mstore %1526, %1525
+      %1527 = 64
+      %1528 = 64
+      return %1528, %1527
+    ; (__main_entry)
+
+
+  selector_bucket_28:  ; OUT=[]
+      %1529 = %2
+      %1530 = 0xd8bdafeb
+      %1046 = xor %1530, %1529
+      %658 = iszero %1046
+      assert %658
+      %659 = callvalue
+      %661 = iszero %659
+      assert %661
+      %1531 = 6
+      %663 = sload %1531
+      %1532 = 64
+      mstore %1532, %663
+      %1533 = 32
+      %1534 = 64
+      return %1534, %1533
+    ; (__main_entry)
+
+
+  selector_bucket_8:  ; OUT=[173_else, 172_then]
+      %1535 = %2
+      %1536 = 0xdf586711
+      %1047 = xor %1536, %1535
+      %666 = iszero %1047
+      assert %666
+      %668 = calldatasize
+      %1537 = 36
+      %669 = gt %1537, %668
+      %667 = callvalue
+      %670 = or %667, %669
+      %671 = iszero %670
+      assert %671
+      %1538 = 4
+      %673 = calldataload %1538
+      %1539 = 9
+      %674 = lt %1539, %673
+      jnz %674, @173_else, @172_then
+    ; (__main_entry)
+
+
+  172_then:  ; OUT=["external 27 complex_flow(uint256)_cleanup"]
+      %1540 = 0
+      %675 = sload %1540
+      %1543 = %675
+      %1541 = %675
+      %1542 = 1
+      %677 = add %1542, %1541
+      %1544 = %677
+      %679 = lt %1544, %1543
+      %680 = iszero %679
+      assert %680
+      %1545 = %677
+      %1546 = 0
+      sstore %1546, %1545
+      %1547 = 1
+      %1548 = 64
+      mstore %1548, %1547
+      %ret_ofst:51 = 64
+      jmp @"external 27 complex_flow(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  173_else:  ; OUT=[175_else, 174_then]
+      %1549 = 4
+      %684 = calldataload %1549
+      %1550 = 19
+      %685 = lt %1550, %684
+      jnz %685, @175_else, @174_then
+    ; (__main_entry)
+
+
+  174_then:  ; OUT=["external 27 complex_flow(uint256)_cleanup"]
+      %1551 = 0
+      %686 = sload %1551
+      %1554 = %686
+      %1552 = %686
+      %1553 = 2
+      %688 = add %1553, %1552
+      %1555 = %688
+      %690 = lt %1555, %1554
+      %691 = iszero %690
+      assert %691
+      %1556 = %688
+      %1557 = 0
+      sstore %1557, %1556
+      %1558 = 2
+      %1559 = 96
+      mstore %1559, %1558
+      %ret_ofst:50 = 96
+      jmp @"external 27 complex_flow(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  175_else:  ; OUT=[177_else, 176_then]
+      %1560 = 1
+      %694 = sload %1560
+      %1561 = 1
+      %1048 = xor %1561, %694
+      jnz %1048, @177_else, @176_then
+    ; (__main_entry)
+
+
+  176_then:  ; OUT=[178_if_exit]
+      %1562 = 2
+      %1563 = 1
+      sstore %1563, %1562
+      jmp @178_if_exit
+    ; (__main_entry)
+
+
+  177_else:  ; OUT=[178_if_exit]
+      %1564 = 4
+      %1565 = 1
+      sstore %1565, %1564
+      jmp @178_if_exit
+    ; (__main_entry)
+
+
+  178_if_exit:  ; OUT=["external 27 complex_flow(uint256)_cleanup"]
+      %1566 = 3
+      %1567 = 128
+      mstore %1567, %1566
+      %ret_ofst:49 = 128
+      jmp @"external 27 complex_flow(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 27 complex_flow(uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:48 = phi @172_then, %ret_ofst:51, @174_then, %ret_ofst:50, @178_if_exit, %ret_ofst:49
+      %1568 = 32
+      return %ret_ofst:48, %1568
+    ; (__main_entry)
+
+
+  selector_bucket_29:  ; OUT=[186_if_exit, 184_then]
+      %1569 = %2
+      %1570 = 0xaab5f506
+      %1049 = xor %1570, %1569
+      %702 = iszero %1049
+      assert %702
+      %704 = calldatasize
+      %1571 = 36
+      %705 = gt %1571, %704
+      %703 = callvalue
+      %706 = or %703, %705
+      %707 = iszero %706
+      assert %707
+      %1572 = 4
+      %709 = calldataload %1572
+      jnz %709, @186_if_exit, @184_then
+    ; (__main_entry)
+
+
+  184_then:  ; OUT=["external 29 early_return(uint256)_cleanup"]
+      %1573 = 0
+      %1574 = 64
+      mstore %1574, %1573
+      %ret_ofst:19 = 64
+      jmp @"external 29 early_return(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  186_if_exit:  ; OUT=[189_if_exit, 187_then]
+      %1575 = 4
+      %715 = calldataload %1575
+      %1576 = 1
+      %1050 = xor %1576, %715
+      jnz %1050, @189_if_exit, @187_then
+    ; (__main_entry)
+
+
+  187_then:  ; OUT=["external 29 early_return(uint256)_cleanup"]
+      %1577 = 1
+      %1578 = 96
+      mstore %1578, %1577
+      %ret_ofst:18 = 96
+      jmp @"external 29 early_return(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  189_if_exit:  ; OUT=[192_if_exit, 190_then]
+      %1579 = 4
+      %721 = calldataload %1579
+      %1580 = 9
+      %722 = lt %1580, %721
+      jnz %722, @192_if_exit, @190_then
+    ; (__main_entry)
+
+
+  190_then:  ; OUT=["external 29 early_return(uint256)_cleanup"]
+      %1581 = 4
+      %725 = calldataload %1581
+      %1586 = %725
+      %1582 = %725
+      %1583 = 1
+      %727 = shl %1583, %1582
+      %1584 = %727
+      %1585 = 1
+      %729 = shr %1585, %1584
+      %1051 = xor %729, %1586
+      %730 = iszero %1051
+      assert %730
+      %1587 = %727
+      %1588 = 128
+      mstore %1588, %1587
+      %ret_ofst:17 = 128
+      jmp @"external 29 early_return(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  192_if_exit:  ; OUT=["external 29 early_return(uint256)_cleanup"]
+      %1589 = 4
+      %737 = calldataload %1589
+      %1595 = %737
+      %746 = iszero %1595
+      %1594 = %737
+      %1592 = %737
+      %1590 = %737
+      %1591 = %737
+      %742 = mul %1591, %1590
+      %1593 = %742
+      %744 = div %1593, %1592
+      %745 = eq %744, %1594
+      %747 = or %745, %746
+      assert %747
+      %1596 = %742
+      %1597 = 160
+      mstore %1597, %1596
+      %ret_ofst:16 = 160
+      jmp @"external 29 early_return(uint256)_cleanup"
+    ; (__main_entry)
+
+
+  "external 29 early_return(uint256)_cleanup":  ; OUT=[]
+      %ret_ofst:15 = phi @184_then, %ret_ofst:19, @187_then, %ret_ofst:18, @190_then, %ret_ofst:17, @192_if_exit, %ret_ofst:16
+      %1598 = 32
+      return %ret_ofst:15, %1598
+    ; (__main_entry)
+
+
+  selector_bucket_24:  ; OUT=[]
+      %1599 = %2
+      %1600 = 0x8e834b0f
+      %1052 = xor %1600, %1599
+      %750 = iszero %1052
+      assert %750
+      %751 = callvalue
+      %753 = iszero %751
+      assert %753
+      %1601 = 32
+      %990 = offset @code_end, 0
+      %1602 = 64
+      codecopy %1602, %990, %1601
+      %1603 = 32
+      %1604 = 64
+      return %1604, %1603
+    ; (__main_entry)
+
+
+  selector_bucket_37:  ; OUT=[202_if_exit, 199_then]
+      %1605 = %2
+      %1606 = 0x1bb7c365
+      %1053 = xor %1606, %1605
+      jnz %1053, @202_if_exit, @199_then
+    ; (__main_entry)
+
+
+  199_then:  ; OUT=[]
+      %760 = calldatasize
+      %1607 = 68
+      %761 = gt %1607, %760
+      %759 = callvalue
+      %762 = or %759, %761
+      %763 = iszero %762
+      assert %763
+      %1609 = 36
+      %768 = calldataload %1609
+      %1608 = 4
+      %766 = calldataload %1608
+      %769 = and %766, %768
+      %1610 = 64
+      mstore %1610, %769
+      %1611 = 32
+      %1612 = 64
+      return %1612, %1611
+    ; (__main_entry)
+
+
+  202_if_exit:  ; OUT=[]
+      %1613 = %2
+      %1614 = 0x27e235e3
+      %1054 = xor %1614, %1613
+      %772 = iszero %1054
+      assert %772
+      %774 = calldatasize
+      %1615 = 36
+      %775 = gt %1615, %774
+      %773 = callvalue
+      %776 = or %773, %775
+      %777 = iszero %776
+      assert %777
+      %1616 = 4
+      %779 = calldataload %1616
+      %1617 = %779
+      %1618 = 160
+      %781 = shr %1618, %1617
+      %782 = iszero %781
+      assert %782
+      %1619 = %779
+      %1620 = 5
+      %786 = sha3_64 %1620, %1619
+      %787 = sload %786
+      %1621 = 96
+      mstore %1621, %787
+      %1622 = 32
+      %1623 = 96
+      return %1623, %1622
+    ; (__main_entry)
+
+
+  selector_bucket_40:  ; OUT=[210_if_exit, 207_then]
+      %1624 = %2
+      %1625 = 0x808f4e09
+      %1055 = xor %1625, %1624
+      jnz %1055, @210_if_exit, @207_then
+    ; (__main_entry)
+
+
+  207_then:  ; OUT=[]
+      %792 = calldatasize
+      %1626 = 68
+      %793 = gt %1626, %792
+      %791 = callvalue
+      %794 = or %791, %793
+      %795 = iszero %794
+      assert %795
+      %1628 = 36
+      %800 = calldataload %1628
+      %1627 = 4
+      %798 = calldataload %1627
+      %801 = xor %798, %800
+      %1629 = 64
+      mstore %1629, %801
+      %1630 = 32
+      %1631 = 64
+      return %1631, %1630
+    ; (__main_entry)
+
+
+  210_if_exit:  ; OUT=[]
+      %1632 = %2
+      %1633 = 0x4276d06e
+      %1056 = xor %1633, %1632
+      %804 = iszero %1056
+      assert %804
+      %806 = calldatasize
+      %1634 = 68
+      %807 = gt %1634, %806
+      %805 = callvalue
+      %808 = or %805, %807
+      %809 = iszero %808
+      assert %809
+      %1635 = 4
+      %812 = calldataload %1635
+      %1638 = %812
+      %1636 = 36
+      %815 = calldataload %1636
+      %1637 = %812
+      %817 = sub %1637, %815
+      %1639 = %817
+      %819 = gt %1639, %1638
+      %820 = iszero %819
+      assert %820
+      %1640 = %817
+      %1641 = 64
+      mstore %1641, %1640
+      %1642 = 32
+      %1643 = 64
+      return %1643, %1642
+    ; (__main_entry)
+
+
+  selector_bucket_25:  ; OUT=[218_if_exit, 215_then]
+      %1644 = %2
+      %1645 = 0xb44046d5
+      %1057 = xor %1645, %1644
+      jnz %1057, @218_if_exit, @215_then
+    ; (__main_entry)
+
+
+  215_then:  ; OUT=[]
+      %825 = calldatasize
+      %1646 = 36
+      %826 = gt %1646, %825
+      %824 = callvalue
+      %827 = or %824, %826
+      %828 = iszero %827
+      assert %828
+      %1647 = 4
+      %831 = calldataload %1647
+      %832 = not %831
+      %1648 = 64
+      mstore %1648, %832
+      %1649 = 32
+      %1650 = 64
+      return %1650, %1649
+    ; (__main_entry)
+
+
+  218_if_exit:  ; OUT=[]
+      %1651 = %2
+      %1652 = 0xc14b73b1
+      %1058 = xor %1652, %1651
+      %835 = iszero %1058
+      assert %835
+      %837 = calldatasize
+      %1653 = 36
+      %838 = gt %1653, %837
+      %836 = callvalue
+      %839 = or %836, %838
+      %840 = iszero %839
+      assert %840
+      %1655 = 6
+      %847 = sload %1655
+      %1654 = 4
+      %844 = calldataload %1654
+      %1656 = %844
+      %848 = lt %1656, %847
+      assert %848
+      %1657 = %844
+      %1658 = 7
+      %853 = add %1658, %1657
+      %854 = sload %853
+      %1659 = 64
+      mstore %1659, %854
+      %1660 = 32
+      %1661 = 64
+      return %1661, %1660
+    ; (__main_entry)
+
+
+  selector_bucket_36:  ; OUT=[]
+      %1662 = %2
+      %1663 = 0xe485b962
+      %1059 = xor %1663, %1662
+      %857 = iszero %1059
+      assert %857
+      %859 = calldatasize
+      %1664 = 68
+      %860 = gt %1664, %859
+      %858 = callvalue
+      %861 = or %858, %860
+      %862 = iszero %861
+      assert %862
+      %1666 = 36
+      %867 = calldataload %1666
+      %1665 = 4
+      %865 = calldataload %1665
+      %868 = shr %865, %867
+      %1667 = 64
+      mstore %1667, %868
+      %1668 = 32
+      %1669 = 64
+      return %1669, %1668
+    ; (__main_entry)
+
+
+  selector_bucket_5:  ; OUT=[]
+      %1670 = %2
+      %1671 = 0xebcb9e1f
+      %1060 = xor %1671, %1670
+      %871 = iszero %1060
+      assert %871
+      %873 = calldatasize
+      %1672 = 68
+      %874 = gt %1672, %873
+      %872 = callvalue
+      %875 = or %872, %874
+      %876 = iszero %875
+      assert %876
+      %1673 = 4
+      %879 = calldataload %1673
+      %1676 = %879
+      %1674 = 36
+      %882 = calldataload %1674
+      %1675 = %879
+      %884 = add %1675, %882
+      %1677 = %884
+      %886 = lt %1677, %1676
+      %887 = iszero %886
+      assert %887
+      %1678 = %884
+      %1679 = 64
+      mstore %1679, %1678
+      %1680 = 32
+      %1681 = 64
+      return %1681, %1680
+    ; (__main_entry)
+
+
+  selector_bucket_15:  ; OUT=[]
+      %1682 = %2
+      %1683 = 0x26b04e0a
+      %1061 = xor %1683, %1682
+      %890 = iszero %1061
+      assert %890
+      %892 = calldatasize
+      %1684 = 68
+      %893 = gt %1684, %892
+      %891 = callvalue
+      %894 = or %891, %893
+      %895 = iszero %894
+      assert %895
+      %1686 = 36
+      %901 = calldataload %1686
+      %1692 = %901
+      %907 = iszero %1692
+      %1685 = 4
+      %898 = calldataload %1685
+      %1691 = %898
+      %1689 = %901
+      %1687 = %901
+      %1688 = %898
+      %903 = mul %1688, %1687
+      %1690 = %903
+      %905 = div %1690, %1689
+      %906 = eq %905, %1691
+      %908 = or %906, %907
+      assert %908
+      %1693 = %903
+      %1694 = 64
+      mstore %1694, %1693
+      %1695 = 32
+      %1696 = 64
+      return %1696, %1695
+    ; selector_bucket_15
+    ; (__main_entry)
+
+
+  selector_bucket_27:  ; OUT=[]
+      %1697 = %2
+      %1698 = 0x96b91e41
+      %1062 = xor %1698, %1697
+      %911 = iszero %1062
+      assert %911
+      %913 = calldatasize
+      %1699 = 68
+      %914 = gt %1699, %913
+      %912 = callvalue
+      %915 = or %912, %914
+      %916 = iszero %915
+      assert %916
+      %1700 = 64
+      %1701 = 4
+      %1702 = 96
+      calldatacopy %1702, %1701, %1700
+      %1703 = 64
+      %1704 = 96
+      %937 = sha3 %1704, %1703
+      %1705 = 192
+      mstore %1705, %937
+      %1706 = 32
+      %1707 = 192
+      return %1707, %1706
+    ; (__main_entry)
+
+
+  selector_bucket_18:  ; OUT=[242_if_exit, 239_then]
+      %1708 = %2
+      %1709 = 0x5c4ffdaa
+      %1063 = xor %1709, %1708
+      jnz %1063, @242_if_exit, @239_then
+    ; (__main_entry)
+
+
+  239_then:  ; OUT=[]
+      %941 = callvalue
+      %943 = iszero %941
+      assert %943
+      %945 = caller
+      %1710 = 64
+      mstore %1710, %945
+      %1711 = 32
+      %1712 = 64
+      return %1712, %1711
+    ; (__main_entry)
+
+
+  242_if_exit:  ; OUT=[]
+      %1713 = %2
+      %1714 = 0xa02ce574
+      %1064 = xor %1714, %1713
+      %948 = iszero %1064
+      assert %948
+      %949 = callvalue
+      %951 = iszero %949
+      assert %951
+      %953 = number
+      %1715 = 64
+      mstore %1715, %953
+      %955 = timestamp
+      %1716 = 96
+      mstore %1716, %955
+      %957 = prevrandao
+      %1717 = 128
+      mstore %1717, %957
+      %1718 = 96
+      %1719 = 64
+      return %1719, %1718
+    ; (__main_entry)
+
+
+  selector_bucket_1:  ; OUT=[]
+      %1720 = %2
+      %1721 = 0xfc989c77
+      %1065 = xor %1721, %1720
+      %960 = iszero %1065
+      assert %960
+      %961 = callvalue
+      %963 = iszero %961
+      assert %963
+      %1722 = 32
+      %991 = offset @code_end, 0
+      %1723 = 64
+      codecopy %1723, %991, %1722
+      %1724 = 32
+      %1725 = 64
+      return %1725, %1724
+    ; (__main_entry)
+
+
+  selector_bucket_13:  ; OUT=[]
+      %1726 = %2
+      %1727 = 0x61bc221a
+      %1066 = xor %1727, %1726
+      %968 = iszero %1066
+      assert %968
+      %969 = callvalue
+      %971 = iszero %969
+      assert %971
+      %1728 = 0
+      %973 = sload %1728
+      %1729 = 64
+      mstore %1729, %973
+      %1730 = 32
+      %1731 = 64
+      return %1731, %1730
+    ; (__main_entry)
+
+
+  selector_bucket_9:  ; OUT=[]
+      %1732 = %2
+      %1733 = 0xc19d93fb
+      %1067 = xor %1733, %1732
+      %976 = iszero %1067
+      assert %976
+      %977 = callvalue
+      %979 = iszero %977
+      assert %979
+      %1734 = 1
+      %981 = sload %1734
+      %1735 = 64
+      mstore %1735, %981
+      %1736 = 32
+      %1737 = 64
+      return %1737, %1736
+    ; (__main_entry)
+
+
+  fallback:  ; OUT=[]
+      %1738 = 0
+      %1739 = 0
+      revert %1739, %1738
+    ; (__main_entry)
+}  ; close function __main_entry
+
+
+data readonly {
+  dbsection selector_buckets:
+    db @selector_bucket_0
+    db @selector_bucket_1
+    db @fallback
+    db @selector_bucket_3
+    db @selector_bucket_4
+    db @selector_bucket_5
+    db @selector_bucket_6
+    db @fallback
+    db @selector_bucket_8
+    db @selector_bucket_9
+    db @selector_bucket_10
+    db @selector_bucket_11
+    db @selector_bucket_12
+    db @selector_bucket_13
+    db @selector_bucket_14
+    db @selector_bucket_15
+    db @selector_bucket_16
+    db @selector_bucket_17
+    db @selector_bucket_18
+    db @fallback
+    db @fallback
+    db @selector_bucket_21
+    db @selector_bucket_22
+    db @selector_bucket_23
+    db @selector_bucket_24
+    db @selector_bucket_25
+    db @fallback
+    db @selector_bucket_27
+    db @selector_bucket_28
+    db @selector_bucket_29
+    db @selector_bucket_30
+    db @selector_bucket_31
+    db @fallback
+    db @fallback
+    db @fallback
+    db @selector_bucket_35
+    db @selector_bucket_36
+    db @selector_bucket_37
+    db @fallback
+    db @selector_bucket_39
+    db @selector_bucket_40
+}

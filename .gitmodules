@@ -1,0 +1,7 @@
+[submodule "vyper"]
+	path = vyper
+	url = git@github.com:GlebRadchenko/vyper.git
+	branch = yul2venom
+[submodule "foundry/lib/forge-std"]
+	path = foundry/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std

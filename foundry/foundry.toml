@@ -1,0 +1,31 @@
+[profile.default]
+solc = "0.8.30"
+evm_version = "cancun"
+bytecode_hash = "none"
+optimizer = true
+optimizer_runs = 3_000_000
+via_ir = true
+
+src = 'src'
+out = 'out'
+test = 'test'
+libs = ['lib']
+
+fs_permissions = [{ access = "read", path = "./"}]
+
+[profile.default.optimizer_details]
+yul = true
+cse = true
+peephole = true
+inliner = true
+orderLiterals = true
+deduplicate = true
+constantOptimizer = true
+jumpdestRemover = true
+
+[profile.default.optimizer_details.yulDetails]
+stackAllocation = true
+optimizer_steps = "dhfoDgvulfnTUtnIf[xarrscLMcCTU]uljmul"
+
+[fmt]
+line_length = 110

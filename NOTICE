@@ -1,0 +1,20 @@
+Yul2Venom
+Copyright 2026 Gleb Radchenko
+
+This product includes software developed by the Vyper project
+(https://github.com/vyperlang/vyper), which is licensed under
+the Apache License, Version 2.0.
+
+Vyper
+Copyright 2015 Vitalik Buterin
+Licensed under the Apache License, Version 2.0
+https://www.apache.org/licenses/LICENSE-2.0
+
+The Vyper backend (vyper/ directory) contains modifications
+to support Yul-to-Venom IR transpilation. Those modifications
+include:
+  - Disabled Dead Code Elimination for external callback support
+  - Extended memory layout handling for Solidity patterns
+  - Custom optimization passes for Yul-originated IR
+
+For the complete Vyper license, see vyper/LICENSE.

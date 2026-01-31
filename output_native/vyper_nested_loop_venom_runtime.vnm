@@ -1,0 +1,298 @@
+function __main_entry {
+  __main_entry:  ; OUT=[14_if_exit, 1_then]
+      %160 = 0
+      %1 = calldataload %160
+      %161 = 224
+      %2 = shr %161, %1
+      %162 = %2
+      %163 = 0xc37df448
+      %157 = xor %163, %162
+      jnz %157, @14_if_exit, @1_then
+    ; (__main_entry)
+
+
+  1_then:  ; OUT=[4_condition]
+      %6 = calldatasize
+      %164 = 36
+      %7 = gt %164, %6
+      %5 = callvalue
+      %8 = or %5, %7
+      %9 = iszero %8
+      assert %9
+      %165 = 4
+      %11 = calldataload %165
+      %166 = 4
+      %12 = add %166, %11
+      %167 = %12
+      %14 = calldataload %167
+      %168 = %14
+      %169 = 100
+      %15 = lt %169, %168
+      %16 = iszero %15
+      assert %16
+      %29 = 0
+      %170 = %14
+      %171 = 6
+      %19 = shl %171, %170
+      %172 = 32
+      %20 = add %172, %19
+      %173 = %12
+      %174 = 64
+      calldatacopy %174, %173, %20
+      %175 = 0
+      %176 = 0x1960
+      mstore %176, %175
+      %177 = 64
+      %24 = mload %177
+      %178 = %24
+      %179 = 100
+      %30 = lt %179, %178
+      %31 = iszero %30
+      assert %31
+      jmp @4_condition
+    ; 1_then
+    ; (__main_entry)
+
+
+  4_condition:  ; OUT=[5_body, 7_exit]
+      %29:1:1 = phi @1_then, %29, @5_body, %29:2
+      %180 = %29:1:1
+      %181 = %24
+      %33 = xor %181, %180
+      jnz %33, @5_body, @7_exit
+    ; (__main_entry)
+
+
+  5_body:  ; OUT=[4_condition]
+      %182 = 64
+      %40 = mload %182
+      %183 = %29:1:1
+      %41 = lt %183, %40
+      assert %41
+      %187 = 64
+      %184 = %29:1:1
+      %185 = 6
+      %45 = shl %185, %184
+      %186 = 96
+      %46 = add %186, %45
+      %188 = 0x32a0
+      mcopy %188, %46, %187
+      %189 = 0x32a0
+      %50 = mload %189
+      %190 = 0x32e0
+      mstore %190, %50
+      %191 = 0x32c0
+      %54 = mload %191
+      %194 = %54
+      %192 = %54
+      %193 = 1
+      %56 = add %193, %192
+      %195 = %56
+      %58 = lt %195, %194
+      %59 = iszero %58
+      assert %59
+      %196 = %56
+      %197 = 0x3300
+      mstore %197, %196
+      %198 = 0x1960
+      %61 = mload %198
+      %199 = %61
+      %200 = 99
+      %63 = lt %200, %199
+      %155 = iszero %63
+      assert %155
+      %204 = 64
+      %205 = 0x32e0
+      %201 = %61
+      %202 = 6
+      %65 = shl %202, %201
+      %203 = 0x1980
+      %66 = add %203, %65
+      mcopy %66, %205, %204
+      %206 = %61
+      %207 = 1
+      %68 = add %207, %206
+      %208 = 0x1960
+      mstore %208, %68
+      %209 = %29:1:1
+      %210 = 1
+      %29:2 = add %210, %209
+      jmp @4_condition
+    ; 5_body
+    ; (__main_entry)
+
+
+  7_exit:  ; OUT=[9_condition]
+      %211 = 32
+      %212 = 0x3320
+      mstore %212, %211
+      %213 = 0x1960
+      %75 = mload %213
+      %214 = %75
+      %215 = 0x3340
+      mstore %215, %214
+      %216 = %75
+      %217 = 6
+      %77 = shl %217, %216
+      %79 = 0
+      %218 = %75
+      %219 = 100
+      %80 = lt %219, %218
+      %81 = iszero %80
+      assert %81
+      jmp @9_condition
+    ; (__main_entry)
+
+
+  9_condition:  ; OUT=[10_body, 12_exit]
+      %79:1:1 = phi @7_exit, %79, @10_body, %79:2
+      %220 = %79:1:1
+      %221 = %75
+      %83 = xor %221, %220
+      jnz %83, @10_body, @12_exit
+    ; (__main_entry)
+
+
+  10_body:  ; OUT=[9_condition]
+      %228 = 64
+      %222 = %79:1:1
+      %223 = 6
+      %86 = shl %223, %222
+      %224 = %86
+      %225 = 0x1980
+      %87 = add %225, %224
+      %226 = %86
+      %227 = 0x3360
+      %91 = add %227, %226
+      mcopy %91, %87, %228
+      %229 = %79:1:1
+      %230 = 1
+      %79:2 = add %230, %229
+      jmp @9_condition
+    ; (__main_entry)
+
+
+  12_exit:  ; OUT=[]
+      %231 = 32
+      %94 = add %231, %77
+      %232 = 32
+      %95 = add %232, %94
+      %233 = 0x3320
+      return %233, %95
+    ; (__main_entry)
+
+
+  14_if_exit:  ; OUT=[18_condition]
+      %234 = %2
+      %235 = 0xe5a1a08
+      %158 = xor %235, %234
+      %97 = iszero %158
+      assert %97
+      %99 = calldatasize
+      %236 = 68
+      %100 = gt %236, %99
+      %98 = callvalue
+      %101 = or %98, %100
+      %102 = iszero %101
+      assert %102
+      %alloca_7_103_1 = 0
+      %111 = 0
+      %237 = 4
+      %106 = calldataload %237
+      %238 = %106
+      %239 = 10
+      %112 = lt %239, %238
+      %113 = iszero %112
+      assert %113
+      jmp @18_condition
+    ; (__main_entry)
+
+
+  18_condition:  ; OUT=[19_body, 21_exit]
+      %alloca_7_103_1:1 = phi @14_if_exit, %alloca_7_103_1, @20_incr, %alloca_7_103_1:2
+      %111:1:1 = phi @14_if_exit, %111, @20_incr, %111:2
+      %240 = %111:1:1
+      %241 = %106
+      %115 = xor %241, %240
+      jnz %115, @19_body, @21_exit
+    ; (__main_entry)
+
+
+  19_body:  ; OUT=[23_condition]
+      %244 = 10
+      %242 = %111:1:1
+      %243 = 10
+      %120 = mul %243, %242
+      %245 = %120
+      %122 = div %245, %244
+      %246 = %111:1:1
+      %159 = xor %246, %122
+      %123 = iszero %159
+      assert %123
+      %132 = 0
+      %247 = 36
+      %127 = calldataload %247
+      %248 = %127
+      %249 = 10
+      %133 = lt %249, %248
+      %134 = iszero %133
+      assert %134
+      jmp @23_condition
+    ; (__main_entry)
+
+
+  23_condition:  ; OUT=[24_body, 20_incr]
+      %alloca_7_103_1:2 = phi @19_body, %alloca_7_103_1:1, @24_body, %alloca_7_103_1:3
+      %132:1:1 = phi @19_body, %132, @24_body, %132:2
+      %250 = %132:1:1
+      %251 = %127
+      %136 = xor %251, %250
+      jnz %136, @24_body, @20_incr
+    ; (__main_entry)
+
+
+  24_body:  ; OUT=[23_condition]
+      %252 = %132:1:1
+      %253 = %120
+      %145 = add %253, %252
+      %255 = %145
+      %254 = %120
+      %147 = gt %254, %255
+      %148 = iszero %147
+      assert %148
+      %139 = %alloca_7_103_1:2
+      %258 = %139
+      %256 = %145
+      %257 = %139
+      %150 = add %257, %256
+      %259 = %150
+      %152 = lt %259, %258
+      %153 = iszero %152
+      assert %153
+      %alloca_7_103_1:3 = %150
+      %260 = %132:1:1
+      %261 = 1
+      %132:2 = add %261, %260
+      jmp @23_condition
+    ; (__main_entry)
+
+
+  20_incr:  ; OUT=[18_condition]
+      %262 = %111:1:1
+      %263 = 1
+      %111:2 = add %263, %262
+      jmp @18_condition
+    ; (__main_entry)
+
+
+  21_exit:  ; OUT=[]
+      %264 = %alloca_7_103_1:1
+      %265 = 64
+      mstore %265, %264
+      %266 = 32
+      %267 = 64
+      return %267, %266
+    ; (__main_entry)
+}  ; close function __main_entry
+
+

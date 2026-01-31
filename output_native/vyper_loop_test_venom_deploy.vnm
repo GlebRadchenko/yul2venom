@@ -1,0 +1,6 @@
+function __main_entry {
+  __main_entry:  ; OUT=[]
+      exit
+}  ; close function __main_entry
+
+
