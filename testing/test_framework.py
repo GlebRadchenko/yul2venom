@@ -106,12 +106,20 @@ def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[boo
         return False, "", str(e)
 
 
-def transpile_contract(config_path: str) -> TranspileResult:
-    """Transpile a single contract and return results."""
+def transpile_contract(config_path: str, runtime_only: bool = False) -> TranspileResult:
+    """Transpile a single contract and return results.
+    
+    Args:
+        config_path: Path to the .yul2venom.json config file
+        runtime_only: If True, generate runtime-only bytecode (no init code).
+                      Default False since Forge tests need init code for deployment.
+    """
     import time
     start = time.time()
     
     cmd = ["python3.11", "yul2venom.py", "transpile", config_path]
+    if runtime_only:
+        cmd.append("--runtime-only")
     success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR), timeout=120)
     
     duration = (time.time() - start) * 1000

@@ -26,7 +26,12 @@ class Transpiler:
         # 1. Parse Yul
         # print("DEBUG: Starting parse...", file=sys.stderr)
         try:
-            result = self.parser.parse_toplevel()
+            objects = self.parser.parse_toplevel_objects()
+            if not objects:
+                print("ERROR: No Yul objects found.", file=sys.stderr)
+                return
+            # Use the first (or main) object
+            result = objects[0]
         except Exception as e:
             print(f"ERROR: Parse failed: {e}", file=sys.stderr)
             import traceback

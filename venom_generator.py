@@ -695,7 +695,9 @@ class VenomIRBuilder:
                 if len(expr.args) == 2:
                     ptr_arg = expr.args[0]
                     val_arg = expr.args[1]
-                    # Check if ptr is 64 (FMP slot) and val is memoryguard result
+                    # Check if ptr is 64/0x40 (FMP slot) and val is memoryguard result
+                    # Note: String matching here because we're parsing Yul source literals,
+                    # not generating code. The constant YUL_FMP_SLOT is used when generating IR.
                     is_fmp_slot = (isinstance(ptr_arg, YulLiteral) and 
                                    (ptr_arg.value == "64" or ptr_arg.value == "0x40"))
                     is_memguard = isinstance(val_arg, YulCall) and val_arg.function == "memoryguard"
@@ -1139,16 +1141,58 @@ class VenomIRBuilder:
             self.current_fn.append_basic_block(loop_body_bb)
             self.current_bb = loop_body_bb
             
-            self.loop_stack.append((loop_start_bb.label, loop_end_bb.label, loop_post_bb.label))
+            # Track continue statements to collect values for post-block phis
+            continue_sources = []  # List of (label, var_map_copy) for each continue
+            self.loop_stack.append((loop_start_bb.label, loop_end_bb.label, loop_post_bb.label, continue_sources, phi_results))
             
             self._visit_stmt(stmt.body) # Visit normally (updates var_map references)
             
-            if not self.current_bb.is_terminated:
+            # Capture body-end state for phis
+            body_end_var_map = self.var_map.copy()
+            body_reached_post = not self.current_bb.is_terminated
+            body_end_label = self.current_bb.label if body_reached_post else None
+            body_end_bb = self.current_bb if body_reached_post else None
+            
+            if body_reached_post:
                 self.current_bb.append_instruction("jmp", loop_post_bb.label)
                 
             # --- LOOP POST ---
             self.current_fn.append_basic_block(loop_post_bb)
             self.current_bb = loop_post_bb
+            
+            # Create post-block phis if there are multiple incoming edges (body + continue(s))
+            # This merges values from normal body completion and continue statements
+            if continue_sources or body_reached_post:
+                # Collect all sources for the post block
+                post_sources = []
+                if body_reached_post:
+                    post_sources.append((body_end_label, body_end_var_map, body_end_bb))
+                for cont_label, cont_map, cont_bb in continue_sources:
+                    post_sources.append((cont_label, cont_map, cont_bb))
+                
+                if len(post_sources) > 1:
+                    # Need phis to merge values
+                    for var_name in sorted_vars:
+                        # Get value from each source, using phi_result as fallback for continue paths
+                        first_label, first_map, first_bb = post_sources[0]
+                        first_val = first_map.get(var_name, phi_results[var_name])
+                        first_val_reg = self._materialize_literal(first_val, first_bb)
+                        
+                        # Start building phi
+                        phi_operands = [first_label, first_val_reg]
+                        
+                        for src_label, src_map, src_bb in post_sources[1:]:
+                            src_val = src_map.get(var_name, phi_results[var_name])
+                            src_val_reg = self._materialize_literal(src_val, src_bb)
+                            phi_operands.extend([src_label, src_val_reg])
+                        
+                        phi_res = self.current_bb.append_instruction("phi", *phi_operands)
+                        self.var_map[var_name] = phi_res
+                elif len(post_sources) == 1:
+                    # Single source, just use its values
+                    _, src_map, _ = post_sources[0]
+                    for var_name in sorted_vars:
+                        self.var_map[var_name] = src_map.get(var_name, phi_results[var_name])
             
             self._visit_stmt(stmt.post)
             
@@ -1192,14 +1236,16 @@ class VenomIRBuilder:
         elif stmt_type == 'YulBreak':
 
             if self.loop_stack:
-                _, end_label, _ = self.loop_stack[-1]
+                _, end_label, _, _, _ = self.loop_stack[-1]
                 self.current_bb.append_instruction("jmp", end_label)
             else:
                 print("WARNING: break outside loop", file=sys.stderr)
             
         elif stmt_type == 'YulContinue':
             if self.loop_stack:
-                _, _, post_label = self.loop_stack[-1]
+                _, _, post_label, continue_sources, phi_results = self.loop_stack[-1]
+                # Record current var_map state for this continue path
+                continue_sources.append((self.current_bb.label, self.var_map.copy(), self.current_bb))
                 self.current_bb.append_instruction("jmp", post_label)
             else:
                 print("WARNING: continue outside loop", file=sys.stderr)

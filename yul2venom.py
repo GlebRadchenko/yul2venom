@@ -24,19 +24,33 @@ from typing import Dict, List, Optional, Tuple
 
 try:
     from yul2venom.optimizer import YulOptimizer
-    from yul2venom.utils.constants import SPILL_OFFSET
+    from yul2venom.utils.constants import (
+        SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
+        OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
+    )
 except ImportError:
     try:
         from optimizer import YulOptimizer
-        from utils.constants import SPILL_OFFSET
+        from utils.constants import (
+            SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
+            OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
+        )
     except ImportError:
         # Fallback if running from root without package context
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
         from optimizer import YulOptimizer
         try:
-            from utils.constants import SPILL_OFFSET
+            from utils.constants import (
+                SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
+                OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
+            )
         except ImportError:
-            SPILL_OFFSET = 0x4000  # Fallback
+            # Minimal fallback constants
+            SPILL_OFFSET = 0x4000
+            RLP_SHORT_STRING = 0x80
+            RLP_SHORT_LIST = 0xC0
+            OP_PUSH0, OP_PUSH1, OP_PUSH2 = 0x5F, 0x60, 0x61
+            OP_DUP1, OP_CODECOPY, OP_RETURN = 0x80, 0x39, 0xF3
 
 # Add local vyper to path
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -65,28 +79,33 @@ def keccak256(data: bytes) -> bytes:
 
 
 def rlp_encode_address_nonce(address: bytes, nonce: int) -> bytes:
-    """Minimal RLP encoding for [address, nonce] list."""
+    """Minimal RLP encoding for [address, nonce] list.
+    
+    Uses RLP_SHORT_STRING (0x80) and RLP_SHORT_LIST (0xC0) constants.
+    Per Ethereum specification: https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/
+    """
     def encode_item(item):
         if isinstance(item, int):
             if item == 0:
-                return b'\x80'
+                return bytes([RLP_SHORT_STRING])  # Empty string encoding
             hex_str = hex(item)[2:]
             if len(hex_str) % 2:
                 hex_str = '0' + hex_str
             data = bytes.fromhex(hex_str)
-            if len(data) == 1 and data[0] < 0x80:
-                return data
-            return bytes([0x80 + len(data)]) + data
+            if len(data) == 1 and data[0] < RLP_SHORT_STRING:
+                return data  # Single byte < 0x80 encodes as itself
+            return bytes([RLP_SHORT_STRING + len(data)]) + data
         else:
-            if len(item) == 1 and item[0] < 0x80:
+            if len(item) == 1 and item[0] < RLP_SHORT_STRING:
                 return item
-            return bytes([0x80 + len(item)]) + item
+            return bytes([RLP_SHORT_STRING + len(item)]) + item
     
     encoded_items = encode_item(address) + encode_item(nonce)
     total_len = len(encoded_items)
     if total_len < 56:
-        return bytes([0xc0 + total_len]) + encoded_items
+        return bytes([RLP_SHORT_LIST + total_len]) + encoded_items
     else:
+        # Long list encoding (RLP_LONG_LIST = 0xF7)
         len_bytes = total_len.to_bytes((total_len.bit_length() + 7) // 8, 'big')
         return bytes([0xf7 + len(len_bytes)]) + len_bytes + encoded_items
 
@@ -117,32 +136,32 @@ def generate_init_stub(runtime_size: int) -> bytes:
     """
     INIT_SIZE = 10  # This stub is always 10 bytes
     
-    # Build init bytecode
+    # Build init bytecode using EVM opcode constants
     init_bytes = bytearray()
     
     # PUSH2 <runtime_size>
-    init_bytes.append(0x61)  # PUSH2
+    init_bytes.append(OP_PUSH2)
     init_bytes.append((runtime_size >> 8) & 0xFF)
     init_bytes.append(runtime_size & 0xFF)
     
     # DUP1
-    init_bytes.append(0x80)
+    init_bytes.append(OP_DUP1)
     
     # PUSH1 <init_size> (offset where runtime starts)
-    init_bytes.append(0x60)  # PUSH1
+    init_bytes.append(OP_PUSH1)
     init_bytes.append(INIT_SIZE)
     
     # PUSH0
-    init_bytes.append(0x5F)
+    init_bytes.append(OP_PUSH0)
     
     # CODECOPY
-    init_bytes.append(0x39)
+    init_bytes.append(OP_CODECOPY)
     
     # PUSH0
-    init_bytes.append(0x5F)
+    init_bytes.append(OP_PUSH0)
     
     # RETURN
-    init_bytes.append(0xF3)
+    init_bytes.append(OP_RETURN)
     
     assert len(init_bytes) == INIT_SIZE, f"Init stub size mismatch: {len(init_bytes)} != {INIT_SIZE}"
     return bytes(init_bytes)
@@ -475,12 +494,19 @@ def cmd_prepare(args):
 
     
     # Build config - merge with existing
+    # Use relative paths (relative to yul2venom project root)
+    def make_relative(p):
+        try:
+            return str(Path(p).relative_to(SCRIPT_DIR))
+        except ValueError:
+            return p  # Return as-is if not under SCRIPT_DIR
+    
     config = {
         "version": "1.0",
-        "contract": contract_path,
-        "yul": yul_output_path,
+        "contract": make_relative(contract_path),
+        "yul": make_relative(yul_output_path),
         "deployment": {
-            "deployer": existing_config.get("deployment", {}).get("deployer", ""),
+            "deployer": existing_config.get("deployment", {}).get("deployer", "0x1234567890123456789012345678901234567890"),
             "nonce": existing_config.get("deployment", {}).get("nonce", 0)
         },
         "constructor_args": {},
@@ -573,6 +599,11 @@ def cmd_transpile(args):
     
     # Get yul path from config or CLI
     yul_path = args.yul if args.yul else config.get("yul", "")
+    
+    # Resolve relative paths to absolute (relative to project root)
+    if yul_path and not os.path.isabs(yul_path):
+        yul_path = str(SCRIPT_DIR / yul_path)
+    
     if not yul_path or not os.path.exists(yul_path):
         print(f"✗ Yul file not found: {yul_path}", file=sys.stderr)
         print(f"  Run 'yul2venom prepare' to generate Yul", file=sys.stderr)
@@ -819,6 +850,10 @@ def cmd_transpile(args):
             print("DEBUG: check_venom_ctx PASSED", file=sys.stderr)
         except Exception as e:
             print(f"ERROR: check_venom_ctx FAILED: {e}", file=sys.stderr)
+            # Print sub-exceptions if any
+            if hasattr(e, 'exceptions'):
+                for i, sub_e in enumerate(e.exceptions):
+                    print(f"  Sub-exception {i+1}: {sub_e}", file=sys.stderr)
             # Continue anyway to see what assembler produces
         
         try:
@@ -874,7 +909,15 @@ def cmd_transpile(args):
         opt_level = getattr(args, 'optimize', 'O2')
         print(f"DEBUG: Optimization Level: {opt_level}", file=sys.stderr)
         
-        if opt_level == 'none':
+        if opt_level == 'native':
+            # Use native vyper O2 pipeline via run_passes_on
+            print("DEBUG: Running Native Venom O2 Pipeline (run_passes_on)...", file=sys.stderr)
+            from vyper.venom import run_passes_on
+            from vyper.compiler.settings import OptimizationLevel, VenomOptimizationFlags
+            # Enable mem2var (disable_mem2var=False) for better optimization
+            flags = VenomOptimizationFlags(level=OptimizationLevel.default(), disable_mem2var=False)
+            run_passes_on(ctx, flags)
+        elif opt_level == 'none':
             # NO passes at all - raw IR straight to assembly (for debugging)
             print("DEBUG: Running NO PASSES (raw IR to assembly)...", file=sys.stderr)
             # Skip all passes
@@ -1129,8 +1172,8 @@ Examples:
     trans.add_argument("config", help="Config file (.yul2venom.json)")
     trans.add_argument("-y", "--yul", help="Yul file (optional, defaults to config.yul)")
     trans.add_argument("-o", "--output", help="Output bytecode path")
-    trans.add_argument("-O", "--optimize", choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2"], default="O2",
-                       help="Optimization level. 'O0' minimal, 'yul-o2' (alias 'O2') is the stable Yul pipeline. 'debug' is legacy.")
+    trans.add_argument("-O", "--optimize", choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2", "native"], default="O2",
+                       help="Optimization level. 'native' uses Vyper's O2 pipeline. 'O2' is the safe Yul pipeline. 'O0' minimal.")
     trans.add_argument("--runtime-only", action="store_true", 
                        help="Output only runtime bytecode (no init code). Use for testing with CREATE.")
     trans.add_argument("--dump-ir", action="store_true", help="Dump Intermediate Representation (.vnm files)")

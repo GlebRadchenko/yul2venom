@@ -26,6 +26,7 @@ generator_debug.log
 # Build artifacts
 *.bin
 output/*.bin
+output/bench/
 output_native/*.bin
 
 # Foundry

@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "contract": "foundry/src/bench/ControlFlow.sol",
-  "yul": "output/ControlFlow.yul",
+  "contract": "foundry/src/bench/Arithmetic.sol",
+  "yul": "output/bench/Arithmetic.yul",
   "deployment": {
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0

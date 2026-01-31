@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "contract": "foundry/src/bench/StateManagement.sol",
+  "yul": "output/StateManagement.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "constructor_args": {
+    "DEPLOY_TIME": {
+      "id": "15",
+      "type": "uint256",
+      "value": "1706745600"
+    },
+    "DEPLOYER": {
+      "id": "17",
+      "type": "address",
+      "value": "0x1234567890123456789012345678901234567890"
+    },
+    "DEPLOY_HASH": {
+      "id": "19",
+      "type": "bytes32",
+      "value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "auto_predicted": {}
+}

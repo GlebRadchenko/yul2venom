@@ -1,0 +1,39 @@
+# Yul2Venom Benchmark Configuration
+# Copy to benchmark.yaml and customize
+
+# Contracts to benchmark (relative to foundry/src/bench/)
+contracts:
+  - Arithmetic
+  - ControlFlow
+  - StateManagement
+  - DataStructures
+  - Functions
+  - Events
+  - Encoding
+  - Edge
+
+# Optimization runs to test
+optimization_runs:
+  - 0        # No optimization
+  - 200      # Default (Foundry default)
+  - 20000    # High optimization
+  - 1000000  # Maximum optimization (production)
+
+# Solc compilation modes
+solc_modes:
+  - default   # Traditional optimizer (--optimize, no --via-ir)
+  - via_ir   # Yul-based optimizer (--via-ir --optimize)
+
+# Baseline for comparison
+# Format: mode_runs (e.g., "default_200", "via_ir_0")
+baseline: default_200
+
+# Output files
+report_file: benchmark_report.md
+json_file: benchmark_data.json
+
+# Force rebuild of all binaries
+force_rebuild: true
+
+# Verbose output
+verbose: false

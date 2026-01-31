@@ -1,0 +1,208 @@
+{
+  "generated": "2026-01-31T18:33:52.181326",
+  "config": {
+    "baseline": "default_200",
+    "optimization_runs": [
+      200
+    ],
+    "solc_modes": [
+      "default",
+      "via_ir",
+      "ir_optimized"
+    ]
+  },
+  "results": {
+    "Arithmetic": {
+      "transpiled": {
+        "success": true,
+        "size": 1987,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1650,
+          "error": null
+        }
+      }
+    },
+    "ControlFlow": {
+      "transpiled": {
+        "success": true,
+        "size": 1310,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1043,
+          "error": null
+        }
+      }
+    },
+    "StateManagement": {
+      "transpiled": {
+        "success": true,
+        "size": 3774,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 2832,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 2832,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 3135,
+          "error": null
+        }
+      }
+    },
+    "DataStructures": {
+      "transpiled": {
+        "success": true,
+        "size": 2431,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1576,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 1576,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 2031,
+          "error": null
+        }
+      }
+    },
+    "Functions": {
+      "transpiled": {
+        "success": true,
+        "size": 4406,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 2452,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 2452,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 3477,
+          "error": null
+        }
+      }
+    },
+    "Events": {
+      "transpiled": {
+        "success": true,
+        "size": 1057,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 826,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 826,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1163,
+          "error": null
+        }
+      }
+    },
+    "Encoding": {
+      "transpiled": {
+        "success": true,
+        "size": 1791,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 976,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 976,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1264,
+          "error": null
+        }
+      }
+    },
+    "Edge": {
+      "transpiled": {
+        "success": true,
+        "size": 4206,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 3112,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 3112,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 3787,
+          "error": null
+        }
+      }
+    }
+  }
+}
