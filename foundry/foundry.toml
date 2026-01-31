@@ -11,7 +11,7 @@ out = 'out'
 test = 'test'
 libs = ['lib']
 
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read", path = "./"}, { access = "read", path = "../"}]
 
 [profile.default.optimizer_details]
 yul = true

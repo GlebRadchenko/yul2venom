@@ -17,6 +17,12 @@ try:
 except ImportError:
     Allocation = None  # Fallback if not available
 
+# Import memory layout constants from centralized location
+try:
+    from yul2venom.utils.constants import VENOM_MEMORY_START, YUL_FMP_SLOT
+except ImportError:
+    from utils.constants import VENOM_MEMORY_START, YUL_FMP_SLOT
+
 
 # Pre-compile translation table
 TRANS_TABLE = str.maketrans({'.': '_', ':': '_', '=': 'eq', '$': '_'})
@@ -56,7 +62,7 @@ class VenomIRBuilder:
         # Mirrors native Vyper's get_scratch_alloca_id() pattern
         self.scratch_alloca_id = 0
         # Track alloca base position for sequential allocation
-        self.alloca_mem_position = 0x1000  # Start above Venom's spill frame
+        self.alloca_mem_position = VENOM_MEMORY_START  # Start above Venom's spill frame
         
         # DEFERRED FMP PATTERN: Track pending FMP updates to emit after allocation use
         # This fixes the bug where mload(64) result is lost due to stack manipulation
@@ -526,23 +532,38 @@ class VenomIRBuilder:
 
 
     def _materialize_literal(self, val, block):
-        """Materialize a literal into a variable at the end of the given block."""
+        """Materialize a literal into a variable at the end of the given block.
+        
+        IDENTITY LOWERING FIX: Use `add val, 0` instead of `assign` to bypass
+        backend stack model desync bug. The backend's assign handling uses
+        next_liveness incorrectly - after assign, the source appears "dead"
+        even though its value is needed under the new name. Identity addition
+        forces proper DUP handling in the backend.
+        """
         if isinstance(val, IRVariable):
-            return val
+            # For variables, use identity addition to force proper stack handling
+            # This creates: new_var = add(val, 0) which is semantically identical to assign
+            # but forces the backend to DUP the source value
+            new_var = self.current_fn.get_next_variable()
             
-        # Check if block is terminated. If so, insert BEFORE terminator.
+            if block.is_terminated:
+                # Insert before last instruction
+                inst = IRInstruction("add", [val, IRLiteral(0)], [new_var])
+                block.insert_instruction(inst, len(block.instructions) - 1)
+            else:
+                block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
+            
+            return new_var
+            
+        # For literals, we still use assign (literals don't have the liveness issue)
+        # But wrap in identity addition for consistency
         new_var = self.current_fn.get_next_variable()
         
-        # Copy logic from append_instruction but insert
-        inst = IRInstruction("assign", [val], [new_var])
-        
         if block.is_terminated:
-            # Insert before last instruction
-            # Note: Venom instructions list has methods? 
-            # IRBasicBlock has insert_instruction(inst, index)
+            inst = IRInstruction("add", [val, IRLiteral(0)], [new_var])
             block.insert_instruction(inst, len(block.instructions) - 1)
         else:
-            block.append_instruction("assign", val, outputs=[new_var])
+            block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
             
         return new_var
 
@@ -679,12 +700,12 @@ class VenomIRBuilder:
                                    (ptr_arg.value == "64" or ptr_arg.value == "0x40"))
                     is_memguard = isinstance(val_arg, YulCall) and val_arg.function == "memoryguard"
                     if is_fmp_slot and is_memguard:
-                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to 0x1000
+                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to VENOM_MEMORY_START
                         # Yul code uses mload(64)/mstore(64) for dynamic memory allocation.
-                        # Venom's MemoryAllocator uses 0x00-0x1000 for static allocation.
-                        # We initialize FMP to 0x1000 so Yul's dynamic allocation starts
+                        # Venom's MemoryAllocator uses 0x00-VENOM_MEMORY_START for static allocation.
+                        # We initialize FMP to VENOM_MEMORY_START so Yul's dynamic allocation starts
                         # above Venom's region, avoiding memory conflicts.
-                        self.current_bb.append_instruction("mstore", IRLiteral(0x1000), IRLiteral(64))
+                        self.current_bb.append_instruction("mstore", IRLiteral(YUL_FMP_SLOT), IRLiteral(VENOM_MEMORY_START))
                         return
             self._visit_expr(stmt.expr)
 
@@ -1463,9 +1484,9 @@ class VenomIRBuilder:
         # This avoids the double-reversal bug that was causing incorrect bytecode.
         
         if func == "memoryguard":
-            # Venom Backend reserves 0x80-0x1000 for stack spills (Frame).
-            # We MUST start Yul heap at 0x1000 to avoid corruption.
-            return IRLiteral(0x1000)
+            # Venom Backend reserves 0x80-VENOM_MEMORY_START for stack spills (Frame).
+            # We MUST start Yul heap at VENOM_MEMORY_START to avoid corruption.
+            return IRLiteral(VENOM_MEMORY_START)
         
         # VENOM-NATIVE MEMORY MODEL: Handle mload(64) - Solidity's allocate_unbounded
         # 

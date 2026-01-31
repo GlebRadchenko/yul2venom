@@ -357,110 +357,155 @@ Position 5: %125 (memPos)
 
 ### 🔍 Still Under Investigation: 32 != 20 Serialization Loop Bug
 
-**Status:** Root cause narrowed down to backend assign/DUP handling (Jan 31, 2026)
+**Date:** 2026-01-30 to 2026-01-31  
+**Status:** IN PROGRESS - ROOT CAUSE NARROWED  
+**Test:** `LoopCheckCalldataTest::test_processStructs()`  
+**Symptom:** Second struct returns `{id: 32, value: 2}` instead of `{id: 20, value: 201}`
 
-#### Symptom
-Second element in serialized struct array returns incorrect data:
-- Expected: `{id: 20, value: 201}`
-- Actual: `{id: 32, value: 2}` (ABI header values)
+---
 
-Debug test output:
+#### 🎯 Key Finding: Values Match Return Buffer Header
+
+The incorrect output `{id: 32, value: 2}` **exactly matches** the return buffer ABI header:
+- `32` = ABI offset stored at return buffer start (`mstore %114, 32`)
+- `2` = Array length stored at return buffer + 32 (`mstore %115, %116`)
+
+**Conclusion**: `array[1]` pointer slot contains the return buffer address instead of `struct_1` pointer.
+
+---
+
+#### ✅ Definitively Ruled Out (Jan 31, 2026)
+
+| Component | Status | Evidence |
+|-----------|--------|----------|
+| **Optimizer passes** | ✅ Ruled out | Bug persists with `-O none` (zero passes) |
+| **Serialization loop IR** | ✅ Correct | Phi handling verified, SSA chains traced |
+| **Serialization stack models** | ✅ Correct | Entry/exit values match phi expectations |
+| **Serialization assembly** | ✅ Correct | Stack evolution: `[srcPtr+32, pos+64, ctr+1, len, memPos]` ✓ |
+| **Population loop increment** | ✅ Correct | `%113 = add %66:1, 1` verified |
+| **FMP sequence** | ✅ Correct | `mstore 64` in block 47 before jump to block 33 |
+| **srcPtr initialization** | ✅ Correct | `%118 = add %32, 32` = outputArray + 32 |
+| **Liveness phi fix** | ✅ In place | Lines 116-123 in liveness.py |
+| **Assign stack fix** | ✅ In place | Lines 570-602 in venom_to_assembly.py |
+
+---
+
+#### 🔬 Exhaustive Verification Details
+
+##### Stack Model Trace (Serialization Loop)
+
+**Block 54 (Loop Header) Entry:**
 ```
-Word 0 : 32    ← ABI offset
-Word 1 : 2     ← length
-Word 2 : 10    ← id[0] ✓
-Word 3 : 101   ← value[0] ✓
-Word 4 : 32    ← id[1] ← WRONG! (should be 20)
-Word 5 : 2     ← value[1] ← WRONG! (should be 201)
-```
-
-#### Investigation Findings (Jan 31, 2026)
-
-##### Hypothesis 1: Loop Counter Increment Bug ❌ REJECTED
-- Checked if loop 33 increments by 1 instead of 32
-- **Finding:** Intentional! Counter increments by 1, pointer offset computed as `counter * 32` via `shl(5, counter)`
-- Both population loop (33) and serialization loop (54) use unit-incrementing counters with 32-byte offset mapping
-
-##### Hypothesis 2: Stack Order Mismatch at Phi ❌ REJECTED
-- Checked liveness analysis vs assembly stack order
-- **Finding:** Liveness correctly returns `['%31', '%21', '%19', '%counter']` (leftmost=deepest)
-- Assembly DUP indices correctly access expected stack positions
-
-##### Hypothesis 3: Incorrect DUP Index for GT Operands ❌ REJECTED
-- Traced GT instruction: `gt(%19, counter)` = `gt(length, counter)`
-- **Finding:** Assembly correctly does `DUP1, DUP3, GT` which computes `length > counter`
-- EVM GT semantics verified: pops (a=top, b=second), pushes a > b
-
-##### Hypothesis 4: srcPtr Not Updated in Serialization Loop ❌ REJECTED
-- Traced loop body stack manipulations
-- **Finding:** `PUSH1 32, ADD` correctly computes new srcPtr = srcPtr + 32
-- Back-edge correctly sends `[new_srcPtr, new_pos, new_i, length, base]` to loop start
-
-##### Hypothesis 5: Pointer at 0x1040 Contains Wrong Value ✓ CONFIRMED
-- Debug output shows Words 4-5 identical to Words 0-1
-- **Conclusion:** mload(srcPtr) on second iteration returns the same address as first iteration
-- The pointer array slot at 0x1040 contains wrong value (output buffer base instead of struct[1] address)
-
-##### Hypothesis 6: Backend Assign Handling Bug ✓ NARROWED DOWN
-IR block `47_end_if` has:
-```
-%278 = %80           ; assign struct addr to alias
-mstore %278, %69     ; store id
-%280 = %80           ; assign struct addr to another alias
-%86 = add %280, 32   ; compute offset for value
-mstore %86, %77      ; store value
+Stack: [%114, %116, %119, %121, %123]
+       memPos  len   ctr   pos  srcPtr
 ```
 
-**Debug Output from Backend:**
+**Block 55 (Loop Body) Entry (after phi):**
 ```
-DEBUG assign: %476 = %80
-  depth=0, source_in_liveness=True
-  stack_before: [..., %80]
-  stack_after_dup_poke: [..., %80, %476]  ← %80 preserved!
-
-DEBUG assign: %474 = %80
-  depth=-1, source_in_liveness=True   ← depth=-1 means %80 one below top
-  stack_before: [..., %80, %476]
-  stack_after_dup_poke: [..., %80, %476, %474]  ← %80 still preserved!
+Stack: [%114, %116, %120:1, %122:1, %124:1]
+                    ctr     pos    srcPtr (phi outputs)
 ```
 
-Backend claim: Stack model shows correct DUP behavior, `%80` is preserved.
-
-**But Generated Assembly Shows:**
+**Block 55 Exit:**
 ```
-LABEL 47_end_if
-PUSH1 64
-MSTORE        ; bump FMP - consumes top 2 values
-DUP1          ; DUPs whatever is NOW on top (NOT %80!)
-SWAP3 SWAP1
-MSTORE        ; store id
+Stack: [%114, %116, %135, %136, %137]
+                   newCtr newPos newSrcPtr
+```
+
+All values are in correct positions for back-edge phi.
+
+##### Assembly Trace (Block 55 - Serialization Loop Body)
+
+```asm
+LABEL 55_blk_loop_body
+DUP1            ; [srcPtr, srcPtr, pos, ctr, len, memPos]
+MLOAD           ; [struct_ptr, srcPtr, pos, ctr, len, memPos]
+DUP1            ; [struct_ptr, struct_ptr, srcPtr, pos, ctr, len, memPos]
+MLOAD           ; [struct.id, struct_ptr, srcPtr, pos, ctr, len, memPos]
+DUP4            ; Gets pos (correct)
+MSTORE          ; mstore(pos, struct.id)
 PUSH1 32
-DUP3          ; Gets WRONG value for struct addr + 32 computation
+ADD             ; [struct_ptr+32, srcPtr, pos, ctr, len, memPos]
+MLOAD           ; [struct.value, srcPtr, pos, ctr, len, memPos]
+PUSH1 32
+DUP4            ; Gets pos (correct)
 ADD
-MSTORE        ; store value at WRONG address
+MSTORE          ; mstore(pos+32, struct.value)
+; ... compute new srcPtr, pos, ctr ...
+JUMP @54        ; Back-edge with correct stack order
 ```
 
-**Root Cause:** The stack model claims `%80` is preserved via DUP, but the actual emitted assembly does NOT include the expected DUP instructions. There's a mismatch between what the backend's stack model thinks is happening and what's actually being emitted.
+---
 
-#### Memory Layout (Verified Correct)
+#### 🎯 Suspected Root Cause: Population Loop Struct Pointer Storage
+
+Since serialization is verified correct, the bug must be in how `struct_1`'s pointer gets stored in `array[1]` during the **population loop**.
+
+**Key IR (Population Loop - Block 48):**
+```venom
+48_inline_cleanup_memory_array_index_access_struct_Element_dyn:
+    mstore %103, %94    ; Store struct ptr at array[i]
 ```
-0x1000: Input array base (length)
-0x1020: Pointer[0] → should point to struct[0]
-0x1040: Pointer[1] → should point to struct[1]
-0x1060: Struct[0] allocated memory
-0x10A0: Struct[1] allocated memory
-0x10E0: Output buffer base
+
+Where:
+- `%103 = %32 + 32 + i*32` = array slot address (correct)
+- `%94 = allocate_memory()` = struct pointer (should be fresh each iteration)
+
+**Hypothesis**: `%94` may be incorrect in iteration 1 due to:
+1. Stack corruption during population loop
+2. FMP value not correctly read/updated between iterations
+3. Backend emitting wrong DUP index for struct pointer retrieval
+
+---
+
+#### 📊 Memory Layout (Verified)
+
+```
+Population phase writes:
+  array[0] @ %32+32:  ptr → struct_0 @ freshFMP_iter0 → {10, 101}
+  array[1] @ %32+64:  ptr → struct_1 @ freshFMP_iter1 → {20, 201}  ← SHOULD BE
+
+Serialization phase reads:
+  srcPtr(%32+32):  mload → ptr_to_struct_0 → {10, 101} ✓
+  srcPtr(%32+64):  mload → WRONG VALUE → {32, 2} ✗
+
+Return buffer @ %114:
+  +0:   32 (ABI offset)
+  +32:  2 (length)
 ```
 
-#### Next Steps
+**If array[1] contains %114 (return buffer address):**
+- `mload(%114)` = 32 (ABI offset)  
+- `mload(%114+32)` = 2 (length)
 
-1. **Investigate Stack Model vs Assembly Mismatch:** Why does backend claim DUP happens but assembly shows no DUP?
-2. **Check `_emit_input_operands`:** May not be emitting expected DUPs for consumed variables
-3. **Trace Full Instruction Emission:** Add debug to see exact assembly emitted per IR instruction
-4. **Consider IR Transform:** Pre-process assigns to explicit DUPs before backend codegen
+This matches the observed output exactly!
 
-#### Key Insight
-The bug manifests because struct[1]'s pointer slot (0x1040) contains the output buffer base address (0x10E0) instead of struct[1]'s actual address (0x10A0). This happens because the `mstore` to store struct[1]'s pointer uses the wrong source value from the corrupted stack.
+---
+
+#### 🔧 Status Update (Jan 31, 2026 - continued)
+
+**New Test Results with Variable Iteration Counts:**
+| Elements | Result | Gas | Notes |
+|----------|--------|-----|-------|
+| 0 | ✅ PASS | 7192 | Loop never executes |
+| 1 | ❌ OOG | 1056944009 | **Infinite loop** - `InvalidOperandOOG` |
+| 2 | ❌ FAIL | 13204 | `32 != 20` assertion |
+| 3 | ❌ FAIL | 14414 | `32 != 20` assertion |
+
+**Critical Insight:** The 1-element case causes an *infinite loop* (different failure mode than 2+ elements), suggesting:
+- Counter never increments past 0, OR
+- GT condition always evaluates to true despite correct counter value
+
+**Stack Model Verification (Confirmed Correct):**
+- Block 33 (loop header): Stack correctly shows `[%32, %21, %19, %66:1]` after phi, with proper DUP/GT sequence
+- Block 53 (back-edge): Counter incremented via `%113 = %66:1 + 1`, stack correctly shows `[%32, %21, %19, %113]` before jmp
+- Block 36 (loop exit): `clean_stack_from_cfg_in` correctly identifies 4 variables to pop: `['%21', '%19', '%66:1', '%67']`
+
+**Next Investigative Steps:**
+1. **Use Foundry interactive debugger** (`forge test --debug`) to step through EVM execution
+2. **Trace actual stack values** during runtime to find where model diverges from reality
+3. **Examine loop body blocks (34→39→42→44→47→48→53)** for stack-corrupting operations
+4. **Compare runtime stack depth** at loop header on first vs second iteration
 
 ---
 
@@ -534,3 +579,51 @@ cat yul2venom/debug/opt_ir.vnm | grep -A10 "46_blk_loop_start:"
 # View assembly
 grep -A10 "LABEL 46_blk_loop_start" yul2venom/debug/assembly.asm
 ```
+
+---
+
+## Fix 6: FMP Initialization Operand Order (Generator Bug)
+
+### File
+`venom_generator.py`
+
+### Issue
+The Free Memory Pointer (FMP) was not being initialized correctly, causing array allocations to start at address 0x0 instead of 0x1000. This led to memory corruption where struct data overwrote the array length, causing infinite loops in serialization code.
+
+### Symptoms
+- 1-element array tests resulted in infinite loops (OOG)
+- 2+ element tests failed with assertion errors (e.g., `32 != 20`)
+- Array length (stored at address 0) was overwritten by struct id values
+
+### Root Cause
+The FMP initialization `mstore` had swapped operands:
+
+```python
+# WRONG: mstore(address=0x1000, value=64)
+self.current_bb.append_instruction("mstore", IRLiteral(0x1000), IRLiteral(64))
+
+# CORRECT: mstore(address=64, value=0x1000)  
+self.current_bb.append_instruction("mstore", IRLiteral(YUL_FMP_SLOT), IRLiteral(VENOM_MEMORY_START))
+```
+
+This stored value 64 at address 0x1000 instead of storing value 0x1000 at address 64 (the FMP slot).
+
+### Fix
+Corrected the operand order and refactored to use constants from `utils/constants.py`:
+
+```python
+from utils.constants import VENOM_MEMORY_START, YUL_FMP_SLOT
+
+# Initialize FMP: store 0x1000 at address 0x40
+self.current_bb.append_instruction("mstore", IRLiteral(YUL_FMP_SLOT), IRLiteral(VENOM_MEMORY_START))
+```
+
+### Testing
+All 4 LoopCheckCalldata tests now pass:
+- 0 elements: PASS
+- 1 element: PASS (was: OOG infinite loop)
+- 2 elements: PASS (was: 32 != 20 assertion)
+- 3 elements: PASS (was: 32 != 20 assertion)
+
+### Impact
+This was a critical bug that caused memory corruption in any contract using dynamic memory allocation (arrays, structs). The fix ensures Yul's dynamic allocations start at address 0x1000, above Venom's reserved region.
