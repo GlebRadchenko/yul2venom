@@ -182,11 +182,12 @@ class TranspilationPipeline:
         }
         
         optimizer = YulSourceOptimizer(opt_level_map.get(self.config.yul_opt_level, OptimizationLevel.AGGRESSIVE))
-        optimized_yul, stats = optimizer.optimize(yul_source)
+        optimized_yul = optimizer.optimize(yul_source)
+        # Stats available on optimizer.stats if needed
         
         # Stage 3: Parse to AST
-        parser = YulParser()
-        ast = parser.parse(optimized_yul)
+        parser = YulParser(optimized_yul)
+        ast = parser.parse_toplevel_objects()
         
         # Stage 4: Generate Venom IR
         ctx = TranspilerContext(immutables=self.config.immutables)

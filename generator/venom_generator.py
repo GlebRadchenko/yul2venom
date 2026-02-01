@@ -910,16 +910,14 @@ class VenomIRBuilder:
                     self.current_bb = bucket_bb
                     
                     if len(selectors) == 1:
-                        # Single selector in bucket - use native pattern:
-                        # %local = %selector; xor %local, expected; assert iszero(xor)
-                        # Then jump directly to handler
+                        # Single selector in bucket - check and jump to fallback on mismatch
+                        # Pattern: xor %local, expected; jnz xor, fallback, handler
+                        # This allows receive() (calldatasize=0) to properly reach fallback
                         val, lbl, case = selectors[0]
-                        # Native pattern: assign + xor + assert (ensures correct selector)
                         local_sel = self.current_bb.append_instruction1("assign", cond_val)
                         xor_result = self.current_bb.append_instruction1("xor", val, local_sel)
-                        is_match = self.current_bb.append_instruction1("iszero", xor_result)
-                        self.current_bb.append_instruction("assert", is_match)
-                        self.current_bb.append_instruction("jmp", lbl)
+                        # jnz: if xor!=0 (mismatch) -> fallback, if xor==0 (match) -> handler
+                        self.current_bb.append_instruction("jnz", xor_result, fallback_lbl, lbl)
                     else:
                         # Multiple selectors in bucket - assign then linear search
                         local_sel = self.current_bb.append_instruction1("assign", cond_val)

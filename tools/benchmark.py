@@ -841,6 +841,10 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
             
             # Build gas table
             # Columns: Function | Transpiled | Native | Delta
+            # Build labels with config details
+            transpiled_label = f"Transpiled ({config.yul_opt_level}|{config.transpiler_opt_level})"
+            native_label = f"Native (Solc {config.baseline})"
+            
             transpiled_gas = {g.function: g for g in r.gas_results.get("transpiled", [])}
             native_gas = {g.function: g for g in r.gas_results.get("native", [])}
             
@@ -848,7 +852,7 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
             
             if all_functions:
                 lines.extend([
-                    "| Function | Transpiled | Native (Solc) | Delta |",
+                    f"| Function | {transpiled_label} | {native_label} | Delta |",
                     "|:---------|:----------:|:-------------:|:-----:|",
                 ])
                 
