@@ -1,0 +1,83 @@
+# Reusable Workflow: Benchmark
+# Runs benchmark.py to compare transpiled bytecode against Solc
+#
+# Used by: ci.yml (PR only), nightly.yml
+# Requires: transpiled-bytecode artifact from transpile-test workflow
+
+name: Benchmark
+
+on:
+  workflow_call:
+    inputs:
+      contracts:
+        description: 'Comma-separated list of contracts to benchmark'
+        type: string
+        default: 'Arithmetic,ControlFlow,StateManagement,DataStructures,Functions,Events,Encoding,Edge'
+      python-version:
+        description: 'Python version'
+        type: string
+        default: '3.11'
+      solc-version:
+        description: 'Solc version'
+        type: string
+        default: '0.8.30'
+    outputs:
+      report-generated:
+        description: 'Whether benchmark report was generated'
+        value: ${{ jobs.benchmark.outputs.report-generated }}
+
+jobs:
+  benchmark:
+    name: Run Benchmarks
+    runs-on: ubuntu-latest
+    outputs:
+      report-generated: ${{ steps.benchmark.outputs.generated }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          python-version: ${{ inputs.python-version }}
+          solc-version: ${{ inputs.solc-version }}
+
+      - name: Download transpiled bytecode
+        id: download
+        uses: actions/download-artifact@v4
+        with:
+          name: transpiled-bytecode
+        continue-on-error: true
+
+      - name: Verify or regenerate artifacts
+        run: |
+          # Artifacts should exist from upstream transpile-test job
+          if [ -d output ] && ls output/*.bin 1>/dev/null 2>&1; then
+            echo "✓ Using transpiled artifacts from upstream job"
+            echo "  Found $(ls output/*.bin | wc -l) bytecode files"
+          else
+            echo "⚠ Artifacts not found - running full pipeline"
+            python3.11 testing/test_framework.py --prepare-all
+            python3.11 testing/test_framework.py --transpile-all
+          fi
+
+      - name: Run Benchmarks
+        id: benchmark
+        run: |
+          python3.11 tools/benchmark.py \
+            --output benchmark_report.md \
+            --json benchmark_data.json \
+            --contracts "${{ inputs.contracts }}"
+          echo "generated=true" >> $GITHUB_OUTPUT
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            benchmark_report.md
+            benchmark_data.json
+          retention-days: 30

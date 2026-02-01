@@ -1,0 +1,113 @@
+# Nightly Benchmark Workflow
+# Triggers: 2 AM UTC daily, manual dispatch
+# Pipeline: transpile-test → benchmark → archive
+
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      yul-opt-level:
+        description: 'Yul optimization level'
+        required: false
+        default: 'aggressive'
+        type: choice
+        options:
+          - safe
+          - standard
+          - aggressive
+          - maximum
+
+# Shared settings - ensures consistency across all jobs
+env:
+  PYTHON_VERSION: '3.11'
+  SOLC_VERSION: '0.8.30'
+
+jobs:
+  # ============================================
+  # Transpile and Test (reusable workflow)
+  # ============================================
+  test:
+    name: Test
+    uses: ./.github/workflows/transpile-test.yml
+    with:
+      python-version: '3.11'
+      solc-version: '0.8.30'
+      yul-opt-level: ${{ inputs.yul-opt-level || 'aggressive' }}
+      upload-artifacts: true
+
+  # ============================================
+  # Full Benchmark Suite (reusable workflow)
+  # Uses SAME settings as test job for consistency
+  # ============================================
+  benchmark:
+    name: Benchmark
+    needs: test
+    uses: ./.github/workflows/benchmark.yml
+    with:
+      python-version: '3.11'
+      solc-version: '0.8.30'
+      contracts: 'Arithmetic,ControlFlow,StateManagement,DataStructures,Functions,Events,Encoding,Edge,AdvancedFeatures,Libraries,Modifiers,TypeLimits,TransientStorage'
+
+  # ============================================
+  # Archive Results
+  # ============================================
+  archive:
+    name: Archive
+    runs-on: ubuntu-latest
+    needs: [test, benchmark]
+
+    steps:
+      - name: Get date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create archive
+        run: |
+          ARCHIVE="nightly-${{ steps.date.outputs.date }}"
+          mkdir -p "$ARCHIVE"
+
+          # Copy all artifacts
+          cp -r artifacts/*/* "$ARCHIVE/" 2>/dev/null || true
+
+          # Create summary
+          cat << EOF > "$ARCHIVE/summary.md"
+          # 🌙 Nightly Benchmark - ${{ steps.date.outputs.date }}
+
+          | Property | Value |
+          |----------|-------|
+          | Workflow Run | ${{ github.run_id }} |
+          | Commit | \`${{ github.sha }}\` |
+          | Yul Opt Level | ${{ inputs.yul-opt-level || 'aggressive' }} |
+          | Generated | $(date -u '+%Y-%m-%d %H:%M UTC') |
+          EOF
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-${{ steps.date.outputs.date }}
+          path: nightly-${{ steps.date.outputs.date }}
+          retention-days: 90
+
+      - name: Job Summary
+        run: |
+          echo "# 🌙 Nightly - ${{ steps.date.outputs.date }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f artifacts/transpiled-bytecode/test-output.txt ]; then
+            COUNT=$(grep -oE '[0-9]+ tests passed' artifacts/transpiled-bytecode/test-output.txt || echo "?")
+            echo "**Tests:** ${COUNT}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f artifacts/benchmark-results/benchmark_report.md ]; then
+            cat artifacts/benchmark-results/benchmark_report.md >> $GITHUB_STEP_SUMMARY
+          fi

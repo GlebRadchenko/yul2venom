@@ -1,0 +1,182 @@
+# Main CI Workflow
+# Triggers: push to main/master, pull requests, manual dispatch
+# Pipeline: lint → transpile-test → benchmark (PR only) → report (PR only)
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Shared settings - ensures consistency across all jobs
+env:
+  PYTHON_VERSION: '3.11'
+  SOLC_VERSION: '0.8.30'
+  YUL_OPT_LEVEL: 'aggressive'
+
+jobs:
+  # ============================================
+  # Job 1: Lint Python
+  # ============================================
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install and run Ruff
+        run: |
+          pip install ruff
+          ruff check --output-format=github . || true
+
+  # ============================================
+  # Job 2: Transpile and Test (reusable workflow)
+  # ============================================
+  test:
+    name: Test
+    needs: lint
+    uses: ./.github/workflows/transpile-test.yml
+    with:
+      python-version: '3.11'
+      solc-version: '0.8.30'
+      yul-opt-level: 'aggressive'
+      upload-artifacts: true
+
+  # ============================================
+  # Job 3: Benchmark (PR only, reusable workflow)
+  # Uses SAME settings as test job for consistency
+  # ============================================
+  benchmark:
+    name: Benchmark
+    needs: test
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/benchmark.yml
+    with:
+      python-version: '3.11'
+      solc-version: '0.8.30'
+      contracts: 'Arithmetic,ControlFlow,StateManagement,DataStructures,Functions,Events,Encoding,Edge'
+
+  # ============================================
+  # Job 4: Post PR Report (always runs on PRs)
+  # ============================================
+  report:
+    name: Post Report
+    runs-on: ubuntu-latest
+    needs: [test, benchmark]
+    if: github.event_name == 'pull_request' && always()
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+        continue-on-error: true
+
+      - name: Generate PR Report
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          BENCHMARK_RESULT: ${{ needs.benchmark.result }}
+        run: |
+          # Determine overall status
+          if [ "$TEST_RESULT" = "success" ]; then
+            TEST_ICON="✅"
+            TEST_STATUS="passed"
+          elif [ "$TEST_RESULT" = "failure" ]; then
+            TEST_ICON="❌"
+            TEST_STATUS="failed"
+          else
+            TEST_ICON="⚠️"
+            TEST_STATUS="$TEST_RESULT"
+          fi
+
+          if [ "$BENCHMARK_RESULT" = "success" ]; then
+            BENCH_ICON="✅"
+          elif [ "$BENCHMARK_RESULT" = "skipped" ]; then
+            BENCH_ICON="⏭️"
+          else
+            BENCH_ICON="⚠️"
+          fi
+
+          # Generate report
+          cat << EOF > pr_report.md
+          ## 🔬 Yul2Venom CI Report
+
+          | Stage | Status |
+          |-------|--------|
+          | Tests | ${TEST_ICON} ${TEST_STATUS} |
+          | Benchmark | ${BENCH_ICON} ${BENCHMARK_RESULT:-skipped} |
+
+          ### ${TEST_ICON} Test Results
+          EOF
+
+          if [ -f artifacts/transpiled-bytecode/test-output.txt ]; then
+            echo '```' >> pr_report.md
+            tail -20 artifacts/transpiled-bytecode/test-output.txt >> pr_report.md
+            echo '```' >> pr_report.md
+          else
+            echo "Test output not available" >> pr_report.md
+          fi
+
+          echo "" >> pr_report.md
+          echo "### 📊 Benchmark Results" >> pr_report.md
+          echo "" >> pr_report.md
+
+          if [ -f artifacts/benchmark-results/benchmark_report.md ]; then
+            cat artifacts/benchmark-results/benchmark_report.md >> pr_report.md
+          else
+            echo "Benchmark results not available" >> pr_report.md
+          fi
+
+          echo "" >> pr_report.md
+          echo "---" >> pr_report.md
+          echo "*Commit: \`${{ github.sha }}\` • $(date -u '+%Y-%m-%d %H:%M UTC')*" >> pr_report.md
+
+      - name: Post comment to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('pr_report.md', 'utf8');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const marker = '## 🔬 Yul2Venom CI Report';
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: report
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: report
+              });
+            }
+
+      - name: Job Summary
+        run: cat pr_report.md >> $GITHUB_STEP_SUMMARY
+
