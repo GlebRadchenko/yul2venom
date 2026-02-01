@@ -392,10 +392,7 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
                 elif line.strip().startswith('•'):
                     print(f"      {line.strip()}")
         
-        if rc != 0:
-            return CompilationResult(False, 0, f"Transpile failed: {stderr[:300]}")
-        
-        # Find the output bytecode file
+        # Find the output bytecode file FIRST
         # yul2venom.py outputs to same directory as yul file, named <Contract>_opt.bin
         with open(config_path) as f:
             cfg = json.load(f)
@@ -426,7 +423,11 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
             # Try _opt_runtime.bin pattern (older format)
             bin_path = config.output_dir / f"{contract_name}_opt_runtime.bin"
         
+        # Check success by output file existence (more reliable than return code)
+        # Return code may be non-zero if optimizer prints warnings to stderr
         if not bin_path.exists():
+            if rc != 0:
+                return CompilationResult(False, 0, f"Transpile failed: {stderr[:300]}")
             return CompilationResult(False, 0, f"Output not found: {bin_path}")
         
         size = get_bytecode_size(bin_path)

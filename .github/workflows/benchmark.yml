@@ -53,6 +53,10 @@ jobs:
         continue-on-error: true
 
       - name: Verify or regenerate artifacts
+        # Expected from transpile-test workflow:
+        #   output/*.bin  - transpiled bytecode files
+        #   output/*.yul  - intermediate Yul files
+        # If missing (artifact download failed), regenerate from source
         run: |
           # Artifacts should exist from upstream transpile-test job
           if [ -d output ] && ls output/*.bin 1>/dev/null 2>&1; then

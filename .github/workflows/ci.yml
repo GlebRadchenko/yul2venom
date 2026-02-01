@@ -37,6 +37,8 @@ jobs:
           cache: 'pip'
 
       - name: Install and run Ruff
+        # Note: || true makes lint non-blocking (advisory only)
+        # We report issues but don't fail the build for style violations
         run: |
           pip install ruff
           ruff check --output-format=github . || true

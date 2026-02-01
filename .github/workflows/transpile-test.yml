@@ -1,7 +1,9 @@
-# Reusable Workflow: Transpile and Test
+# Reusable Workflow: Transpile and Test Benchmarks
 # Core logic for transpiling Solidity→Yul→Venom→Bytecode and running tests
 #
 # Used by: ci.yml, nightly.yml
+# Tests: Runs test/bench/*.t.sol (benchmark contract tests that verify
+#        transpiled bytecode matches expected behavior)
 # Outputs: test results + transpiled bytecode artifacts
 
 name: Transpile and Test
@@ -62,6 +64,8 @@ jobs:
       - name: Run Forge tests
         id: test
         working-directory: foundry
+        # Runs benchmark contract tests (test/bench/*.t.sol)
+        # These verify that transpiled bytecode executes correctly
         run: |
           set +e
           forge test --match-path "test/bench/*.t.sol" -v 2>&1 | tee ../test-output.txt
