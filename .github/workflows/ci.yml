@@ -152,7 +152,7 @@ jobs:
           echo "*Commit: \`${{ github.sha }}\` • $(date -u '+%Y-%m-%d %H:%M UTC')*" >> pr_report.md
 
       - name: Post comment to PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
