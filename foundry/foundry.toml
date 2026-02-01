@@ -11,6 +11,9 @@ out = 'out'
 test = 'test'
 libs = ['lib']
 
+# Only run tests from test/ directory (not src/ contracts with testXxx functions)
+match_path = "test/*"
+
 fs_permissions = [{ access = "read", path = "./"}, { access = "read", path = "../"}]
 
 [profile.default.optimizer_details]

@@ -23,6 +23,12 @@ try:
 except ImportError:
     from utils.constants import VENOM_MEMORY_START, YUL_FMP_SLOT
 
+# Import optimization pipeline
+try:
+    from yul2venom.generator.optimizations import OptimizationPipeline, OptimizationContext
+except ImportError:
+    from generator.optimizations import OptimizationPipeline, OptimizationContext
+
 
 # Pre-compile translation table
 TRANS_TABLE = str.maketrans({'.': '_', ':': '_', '=': 'eq', '$': '_'})
@@ -69,6 +75,9 @@ class VenomIRBuilder:
         # before the struct pointer is stored to the array.
         # Format: (newFMP_var, block) or None
         self.pending_fmp_update = None
+        
+        # OPTIMIZATION PIPELINE: Modular optimization system
+        self.optimizer = OptimizationPipeline()
 
     def new_label(self, suffix="block"):
         # Use Context's label generator for consistency context-wide?
@@ -185,6 +194,9 @@ class VenomIRBuilder:
             if color[fname] == WHITE:
                 dfs(fname, [])
         self.inlinable_functions = set(self.functions_ast.keys()) - self.recursive_functions
+        
+        # OPTIMIZATION: Let the optimization pipeline analyze functions for inlining
+        self.optimizer.analyze(self.functions_ast, self.recursive_functions)
 
     def _collect_callees(self, node, callees):
         if node is None:
@@ -529,8 +541,7 @@ class VenomIRBuilder:
             if stmt.post:
                 self._collect_loop_assigned_vars(stmt.post, result_set)
 
-
-
+    # NOTE: _is_simple_revert_body moved to AssertOptimizer in optimizations.py
     def _materialize_literal(self, val, block):
         """Materialize a value into a variable at the end of the given block.
         
@@ -702,6 +713,19 @@ class VenomIRBuilder:
             self._visit_expr(stmt.expr)
 
         elif stmt_type == "YulIf":
+            # OPTIMIZATION: Delegate to optimization pipeline
+            # Pipeline handles patterns like: if cond { revert(0,0) } → assert
+            opt_ctx = OptimizationContext(
+                current_bb=self.current_bb,
+                current_fn=self.current_fn,
+                var_map=self.var_map,
+                functions_ast=self.functions_ast,
+                visit_expr=self._visit_expr,
+                append_instruction=lambda op, *args: self.current_bb.append_instruction(op, *args)
+            )
+            if self.optimizer.try_optimize_stmt(stmt, opt_ctx):
+                return
+            
             # SSA Construction for If:
             # 1. Identify modified vars.
             # 2. Branch to Then/End.
@@ -1625,7 +1649,14 @@ class VenomIRBuilder:
         return self._emit_deduplicated(func, *args)
 
     def _emit_deduplicated(self, op, *operands):
-        # ALGEBRAIC IDENTITY OPTIMIZATIONS
+        # DELEGATE TO OPTIMIZATION PIPELINE
+        # Try algebraic identity optimization first
+        result = self.optimizer.try_optimize_operand(op, list(operands), 
+            lambda opc, *args: self.current_bb.append_instruction(opc, *args))
+        if result is not None:
+            return result
+        
+        # ALGEBRAIC IDENTITY OPTIMIZATIONS (fallback)
         # Catch and eliminate trivial operations at generation time
         if len(operands) == 2:
             a, b = operands

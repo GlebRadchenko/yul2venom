@@ -74,7 +74,8 @@ class BenchmarkConfig:
     ])
     
     # Transpiler optimization level (none, O0, O2, O3, Os, debug, yul-o2, native)
-    transpiler_opt_level: str = "O2"
+    # yul-o2 = PASSES_YUL_O2 (optimized for Yul-sourced IR) - use this for benchmarks
+    transpiler_opt_level: str = "yul-o2"
     
     # Yul source optimizer level (none, safe, standard, aggressive, maximum)
     yul_opt_level: str = "aggressive"
@@ -616,8 +617,10 @@ def benchmark_contract(config: BenchmarkConfig, contract: str) -> ContractResult
     """Benchmark a single contract across all configurations."""
     results = ContractResults(contract=contract)
     
-    # Transpile with current optimization level
-    print(f"  [Transpiling ({config.transpiler_opt_level})]", end=" ", flush=True)
+    # Transpile with current optimization levels
+    # Show both Yul source optimization (yul_opt_level) and Venom IR optimization (transpiler_opt_level)
+    opt_label = f"{config.yul_opt_level}+{config.transpiler_opt_level}" if config.yul_opt_level else config.transpiler_opt_level
+    print(f"  [Transpiling ({opt_label})]", end=" ", flush=True)
     results.transpiled = transpile_contract(config, contract)
     if results.transpiled.success:
         print(f"✓ {results.transpiled.bytecode_size} bytes")
@@ -843,7 +846,7 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
             # Build gas table
             # Columns: Function | Transpiled | Native | Delta
             # Build labels with config details
-            transpiled_label = f"Transpiled ({config.yul_opt_level}|{config.transpiler_opt_level})"
+            transpiled_label = f"Transpiled ({config.yul_opt_level}+{config.transpiler_opt_level})"
             native_label = f"Native (Solc {config.baseline})"
             
             transpiled_gas = {g.function: g for g in r.gas_results.get("transpiled", [])}
