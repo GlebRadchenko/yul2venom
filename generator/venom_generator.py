@@ -78,6 +78,10 @@ class VenomIRBuilder:
         
         # OPTIMIZATION PIPELINE: Modular optimization system
         self.optimizer = OptimizationPipeline()
+        
+        # SHA3_64 OPTIMIZATION: Track recent mstore operations for pattern detection
+        # Pattern: mstore(0x00, key) + mstore(0x20, slot) + keccak256(0x00, 64) -> sha3_64 slot, key
+        self.recent_mstores = []  # List of (offset_operand, value_operand) tuples
 
     def new_label(self, suffix="block"):
         # Use Context's label generator for consistency context-wide?
@@ -224,6 +228,22 @@ class VenomIRBuilder:
                 self._collect_callees(part, callees)
         elif node_type == 'YulExpressionStmt':
             self._collect_callees(node.expr, callees)
+
+    def _log2_exact(self, n: int):
+        """Return log2(n) if n is an exact power of 2, else None.
+        
+        Used for power-of-2 optimizations:
+        - mul(x, 2^n) → shl(n, x)   (5 gas → 3 gas)
+        - div(x, 2^n) → shr(n, x)   (5 gas → 3 gas)
+        - mod(x, 2^n) → and(x, 2^n-1) (5 gas → 3 gas)
+        """
+        if n <= 0 or (n & (n - 1)) != 0:
+            return None
+        log2 = 0
+        while n > 1:
+            n >>= 1
+            log2 += 1
+        return log2
 
     def _build_main(self, yul_obj):
         fn = self.ctx.create_function("__main_entry")
@@ -1330,6 +1350,27 @@ class VenomIRBuilder:
             func = node.function
             args = node.args # List[YulExpression]
             
+            # PEEPHOLE OPTIMIZATION: iszero(eq(a, b)) → xor(a, b)
+            # Native Vyper uses xor for inequality (3 gas vs 6 gas for eq+iszero)
+            if func == "iszero" and len(args) == 1:
+                inner = args[0]
+                if isinstance(inner, YulCall) and inner.function == "eq" and len(inner.args) == 2:
+                    # Transform: iszero(eq(a, b)) → xor(a, b)
+                    inner_arg_vals = [self._visit_expr(a, _depth+1) for a in inner.args]
+                    return self.current_bb.append_instruction1("xor", *inner_arg_vals)
+            
+            # PEEPHOLE OPTIMIZATION: iszero(iszero(x)) → x (when used as boolean)
+            # This is a double negation that can be eliminated
+            if func == "iszero" and len(args) == 1:
+                inner = args[0]
+                if isinstance(inner, YulCall) and inner.function == "iszero" and len(inner.args) == 1:
+                    # Transform: iszero(iszero(x)) → x (normalize to truthy)
+                    innermost_val = self._visit_expr(inner.args[0], _depth+1)
+                    # Can't just return x - need to normalize to 0/1 for boolean contexts
+                    # Use iszero(iszero(x)) when backend needs 0/1, but for jnz non-zero works
+                    # For now, keep double iszero - let BranchOptimizationPass handle it
+                    pass
+            
             arg_vals = [self._visit_expr(a, _depth+1) for a in args]
             
             if func in self.inlinable_functions:
@@ -1621,6 +1662,29 @@ class VenomIRBuilder:
             self.current_bb.append_instruction(func, *args)
             return IRLiteral(0)
         
+        # MSTORE TRACKING for sha3_64 optimization
+        # Track recent mstores to detect keccak256(mstore(0, key), mstore(32, slot)) -> sha3_64
+        if func == "mstore":
+            # Track this mstore for potential sha3_64 pattern
+            if len(args) >= 2:
+                offset, value = args[0], args[1]
+                # Only track mstores to scratch space (0x00-0x3F) used for mapping slots
+                if isinstance(offset, IRLiteral) and offset.value in (0, 32):
+                    self.recent_mstores.append((offset, value))
+                    # Keep only the last 4 mstores to bound memory usage
+                    if len(self.recent_mstores) > 4:
+                        self.recent_mstores.pop(0)
+                else:
+                    # Non-scratch mstore clears the tracking (pattern broken)
+                    self.recent_mstores.clear()
+            self.current_bb.append_instruction("mstore", *args)
+            return IRLiteral(0)
+        
+        # sstore/tstore: void, no tracking needed
+        if func in ("sstore", "tstore"):
+            self.current_bb.append_instruction(func, *args)
+            return IRLiteral(0)
+        
         # return/revert: Yul order (offset, size) -> Venom order (offset, size)
         # Backend places Operand 0 (offset) at Top, which EVM expects.
         if func in ("return", "revert"):
@@ -1633,8 +1697,23 @@ class VenomIRBuilder:
              return self.current_bb.append_instruction1(func, *args)
 
         # sha3/keccak256: Yul uses keccak256, Venom uses sha3
+        # SHA3_64 OPTIMIZATION: Check for mapping slot computation pattern
         if func in ("sha3", "keccak256"):
-            # Venom backend uses 'sha3', not 'keccak256'
+            # Pattern: mstore(0x00, key) + mstore(0x20, slot) + keccak256(0x00, 64)
+            # This is the standard Solidity storage mapping slot computation
+            if len(args) >= 2 and len(self.recent_mstores) >= 2:
+                offset_arg, size_arg = args[0], args[1]
+                sha3_opt = self.optimizer.sha3_optimizer
+                if sha3_opt.can_optimize_keccak(offset_arg, size_arg, self.recent_mstores):
+                    # Extract slot and key from recent mstores
+                    slot, key = sha3_opt.get_sha3_64_operands(self.recent_mstores)
+                    if slot is not None and key is not None:
+                        # Clear tracked mstores since we consumed them
+                        self.recent_mstores.clear()
+                        # sha3_64 slot, key -> keccak256(abi.encode(slot, key))
+                        return self.current_bb.append_instruction1("sha3_64", slot, key)
+            
+            # Fallback: Venom backend uses 'sha3', not 'keccak256'
             return self.current_bb.append_instruction1("sha3", *args)
 
         if func in ("add", "mul", "not", "eq", "iszero", "and", "or", "xor", "addmod", "mulmod", "signextend", "mload", "sload", "tload", "calldataload", "callvalue", "calldatasize", "codesize", "returndatasize", "gas", "address", "caller", "origin", "gasprice", "chainid", "basefee", "timestamp", "number", "difficulty", "gaslimit"):
@@ -1649,6 +1728,21 @@ class VenomIRBuilder:
         return self._emit_deduplicated(func, *args)
 
     def _emit_deduplicated(self, op, *operands):
+        """Emit instruction with deduplication and peephole optimizations.
+        
+        Optimization Architecture:
+        1. FIRST: Try optimizations.py pipeline via optimizer.try_optimize_operand()
+           - Handles statement-level patterns (assert, sha3_64, inlining)
+           - Can only return replacement operands, not emit new instructions
+           
+        2. FALLBACK: Peephole optimizations here in venom_generator.py
+           - Handles algebraic identities (add(x,0)=x, mul(x,1)=x)
+           - Can emit TRANSFORMED instructions (mul(x,2^n)→shl(n,x))
+           - Can do constant folding (iszero(0)=1, not(31)=mask)
+           
+        Power-of-2 optimizations (mul→shl, div→shr, mod→and, exp(2,n)→shl)
+        MUST be here because they emit different opcodes, not just replace values.
+        """
         # DELEGATE TO OPTIMIZATION PIPELINE
         # Try algebraic identity optimization first
         result = self.optimizer.try_optimize_operand(op, list(operands), 
@@ -1656,7 +1750,7 @@ class VenomIRBuilder:
         if result is not None:
             return result
         
-        # ALGEBRAIC IDENTITY OPTIMIZATIONS (fallback)
+        # PEEPHOLE OPTIMIZATIONS (emit-time transformations)
         # Catch and eliminate trivial operations at generation time
         if len(operands) == 2:
             a, b = operands
@@ -1691,6 +1785,32 @@ class VenomIRBuilder:
                 # mul(x, 0) = 0, mul(0, x) = 0
                 if a_is_zero or b_is_zero:
                     return IRLiteral(0)
+                # POWER-OF-2 OPTIMIZATION: mul(x, 2^n) → shl(n, x) (5 gas → 3 gas)
+                if isinstance(b, IRLiteral) and b.value > 1:
+                    log2 = self._log2_exact(b.value)
+                    if log2 is not None:
+                        return self.current_bb.append_instruction1("shl", IRLiteral(log2), a)
+                if isinstance(a, IRLiteral) and a.value > 1:
+                    log2 = self._log2_exact(a.value)
+                    if log2 is not None:
+                        return self.current_bb.append_instruction1("shl", IRLiteral(log2), b)
+            
+            # POWER-OF-2 OPTIMIZATION: div(x, 2^n) → shr(n, x) (5 gas → 3 gas)
+            if op == "div":
+                if b_is_one:
+                    return a
+                if isinstance(b, IRLiteral) and b.value > 1:
+                    log2 = self._log2_exact(b.value)
+                    if log2 is not None:
+                        return self.current_bb.append_instruction1("shr", IRLiteral(log2), a)
+            
+            # POWER-OF-2 OPTIMIZATION: mod(x, 2^n) → and(x, 2^n - 1) (5 gas → 3 gas)
+            if op == "mod":
+                if isinstance(b, IRLiteral) and b.value > 1:
+                    log2 = self._log2_exact(b.value)
+                    if log2 is not None:
+                        mask = b.value - 1
+                        return self.current_bb.append_instruction1("and", IRLiteral(mask), a)
             
             # and(x, -1) = x, and(-1, x) = x (no-op mask)
             if op == "and":
@@ -1737,6 +1857,12 @@ class VenomIRBuilder:
             # eq(x, x) = 1
             if op == "eq" and isinstance(a, IRVariable) and isinstance(b, IRVariable) and a.name == b.name:
                 return IRLiteral(1)
+            
+            # POWER OPTIMIZATION: exp(2, n) → shl(n, 1) (10+50*bits gas → 3 gas)
+            # exp with base 2 is much cheaper as a shift
+            if op == "exp":
+                if isinstance(a, IRLiteral) and a.value == 2:
+                    return self.current_bb.append_instruction1("shl", b, IRLiteral(1))
         
         # CONSTANT FOLDING for common patterns
         if len(operands) == 1:

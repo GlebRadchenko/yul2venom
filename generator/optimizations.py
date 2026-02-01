@@ -790,6 +790,29 @@ class AlgebraicOptimizer:
         if op == "div" and b_is_one:
             return a
         
+        # POWER-OF-2 OPTIMIZATIONS
+        # mul(x, 2^n) = shl(n, x) - saves gas (shl is cheaper than mul)
+        if op == "mul" and isinstance(b, IRLiteral) and b.value > 1:
+            log2 = self._log2_exact(b.value)
+            if log2 is not None:
+                # Return None to let normal emit happen, but with transformed op
+                # We can't directly emit here, so this pattern is already handled
+                # by AlgebraicOptimizationPass in Venom pipeline
+                pass
+        
+        # div(x, 2^n) = shr(n, x) - saves gas (shr is cheaper than div)
+        if op == "div" and isinstance(b, IRLiteral) and b.value > 1:
+            log2 = self._log2_exact(b.value)
+            if log2 is not None:
+                pass  # Handled by Venom AlgebraicOptimizationPass
+        
+        # mod(x, 2^n) = and(x, 2^n - 1)
+        if op == "mod" and isinstance(b, IRLiteral) and b.value > 1:
+            log2 = self._log2_exact(b.value)
+            if log2 is not None:
+                # mod 2^n = and (2^n - 1)
+                pass  # Handled by Venom AlgebraicOptimizationPass
+        
         # shr(0, x) = x, shl(0, x) = x
         if op in ("shr", "shl") and a_is_zero:
             return b
@@ -798,7 +821,30 @@ class AlgebraicOptimizer:
         if op == "eq" and isinstance(a, IRVariable) and isinstance(b, IRVariable) and a.name == b.name:
             return IRLiteral(1)
         
+        # lt(x, x) = 0, gt(x, x) = 0, slt(x, x) = 0, sgt(x, x) = 0
+        if op in ("lt", "gt", "slt", "sgt"):
+            if isinstance(a, IRVariable) and isinstance(b, IRVariable) and a.name == b.name:
+                return IRLiteral(0)
+        
+        # lt(x, 0) = 0 for unsigned (nothing is less than 0)
+        if op == "lt" and b_is_zero:
+            return IRLiteral(0)
+        
+        # gt(0, x) = 0 for unsigned (0 is not greater than anything)
+        if op == "gt" and a_is_zero:
+            return IRLiteral(0)
+        
         return None
+    
+    def _log2_exact(self, n: int) -> int:
+        """Return log2(n) if n is an exact power of 2, else None."""
+        if n <= 0 or (n & (n - 1)) != 0:
+            return None
+        log2 = 0
+        while n > 1:
+            n >>= 1
+            log2 += 1
+        return log2
     
     def _try_constant_fold(self, op: str, operands: list) -> Any:
         """Try constant folding for unary operations."""
@@ -812,6 +858,10 @@ class AlgebraicOptimizer:
         # not(31) = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0
         if op == "not" and a.value == 31:
             return IRLiteral(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0)
+        
+        # not(0) = -1 (all ones)
+        if op == "not" and a.value == 0:
+            return IRLiteral(self.MAX_UINT256)
         
         # iszero(0) = 1
         if op == "iszero" and a.value == 0:

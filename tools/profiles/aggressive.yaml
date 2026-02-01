@@ -15,6 +15,13 @@ contracts:
   - Events
   - Encoding
   - Edge
+  - AdvancedFeatures
+  - ExternalLibrary
+  - Libraries
+  - Modifiers
+  - SoladyToken
+  - TransientStorage
+  - TypeLimits
 
 # ============================================================================
 # Transpiler Optimization Settings
@@ -51,7 +58,6 @@ solc:
   #   - ir_optimized: Output optimized Yul IR (--ir-optimized --optimize) - NO runs
   modes:
     - default
-    - via_ir
     - ir_optimized
 
   # Baseline for delta calculation
