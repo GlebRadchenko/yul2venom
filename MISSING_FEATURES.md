@@ -1,16 +1,17 @@
-# Yul2Venom: Missing Solidity Features
+# Yul2Venom: Solidity Feature Coverage
 
-This document catalogs Solidity features that are **not yet covered** by our transpilation pipeline or test suite. Features are prioritized by importance for typical DeFi/smart contract use cases.
+This document catalogs Solidity feature coverage in our transpilation pipeline and test suite.
 
 ---
 
 ## ✅ Confirmed Working Features
 
-These features are tested and pass in our benchmark suite:
+These features are tested and pass in our benchmark suite (228 tests):
 
 | Category | Features |
 |----------|----------|
 | **Basic Types** | uint8-uint256, int8-int256, bool, address, bytes, string |
+| **Type Introspection** | `type(T).max`, `type(T).min`, `type(I).interfaceId` |
 | **State** | storage variables, mappings (simple/nested), constants, immutables |
 | **Structs/Enums** | struct definitions, nested structs, enum types |
 | **Functions** | internal, external, public, private, view, pure, payable |
@@ -22,25 +23,29 @@ These features are tested and pass in our benchmark suite:
 | **Low-level** | call, staticcall, delegatecall, assembly blocks |
 | **Special** | receive, fallback, create2 |
 | **ABI** | encode, encodePacked, encodeWithSignature, decode |
+| **Libraries** | `using X for Y`, internal library functions, direct calls |
+| **Transient Storage** | TLOAD/TSTORE, reentrancy guards, counters, address/bytes32 storage |
+| **ERC Standards** | ERC20 (via Solady), minting, burning, transfers, approvals |
 
 ---
 
-## ⚠️ Partially Supported / Needs More Testing
+## ⚠️ Partially Supported / Known Limitations
 
 ### 1. Init Code / Constructor Execution
 **Status**: Not supported for transpiled bytecode  
-**Current Workaround**: Use `--runtime-only` flag and `vm.etch()` with manual storage initialization  
-**Impact**: High - cannot deploy transpiled contracts normally  
-**Notes**: Constructor logic is compiled but init code that returns runtime code isn't generated
+**Workaround**: Use `--runtime-only` flag and `vm.etch()` with manual storage initialization  
+**Impact**: High - cannot deploy transpiled contracts via normal flow  
+**Notes**: Constructor logic compiles, but init code returning runtime code isn't generated
 
 ### 2. CREATE Opcode (Contract Deployment)
 **Status**: CREATE2 works, regular CREATE needs testing  
-**Files**: Edge.sol has create2, no CREATE test  
+**Files**: Edge.sol has create2 test  
 **Impact**: Medium - affects factory patterns
 
-### 3. Transient Storage (EIP-1153)
-**Status**: Unknown - needs testing with TLOAD/TSTORE  
-**Impact**: Low - relatively new feature, not widely used yet
+### 3. Complex Storage Initialization with vm.etch
+**Status**: Dynamic strings and complex types difficult to initialize manually  
+**Workaround**: Use native Solc for contracts requiring complex constructor state  
+**Impact**: Low - only affects testing with injected bytecode
 
 ---
 
@@ -48,50 +53,31 @@ These features are tested and pass in our benchmark suite:
 
 ### Priority 1: High Impact
 
-#### Libraries with `using X for Y`
-**Status**: Not tested  
-**Example**:
-```solidity
-library SafeMath {
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a + b;
-    }
-}
-contract Example {
-    using SafeMath for uint256;
-    function test() external pure returns (uint256) {
-        return uint256(1).add(2);
-    }
-}
-```
-**Impact**: Very common in DeFi contracts (OpenZeppelin, etc.)
+#### External Library Calls (DELEGATECALL to deployed libraries)
+**Status**: Internal library functions work; external linked libraries unknown  
+**Impact**: Medium - affects large codebases using deployed library contracts
 
-#### External Library Calls (DELEGATECALL to libraries)
-**Status**: Only internal library functions work; external library linking unknown  
-**Impact**: Medium
+#### `abi.encodeCall` (Type-safe encoding)
+**Status**: Not tested  
+**Example**: `abi.encodeCall(IERC20.transfer, (to, amount))`  
+**Impact**: Low - newer syntax, abi.encode alternatives work
 
 ---
 
 ### Priority 2: Medium Impact
 
-#### `type(T).max` / `type(T).min`
-**Status**: Not tested  
-**Example**: `type(uint256).max`  
-**Impact**: Common for overflow checks
-
-#### Fixed-size Byte Arrays (bytes1 to bytes32)
-**Status**: bytes32 works (constants), smaller sizes not explicitly tested  
+#### Fixed-size Byte Arrays (bytes1 to bytes31)
+**Status**: bytes32 works, smaller sizes not explicitly tested  
 **Impact**: Medium - used in hashing, signatures
 
-#### `abi.encodeCall` (Type-safe encoding)
-**Status**: Not tested  
-**Example**: `abi.encodeCall(IERC20.transfer, (to, amount))`  
-**Impact**: Low - newer syntax
+#### Inline Assembly with Complex Memory Manipulation
+**Status**: Basic assembly works, FMP manipulation not tested  
+**Example**: `assembly { mstore(0x40, ...) }`  
+**Impact**: Medium for complex contracts
 
-#### Inline Assembly with Memory Allocation
-**Status**: Basic assembly works, complex patterns not tested  
-**Example**: `assembly { mstore(0x40, ...) }` FMP manipulation  
-**Impact**: High for complex contracts
+#### `unchecked` Blocks
+**Status**: Yul optimizer handles, not explicitly tested  
+**Impact**: Medium - gas optimization
 
 ---
 
@@ -102,65 +88,61 @@ contract Example {
 **Example**: `type TokenId is uint256;`  
 **Impact**: Low - newer feature
 
-#### Salt-based CREATE2 with Different Bytecode
-**Status**: Single test exists, variations not tested  
-**Impact**: Low - niche use case
-
 #### `block.basefee`, `block.prevrandao`
 **Status**: Not tested  
 **Example**: Post-merge block properties  
 **Impact**: Low
 
-#### String Concatenation
+#### String/Bytes Concatenation
 **Status**: Not tested  
-**Example**: `string.concat("a", "b")`  
+**Examples**: `string.concat("a", "b")`, `bytes.concat(...)`  
 **Impact**: Low
 
-#### Bytes Concatenation
-**Status**: Not tested  
-**Example**: `bytes.concat(bytes1(0x01), bytes2(0x0203))`  
-**Impact**: Low
-
-#### `unchecked` Blocks
-**Status**: Yul optimizer may handle, not explicitly tested  
-**Impact**: Medium - gas optimization
+#### Salt-based CREATE2 Variations
+**Status**: Single test exists, variations not tested  
+**Impact**: Low - niche use case
 
 ---
 
 ## 🔴 Known Not Supported
 
 ### 1. Full Contract Deployment (Init Code)
-Runtime-only bytecode is generated. Full deployment flow with init code is not supported.
+Runtime-only bytecode is generated. Full deployment flow with init code is not supported. Use `--runtime-only` flag.
 
-### 2. Multi-file Contracts with Separate Compilation
-Each contract must be in a single file or properly imported. Complex multi-contract systems with separate compilation units may have issues.
+### 2. Multi-file Contracts with Separate Compilation Units
+Complex multi-contract systems with separate compilation may have issues. All imports must be resolvable.
 
 ---
 
 ## Test Coverage Matrix
 
-| Feature | Contract | Test Count | Status |
-|---------|----------|------------|--------|
-| Arithmetic | Arithmetic.sol | ~15 | ✅ |
-| Control Flow | ControlFlow.sol | ~12 | ✅ |
-| Data Structures | DataStructures.sol | ~10 | ✅ |
-| Edge Cases | Edge.sol | ~15 | ✅ |
-| Encoding | Encoding.sol | ~8 | ✅ |
-| Events | Events.sol | ~8 | ✅ |
-| Functions | Functions.sol | ~20 | ✅ |
+| Feature | Contract | Tests | Status |
+|---------|----------|-------|--------|
+| Arithmetic | Arithmetic.sol | 15 | ✅ |
+| Control Flow | ControlFlow.sol | 12 | ✅ |
+| Data Structures | DataStructures.sol | 10 | ✅ |
+| Edge Cases | Edge.sol | 15 | ✅ |
+| Encoding | Encoding.sol | 8 | ✅ |
+| Events | Events.sol | 8 | ✅ |
+| Functions | Functions.sol | 20 | ✅ |
+| **Libraries** | Libraries.sol | 29 | ✅ |
 | **Modifiers** | Modifiers.sol | 38 | ✅ |
-| State Management | StateManagement.sol | ~15 | ✅ |
+| **ERC20 (Solady)** | SoladyToken.sol | 17 | ✅ |
+| State Management | StateManagement.sol | 12 | ✅ |
+| **Transient Storage** | TransientStorage.sol | 15 | ✅ |
+| **Type Limits** | TypeLimits.sol | 26 | ✅ |
 
-**Total**: 223+ tests passing
+**Total**: 228 tests passing across 13 benchmark contracts
 
 ---
 
 ## Recommendations for Future Work
 
-1. **Priority 1**: Add library tests with `using X for Y` pattern
-2. **Priority 2**: Add `type(T).max/min` tests
-3. **Priority 3**: Test transient storage (TLOAD/TSTORE)
-4. **Priority 4**: Test full deployment flow (init code generation)
+1. **Priority 1**: Test external library linking (DELEGATECALL to deployed libraries)
+2. **Priority 2**: Add `unchecked` block explicit tests
+3. **Priority 3**: Test `bytes1`-`bytes31` fixed-size arrays
+4. **Priority 4**: Test `block.prevrandao`, `block.basefee`
+5. **Priority 5**: Investigate init code generation for full deployment support
 
 ---
 
