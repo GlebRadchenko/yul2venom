@@ -9,8 +9,8 @@ All magic numbers in the transpiler should be defined here.
 # Memory Layout Constants
 # =============================================================================
 
-# Venom backend reserves 0x80-0x1000 for stack spills (Frame).
-# We MUST start Yul heap at 0x1000 to avoid corruption.
+# Venom backend reserves memory for stack spills. After testing, 0x1000 is required
+# to avoid conflicts with Venom's MemoryAllocator. Lower values cause corruption.
 VENOM_MEMORY_START = 0x1000
 
 # Safe offset for stack spill operations - beyond Yul heap start

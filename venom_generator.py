@@ -532,38 +532,28 @@ class VenomIRBuilder:
 
 
     def _materialize_literal(self, val, block):
-        """Materialize a literal into a variable at the end of the given block.
+        """Materialize a value into a variable at the end of the given block.
         
-        IDENTITY LOWERING FIX: Use `add val, 0` instead of `assign` to bypass
-        backend stack model desync bug. The backend's assign handling uses
-        next_liveness incorrectly - after assign, the source appears "dead"
-        even though its value is needed under the new name. Identity addition
-        forces proper DUP handling in the backend.
+        For IRLiterals: Uses 'assign' which is optimized away by AssignElimPass.
+        For IRVariables: Uses 'add val, 0' to force proper DUP handling due to
+        backend stack model issues with assign on multi-use variables.
         """
+        new_var = self.current_fn.get_next_variable()
+        
         if isinstance(val, IRVariable):
-            # For variables, use identity addition to force proper stack handling
-            # This creates: new_var = add(val, 0) which is semantically identical to assign
-            # but forces the backend to DUP the source value
-            new_var = self.current_fn.get_next_variable()
-            
+            # Variables need add x,0 pattern to force DUP in backend
             if block.is_terminated:
-                # Insert before last instruction
                 inst = IRInstruction("add", [val, IRLiteral(0)], [new_var])
                 block.insert_instruction(inst, len(block.instructions) - 1)
             else:
                 block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
-            
-            return new_var
-            
-        # For literals, we still use assign (literals don't have the liveness issue)
-        # But wrap in identity addition for consistency
-        new_var = self.current_fn.get_next_variable()
-        
-        if block.is_terminated:
-            inst = IRInstruction("add", [val, IRLiteral(0)], [new_var])
-            block.insert_instruction(inst, len(block.instructions) - 1)
         else:
-            block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
+            # Literals: use assign (gets eliminated by AssignElimPass)
+            if block.is_terminated:
+                inst = IRInstruction("assign", [val], [new_var])
+                block.insert_instruction(inst, len(block.instructions) - 1)
+            else:
+                block.append_instruction("assign", val, outputs=[new_var])
             
         return new_var
 
@@ -957,11 +947,8 @@ class VenomIRBuilder:
                 self.current_fn.append_basic_block(fallback_bb)
                 self.current_bb = fallback_bb
                 
-                # Only revert for top-level selector dispatch WITH NO default case
-                # Internal value switches with default cases should fall through, not revert
-                if not self.inline_exit_stack and default_case is None:
-                    zero = IRLiteral(0)
-                    self.current_bb.append_instruction("revert", zero, zero)
+                # DON'T revert - let post-switch statements handle fallback behavior
+                # (e.g., Solidity's fallback() or receive() functions)
                 
                 next_check_bb = fallback_bb
             else:
@@ -986,17 +973,12 @@ class VenomIRBuilder:
                         # Last selector - if not match, go to fallback
                         self.current_bb.append_instruction("jnz", xor_result, fallback_lbl, lbl)
                 
-                # Fallback block - only add revert if this is a selector switch (not inlined)
+                # Fallback block - DON'T automatically revert!
+                # Post-switch statements (like Solidity's fallback/receive code) will handle
+                # unmatched selectors. The fallback block should flow to switch_end.
                 self.current_fn.append_basic_block(fallback_bb)
-                # Only revert for top-level selector dispatch WITH NO default case
-                # Internal value switches with default cases should fall through, not revert
-                if not self.inline_exit_stack and default_case is None:
-                    # Selector switch fallback - revert on invalid selector
-                    saved_bb = self.current_bb
-                    self.current_bb = fallback_bb
-                    self.current_bb.append_instruction("revert", IRLiteral(0), IRLiteral(0))
-                    self.current_bb = saved_bb  # Restore - fallback is now terminated
-                # else: internal switch - fallback will be handled by default case processing
+                # Let fallback flow to the end where post-switch statements are processed
+                # or implicit function termination will add stop/return as needed.
                 
                 # Keep next_check_bb as the fallback for default processing later
                 next_check_bb = fallback_bb

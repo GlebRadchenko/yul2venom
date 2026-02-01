@@ -3,18 +3,20 @@
 Yul2Venom Test Framework - Comprehensive transpilation testing and analysis.
 
 Usage:
+    python3 test_framework.py --prepare-all       # Prepare (compile Solidity to Yul)
     python3 test_framework.py --transpile-all    # Transpile all contracts
-    python3 test_framework.py --verify-all       # Run Forge tests
+    python3 test_framework.py --test-all         # Run all Forge tests
     python3 test_framework.py --analyze <vnm>    # Analyze VNM file
     python3 test_framework.py --compare <a> <b>  # Compare two VNM files
     python3 test_framework.py --full             # Full pipeline test
 
 This framework provides:
-1. Batch transpilation with status tracking
-2. Automated Forge test execution
-3. VNM IR analysis (phi nodes, memory ops, loops)
-4. Bytecode comparison tools
-5. Regression detection
+1. Batch preparation (Solidity -> Yul)
+2. Batch transpilation (Yul -> Bytecode) with status tracking
+3. Automated Forge test execution for core and bench tests
+4. VNM IR analysis (phi nodes, memory ops, loops)
+5. Bytecode comparison tools
+6. Regression detection
 """
 
 import subprocess
@@ -29,18 +31,21 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
-# Import package constants
-try:
-    from . import YUL2VENOM_DIR, CONFIGS_DIR, OUTPUT_DIR, DEBUG_DIR, TRANSPILE_TIMEOUT, FORGE_TEST_TIMEOUT
-except ImportError:
-    # Fallback for direct execution
-    SCRIPT_DIR = Path(__file__).parent.absolute()
-    YUL2VENOM_DIR = SCRIPT_DIR.parent
-    CONFIGS_DIR = YUL2VENOM_DIR / "configs"
-    OUTPUT_DIR = YUL2VENOM_DIR / "output"
-    DEBUG_DIR = YUL2VENOM_DIR / "debug"
-    TRANSPILE_TIMEOUT = 120
-    FORGE_TEST_TIMEOUT = 300
+# Directory constants
+SCRIPT_DIR = Path(__file__).parent.absolute()
+YUL2VENOM_DIR = SCRIPT_DIR.parent
+CONFIGS_DIR = YUL2VENOM_DIR / "configs"
+CONFIGS_BENCH_DIR = YUL2VENOM_DIR / "configs" / "bench"
+OUTPUT_DIR = YUL2VENOM_DIR / "output"
+DEBUG_DIR = YUL2VENOM_DIR / "debug"
+FOUNDRY_DIR = YUL2VENOM_DIR / "foundry"
+FOUNDRY_SRC = FOUNDRY_DIR / "src"
+FOUNDRY_SRC_BENCH = FOUNDRY_DIR / "src" / "bench"
+
+# Timeouts
+PREPARE_TIMEOUT = 60
+TRANSPILE_TIMEOUT = 120
+FORGE_TEST_TIMEOUT = 300
 
 
 @dataclass
@@ -106,21 +111,61 @@ def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[boo
         return False, "", str(e)
 
 
+def get_config_contract_mapping() -> Dict[str, Tuple[Path, Path]]:
+    """Get mapping of config files to their Solidity sources.
+    
+    Returns dict: config_path -> (solidity_path, yul_path)
+    Core configs are in configs/, bench configs are in configs/bench/
+    Core contracts are in foundry/src/, bench contracts are in foundry/src/bench/
+    """
+    mapping = {}
+    
+    # Core configs (configs/*.yul2venom.json -> foundry/src/*.sol)
+    for config in CONFIGS_DIR.glob("*.yul2venom.json"):
+        name = config.stem.replace('.yul2venom', '')
+        sol_path = FOUNDRY_SRC / f"{name}.sol"
+        yul_path = OUTPUT_DIR / f"{name}.yul"
+        if sol_path.exists():
+            mapping[str(config)] = (sol_path, yul_path)
+    
+    # Bench configs (configs/bench/*.yul2venom.json -> foundry/src/bench/*.sol)
+    if CONFIGS_BENCH_DIR.exists():
+        for config in CONFIGS_BENCH_DIR.glob("*.yul2venom.json"):
+            name = config.stem.replace('.yul2venom', '')
+            sol_path = FOUNDRY_SRC_BENCH / f"{name}.sol"
+            yul_path = OUTPUT_DIR / "bench" / f"{name}.yul"
+            if sol_path.exists():
+                mapping[str(config)] = (sol_path, yul_path)
+    
+    return mapping
+
+
+def prepare_contract(config_path: str, sol_path: Path) -> Tuple[bool, str]:
+    """Prepare a contract (compile Solidity to Yul)."""
+    cmd = ["python3.11", "yul2venom.py", "prepare", str(sol_path), "-c", config_path]
+    success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR), timeout=PREPARE_TIMEOUT)
+    
+    if not success:
+        error = stderr.strip() or stdout.strip()
+        return False, error[:200]
+    
+    return True, ""
+
+
 def transpile_contract(config_path: str, runtime_only: bool = False) -> TranspileResult:
     """Transpile a single contract and return results.
     
     Args:
         config_path: Path to the .yul2venom.json config file
-        runtime_only: If True, generate runtime-only bytecode (no init code).
-                      Default False since Forge tests need init code for deployment.
+        runtime_only: If True, generate runtime-only bytecode (for vm.etch tests)
     """
     import time
     start = time.time()
     
-    cmd = ["python3.11", "yul2venom.py", "transpile", config_path]
+    cmd = ["python3.11", "yul2venom.py", "transpile", config_path, "-O", "O2"]
     if runtime_only:
         cmd.append("--runtime-only")
-    success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR), timeout=120)
+    success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR), timeout=TRANSPILE_TIMEOUT)
     
     duration = (time.time() - start) * 1000
     
@@ -141,8 +186,15 @@ def transpile_contract(config_path: str, runtime_only: bool = False) -> Transpil
                     pass
         
         # Try to compute bytecode hash
-        config_name = Path(config_path).stem.replace('.yul2venom', '')
-        bin_path = YUL2VENOM_DIR / 'output' / f'{config_name}_opt.bin'
+        config = Path(config_path)
+        # Determine output path based on config location
+        if "bench" in str(config):
+            name = config.stem.replace('.yul2venom', '')
+            bin_path = OUTPUT_DIR / 'bench' / f'{name}_opt.bin'
+        else:
+            name = config.stem.replace('.yul2venom', '')
+            bin_path = OUTPUT_DIR / f'{name}_opt.bin'
+        
         if bin_path.exists():
             with open(bin_path, 'rb') as f:
                 result.bytecode_hash = hashlib.md5(f.read()).hexdigest()[:8]
@@ -159,6 +211,17 @@ def transpile_contract(config_path: str, runtime_only: bool = False) -> Transpil
     return result
 
 
+def check_yul_exists(config_path: str) -> bool:
+    """Check if Yul file exists for a config."""
+    try:
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+        yul_path = YUL2VENOM_DIR / config.get('yul', '')
+        return yul_path.exists()
+    except:
+        return False
+
+
 def analyze_venom(vnm_path: str) -> VenomAnalysis:
     """Analyze a Venom IR file."""
     analysis = VenomAnalysis(path=vnm_path)
@@ -169,11 +232,7 @@ def analyze_venom(vnm_path: str) -> VenomAnalysis:
     with open(vnm_path, 'r') as f:
         content = f.read()
     
-    # Count blocks (lines ending with : that aren't labels inside instructions)
-    block_pattern = re.compile(r'^  \S+:.*?;', re.MULTILINE)
-    analysis.num_blocks = len(block_pattern.findall(content))
-    
-    # Alternative: simpler block detection
+    # Count blocks (lines that look like labels)
     for line in content.split('\n'):
         stripped = line.strip()
         if stripped.endswith(':') and not stripped.startswith('%'):
@@ -198,23 +257,71 @@ def analyze_venom(vnm_path: str) -> VenomAnalysis:
     return analysis
 
 
-def transpile_all() -> List[TranspileResult]:
+def prepare_all(verbose: bool = True) -> List[Tuple[str, bool, str]]:
+    """Prepare all contracts (Solidity -> Yul)."""
+    mapping = get_config_contract_mapping()
+    
+    if verbose:
+        print(f"Found {len(mapping)} contracts to prepare")
+        print("=" * 60)
+    
+    results = []
+    
+    for config_path, (sol_path, yul_path) in sorted(mapping.items()):
+        name = Path(config_path).stem.replace('.yul2venom', '')
+        if verbose:
+            print(f"  {name:30s} ... ", end='', flush=True)
+        
+        success, error = prepare_contract(config_path, sol_path)
+        results.append((config_path, success, error))
+        
+        if verbose:
+            if success:
+                print("✓")
+            else:
+                print(f"✗ {error[:50]}")
+    
+    if verbose:
+        passed = sum(1 for _, s, _ in results if s)
+        print("=" * 60)
+        print(f"Prepared: {passed}/{len(results)}")
+    
+    return results
+
+
+def transpile_all(runtime_only: bool = False, include_bench: bool = True) -> List[TranspileResult]:
     """Transpile all contracts and return results."""
-    configs_dir = YUL2VENOM_DIR / 'configs'
-    configs = list(configs_dir.glob('*.yul2venom.json'))
+    results = []
+    
+    # Collect all configs
+    configs = list(CONFIGS_DIR.glob('*.yul2venom.json'))
+    if include_bench and CONFIGS_BENCH_DIR.exists():
+        configs.extend(CONFIGS_BENCH_DIR.glob('*.yul2venom.json'))
     
     print(f"Found {len(configs)} configs to transpile")
     print("=" * 60)
     
-    results = []
     passed = 0
     failed = 0
+    skipped = 0
     
     for config in sorted(configs):
         name = config.stem.replace('.yul2venom', '')
+        
+        # Check if Yul exists
+        if not check_yul_exists(str(config)):
+            print(f"  {name:30s} ... ✗ Yul file not found")
+            failed += 1
+            results.append(TranspileResult(
+                config_path=str(config),
+                success=False,
+                error_message="Yul file not found"
+            ))
+            continue
+        
         print(f"  {name:30s} ... ", end='', flush=True)
         
-        result = transpile_contract(str(config))
+        result = transpile_contract(str(config), runtime_only=runtime_only)
         results.append(result)
         
         if result.success:
@@ -228,9 +335,8 @@ def transpile_all() -> List[TranspileResult]:
     print(f"Results: {passed} passed, {failed} failed, {len(results)} total")
     
     # Save results
-    results_dir = YUL2VENOM_DIR / 'debug'
-    results_dir.mkdir(exist_ok=True)
-    results_path = results_dir / 'transpile_results.json'
+    DEBUG_DIR.mkdir(exist_ok=True)
+    results_path = DEBUG_DIR / 'transpile_results.json'
     with open(results_path, 'w') as f:
         json.dump([r.to_dict() for r in results], f, indent=2)
     print(f"Results saved to {results_path}")
@@ -238,27 +344,40 @@ def transpile_all() -> List[TranspileResult]:
     return results
 
 
-def run_forge_tests(test_pattern: str = "test/yul2venom/*") -> Tuple[bool, str]:
-    """Run Forge tests and return results."""
-    print("Running Forge tests...")
-    cmd = ["forge", "test", "--match-path", test_pattern, "-v"]
-    success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR.parent), timeout=300)
+def run_forge_tests(test_pattern: str = None, verbose: bool = True) -> Tuple[bool, str, int, int]:
+    """Run Forge tests and return (success, output, passed, failed)."""
+    if verbose:
+        print("Running Forge tests...")
+    
+    # Default: run both core and bench tests
+    if test_pattern is None:
+        cmd = ["forge", "test", "-v"]
+    elif test_pattern == "core":
+        cmd = ["forge", "test", "--match-path", "test/core/*", "-v"]
+    elif test_pattern == "bench":
+        cmd = ["forge", "test", "--match-path", "test/bench/*", "-v"]
+    else:
+        cmd = ["forge", "test", "--match-path", test_pattern, "-v"]
+    
+    # Run from foundry directory
+    success, stdout, stderr = run_command(cmd, cwd=str(FOUNDRY_DIR), timeout=FORGE_TEST_TIMEOUT)
     
     # Parse results
-    total = 0
     passed = 0
     failed = 0
     
-    for line in stdout.split('\n'):
+    combined = stdout + stderr
+    for line in combined.split('\n'):
         if 'passed' in line.lower() and 'failed' in line.lower():
-            match = re.search(r'(\d+)\s+passed.*?(\d+)\s+failed', line)
+            match = re.search(r'(\d+)\s+tests?\s+passed.*?(\d+)\s+failed', line)
             if match:
                 passed = int(match.group(1))
                 failed = int(match.group(2))
-                total = passed + failed
     
-    print(f"Test Results: {passed} passed, {failed} failed, {total} total")
-    return success, stdout
+    if verbose:
+        print(f"Test Results: {passed} passed, {failed} failed")
+    
+    return success, combined, passed, failed
 
 
 def compare_vnm_files(path_a: str, path_b: str):
@@ -289,70 +408,121 @@ def compare_vnm_files(path_a: str, path_b: str):
         print(f"{name:25s} {val_a:>10d} {val_b:>10d} {diff_str:>10s}")
 
 
-def full_pipeline_test():
+def full_pipeline_test(include_bench: bool = True):
     """Run the full testing pipeline."""
     print("=" * 60)
     print("YUL2VENOM FULL PIPELINE TEST")
     print(f"Timestamp: {datetime.now().isoformat()}")
     print("=" * 60)
     
-    # 1. Transpile all
-    print("\n[STEP 1] Transpiling all contracts...")
-    results = transpile_all()
+    # 1. Prepare all
+    print("\n[STEP 1] Preparing all contracts (Solidity -> Yul)...")
+    prepare_results = prepare_all()
+    prepare_pass = sum(1 for _, s, _ in prepare_results if s)
     
-    # 2. Analyze generated IR
-    print("\n[STEP 2] Analyzing generated IR...")
-    for result in results:
-        if result.success:
-            name = Path(result.config_path).stem.replace('.yul2venom', '')
-            raw_ir = YUL2VENOM_DIR / 'debug' / 'raw_ir.vnm'
-            if raw_ir.exists():
-                analysis = analyze_venom(str(raw_ir))
-                print(f"  {name}: {analysis.num_blocks} blocks, {analysis.num_phi_nodes} phis, {len(analysis.identity_ops)} identity ops")
+    # 2. Transpile all
+    print("\n[STEP 2] Transpiling all contracts (Yul -> Bytecode)...")
+    transpile_results = transpile_all(include_bench=include_bench)
+    transpile_pass = sum(1 for r in transpile_results if r.success)
     
     # 3. Run Forge tests
     print("\n[STEP 3] Running Forge tests...")
-    test_success, test_output = run_forge_tests()
+    
+    # Core tests (need full bytecode with init code)
+    print("  [3a] Core tests...")
+    core_success, core_output, core_passed, core_failed = run_forge_tests("core", verbose=False)
+    print(f"       {core_passed} passed, {core_failed} failed")
+    
+    # Bench tests (use runtime-only via vm.etch)
+    bench_passed = 0
+    bench_failed = 0
+    if include_bench:
+        # Re-transpile bench with runtime-only for vm.etch tests
+        print("  [3b] Re-transpiling bench contracts with --runtime-only...")
+        for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
+            if check_yul_exists(str(config)):
+                transpile_contract(str(config), runtime_only=True)
+        
+        print("  [3c] Bench tests...")
+        bench_success, bench_output, bench_passed, bench_failed = run_forge_tests("bench", verbose=False)
+        print(f"       {bench_passed} passed, {bench_failed} failed")
     
     # 4. Summary
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
     
-    transpile_pass = sum(1 for r in results if r.success)
-    transpile_fail = len(results) - transpile_pass
+    total_tests_passed = core_passed + bench_passed
+    total_tests_failed = core_failed + bench_failed
     
-    print(f"Transpilation: {transpile_pass}/{len(results)} passed")
-    print(f"Tests: {'PASSED' if test_success else 'FAILED'}")
+    print(f"Preparation:   {prepare_pass}/{len(prepare_results)}")
+    print(f"Transpilation: {transpile_pass}/{len(transpile_results)}")
+    print(f"Core Tests:    {core_passed}/{core_passed + core_failed}")
+    if include_bench:
+        print(f"Bench Tests:   {bench_passed}/{bench_passed + bench_failed}")
+    print(f"Total Tests:   {total_tests_passed}/{total_tests_passed + total_tests_failed}")
     
-    if transpile_fail > 0:
-        print(f"\nFailed transpilations:")
-        for r in results:
-            if not r.success:
-                name = Path(r.config_path).stem.replace('.yul2venom', '')
-                print(f"  - {name}: {r.error_message[:60]}")
+    # Show failures
+    failed_items = []
+    for _, s, e in prepare_results:
+        if not s:
+            failed_items.append(("Prepare", e))
+    for r in transpile_results:
+        if not r.success:
+            name = Path(r.config_path).stem.replace('.yul2venom', '')
+            failed_items.append(("Transpile", f"{name}: {r.error_message[:50]}"))
     
-    return transpile_pass == len(results) and test_success
+    if failed_items:
+        print(f"\nFailures ({len(failed_items)}):")
+        for category, msg in failed_items[:10]:
+            print(f"  [{category}] {msg}")
+        if len(failed_items) > 10:
+            print(f"  ... and {len(failed_items) - 10} more")
+    
+    all_passed = (
+        prepare_pass == len(prepare_results) and
+        transpile_pass == len(transpile_results) and
+        total_tests_failed == 0
+    )
+    
+    print("\n" + ("✓ ALL PASSED" if all_passed else "✗ SOME FAILURES"))
+    return all_passed
 
 
 def main():
     parser = argparse.ArgumentParser(description="Yul2Venom Test Framework")
+    parser.add_argument("--prepare-all", action="store_true", help="Prepare all contracts (Solidity -> Yul)")
     parser.add_argument("--transpile-all", action="store_true", help="Transpile all contracts")
-    parser.add_argument("--verify-all", action="store_true", help="Run all Forge tests")
+    parser.add_argument("--test-all", action="store_true", help="Run all Forge tests")
+    parser.add_argument("--test-core", action="store_true", help="Run core Forge tests only")
+    parser.add_argument("--test-bench", action="store_true", help="Run bench Forge tests only")
     parser.add_argument("--analyze", type=str, help="Analyze VNM file")
     parser.add_argument("--compare", nargs=2, metavar=('A', 'B'), help="Compare two VNM files")
     parser.add_argument("--full", action="store_true", help="Full pipeline test")
     parser.add_argument("--json", action="store_true", help="Output JSON format")
+    parser.add_argument("--runtime-only", action="store_true", help="Generate runtime-only bytecode")
+    parser.add_argument("--no-bench", action="store_true", help="Exclude bench tests")
     
     args = parser.parse_args()
     
-    if args.transpile_all:
-        results = transpile_all()
+    if args.prepare_all:
+        prepare_all()
+    
+    elif args.transpile_all:
+        results = transpile_all(runtime_only=args.runtime_only, include_bench=not args.no_bench)
         if args.json:
             print(json.dumps([r.to_dict() for r in results], indent=2))
     
-    elif args.verify_all:
-        success, output = run_forge_tests()
+    elif args.test_all:
+        success, output, passed, failed = run_forge_tests()
+        sys.exit(0 if success else 1)
+    
+    elif args.test_core:
+        success, output, passed, failed = run_forge_tests("core")
+        sys.exit(0 if success else 1)
+    
+    elif args.test_bench:
+        success, output, passed, failed = run_forge_tests("bench")
         sys.exit(0 if success else 1)
     
     elif args.analyze:
@@ -381,7 +551,7 @@ def main():
         compare_vnm_files(args.compare[0], args.compare[1])
     
     elif args.full:
-        success = full_pipeline_test()
+        success = full_pipeline_test(include_bench=not args.no_bench)
         sys.exit(0 if success else 1)
     
     else:
