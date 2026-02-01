@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "contract": "foundry/src/bench/Edge.sol",
-  "yul": "output/Edge.yul",
+  "yul": "output/bench/Edge.yul",
   "deployment": {
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0

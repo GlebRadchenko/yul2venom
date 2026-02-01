@@ -25,7 +25,7 @@ contract ControlFlowTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("output/bench/ControlFlow_opt.bin")
+            string("../output/bench/ControlFlow_opt.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

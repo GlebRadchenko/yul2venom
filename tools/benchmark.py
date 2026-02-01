@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -277,6 +278,20 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
             
             if rc != 0:
                 return CompilationResult(False, 0, f"Prepare failed: {stderr[:200]}")
+            
+            # After prepare, relocate yul to output/bench/ and update config
+            with open(config_path) as f:
+                cfg = json.load(f)
+            old_yul_path = cfg.get("yul", "")
+            if old_yul_path:
+                old_abs = PROJECT_ROOT / old_yul_path
+                new_abs = config.output_dir / Path(old_yul_path).name
+                if old_abs.exists() and old_abs != new_abs:
+                    config.output_dir.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(old_abs), str(new_abs))
+                    cfg["yul"] = str(new_abs.relative_to(PROJECT_ROOT))
+                    with open(config_path, 'w') as f:
+                        json.dump(cfg, f, indent=2)
         
         # Run transpile command with specified optimization level
         rc, stdout, stderr = run_command([
@@ -540,7 +555,7 @@ def benchmark_contract(config: BenchmarkConfig, contract: str) -> ContractResult
         
         # Gas test for transpiled bytecode
         if results.transpiled.success:
-            # Transpiled bytecode is in config.output_dir (output/bench/)
+            # yul2venom.py writes to output/bench/<Contract>_opt.bin (from config)
             bin_path = config.output_dir / f"{contract}_opt.bin"
             if bin_path.exists():
                 print(f"    Transpiled...", end=" ", flush=True)

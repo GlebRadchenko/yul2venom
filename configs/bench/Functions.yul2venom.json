@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "contract": "foundry/src/bench/Functions.sol",
-  "yul": "output/Functions.yul",
+  "yul": "output/bench/Functions.yul",
   "deployment": {
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0

@@ -25,7 +25,7 @@ contract EncodingTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("output/bench/Encoding_opt.bin")
+            string("../output/bench/Encoding_opt.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

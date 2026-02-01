@@ -10,7 +10,7 @@ import "../../src/bench/Arithmetic.sol";
  *      Supports BYTECODE_PATH env var for testing different bytecode versions.
  *
  * Usage:
- *   # Test with default path (output/bench/Arithmetic_opt.bin)
+ *   # Test with default path (../output/bench/Arithmetic_opt.bin)
  *   forge test --match-contract ArithmeticTest
  *
  *   # Test with custom bytecode path
@@ -30,7 +30,7 @@ contract ArithmeticTest is Test {
         // Check for custom bytecode path, default to transpiled output
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("output/bench/Arithmetic_opt.bin")
+            string("../output/bench/Arithmetic_opt.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {
