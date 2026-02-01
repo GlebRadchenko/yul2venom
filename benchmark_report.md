@@ -309,21 +309,21 @@
 
 | Function | Transpiled (aggressive+yul-o2) | Native (Solc ir_optimized) | Delta |
 |:---------|:----------:|:-------------:|:-----:|
-| allowance | 887 | 887 | +0.0% |
-| approve | 24234 | 24234 | +0.0% |
-| balanceOf | 580 | 580 | +0.0% |
-| burn | 2648 | 2648 | +0.0% |
-| burnFrom | 3139 | 3139 | +0.0% |
-| decimals | 2339 | 2339 | +0.0% |
-| mint | 48595 | 48595 | +0.0% |
-| mintBatch | 98182 | 98182 | +0.0% |
-| name | 2702 | 2702 | +0.0% |
-| safeTransfer | 24650 | 24650 | +0.0% |
-| safeTransferFrom | 25098 | 25098 | +0.0% |
-| symbol | 3020 | 3020 | +0.0% |
-| totalSupply | 289 | 289 | +0.0% |
-| transfer | 24804 | 24804 | +0.0% |
-| transferFrom | 24966 | 24966 | +0.0% |
+| allowance | 392 | 887 | -55.8% |
+| approve | 24223 | 24234 | -0.0% |
+| balanceOf | 310 | 580 | -46.6% |
+| burn | 2425 | 2648 | -8.4% |
+| burnFrom | 2803 | 3139 | -10.7% |
+| decimals | 2259 | 2339 | -3.4% |
+| mint | 48391 | 48595 | -0.4% |
+| mintBatch | 97462 | 98182 | -0.7% |
+| name | 2585 | 2702 | -4.3% |
+| safeTransfer | 24467 | 24650 | -0.7% |
+| safeTransferFrom | 24837 | 25098 | -1.0% |
+| symbol | 2604 | 3020 | -13.8% |
+| totalSupply | 253 | 289 | -12.5% |
+| transfer | 24423 | 24804 | -1.5% |
+| transferFrom | 24834 | 24966 | -0.5% |
 
 ### TransientStorage
 

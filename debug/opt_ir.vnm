@@ -1,951 +1,2434 @@
 function __main_entry {
-  1___main_entry:  ; OUT=[31_fallback, 32_bucket_1, 33_bucket_2, 34_bucket_3, 35_bucket_4, 36_bucket_5, 37_bucket_6, 31_fallback, 31_fallback, 38_bucket_9, 39_bucket_10, 31_fallback, 40_bucket_12, 41_bucket_13, 42_bucket_14, 43_bucket_15, 31_fallback, 31_fallback, 44_bucket_18, 45_bucket_19, 31_fallback, 46_bucket_21, 31_fallback, 31_fallback, 31_fallback, 31_fallback, 31_fallback, 47_bucket_27, 48_bucket_28]
-      %242 = 256
-      %243 = 64
-      mstore %243, %242
-      %249 = 2
-      %246 = 29
-      %244 = 0
-      %1 = calldataload %244
-      %245 = 224
-      %2 = shr %245, %1
-      %247 = %2
-      %3 = mod %247, %246
-      %248 = 1
-      %4 = shl %248, %3
-      %5 = add @49_selector_buckets, %4
-      %250 = 30
-      codecopy %250, %5, %249
-      %251 = 0
-      %6 = mload %251
-      djmp %6, @31_fallback, @32_bucket_1, @33_bucket_2, @34_bucket_3, @35_bucket_4, @36_bucket_5, @37_bucket_6, @31_fallback, @31_fallback, @38_bucket_9, @39_bucket_10, @31_fallback, @40_bucket_12, @41_bucket_13, @42_bucket_14, @43_bucket_15, @31_fallback, @31_fallback, @44_bucket_18, @45_bucket_19, @31_fallback, @46_bucket_21, @31_fallback, @31_fallback, @31_fallback, @31_fallback, @31_fallback, @47_bucket_27, @48_bucket_28
+  1___main_entry:  ; OUT=[22_fallback, 23_bucket_1, 22_fallback, 22_fallback, 22_fallback, 24_bucket_5, 22_fallback, 25_bucket_7, 26_bucket_8, 27_bucket_9, 22_fallback, 28_bucket_11, 29_bucket_12, 22_fallback, 22_fallback, 30_bucket_15, 22_fallback, 31_bucket_17, 32_bucket_18, 33_bucket_19]
+      %653 = 256
+      %654 = 64
+      mstore %654, %653
+      %660 = 2
+      %657 = 20
+      %655 = 0
+      %1 = calldataload %655
+      %656 = 224
+      %2 = shr %656, %1
+      %658 = %2
+      %3 = mod %658, %657
+      %659 = 1
+      %4 = shl %659, %3
+      %5 = add @34_selector_buckets, %4
+      %661 = 30
+      codecopy %661, %5, %660
+      %662 = 0
+      %6 = mload %662
+      djmp %6, @22_fallback, @23_bucket_1, @22_fallback, @22_fallback, @22_fallback, @24_bucket_5, @22_fallback, @25_bucket_7, @26_bucket_8, @27_bucket_9, @22_fallback, @28_bucket_11, @29_bucket_12, @22_fallback, @22_fallback, @30_bucket_15, @22_fallback, @31_bucket_17, @32_bucket_18, @33_bucket_19
     ; (__main_entry)
 
 
-  47_bucket_27:  ; OUT=[50_bucket_27_check, 3_case]
-      %252 = %2
-      %253 = 0x625faae
-      %8 = xor %253, %252
-      jnz %8, @50_bucket_27_check, @3_case
+  33_bucket_19:  ; OUT=[35_bucket_19_check, 3_case]
+      %663 = %2
+      %664 = 0x6fdde03
+      %8 = xor %664, %663
+      jnz %8, @35_bucket_19_check, @3_case
     ; (__main_entry)
 
 
-  50_bucket_27_check:  ; OUT=[]
-      %254 = %2
-      %255 = 0xc5f506ab
-      %9 = xor %255, %254
-      %216 = iszero %9
-      assert %216
-      %256 = 64
-      %163 = mload %256
-      %257 = shl 255, 1
-      %258 = %163
-      mstore %258, %257
-      %259 = 32
-      %260 = %163
-      return %260, %259
+  35_bucket_19_check:  ; OUT=[60_end_if, 59_then]
+      %665 = %2
+      %666 = 0x95ea7b3
+      %9 = xor %666, %665
+      %608 = iszero %9
+      assert %608
+      %668 = 36
+      %101 = calldataload %668
+      %672 = %101
+      %106 = not %672
+      %107 = iszero %106
+      %667 = 4
+      %99 = calldataload %667
+      %669 = %99
+      %670 = 0xffffffffffffffffffffffffffffffffffffffff
+      %104 = and %670, %669
+      %671 = 0x22d473030f116ddee9f6b43ac78ba3
+      %105 = xor %671, %104
+      %108 = or %105, %107
+      jnz %108, @60_end_if, @59_then
     ; (__main_entry)
 
 
-  43_bucket_15:  ; OUT=[51_bucket_15_check, 4_case]
-      %261 = %2
-      %262 = 0x98d3228
-      %11 = xor %262, %261
-      jnz %11, @51_bucket_15_check, @4_case
+  24_bucket_5:  ; OUT=[36_bucket_5_check, 5_case]
+      %673 = %2
+      %674 = 0x18160ddd
+      %11 = xor %674, %673
+      jnz %11, @36_bucket_5_check, @5_case
     ; (__main_entry)
 
 
-  51_bucket_15_check:  ; OUT=[]
-      %263 = %2
-      %264 = 0xf8c2ccba
-      %12 = xor %264, %263
-      %217 = iszero %12
-      assert %217
-      %265 = 64
-      %207 = mload %265
-      %266 = 4
-      %208 = calldataload %266
-      %215 = not %208
-      %210 = iszero %215
-      %267 = %207
-      mstore %267, %210
-      %268 = 32
-      %269 = %207
-      return %269, %268
+  36_bucket_5_check:  ; OUT=[36_bucket_5_check_split_143_end_if, 142_then]
+      %675 = %2
+      %676 = 0x95d89b41
+      %12 = xor %676, %675
+      %609 = iszero %12
+      assert %609
+      %677 = 64
+      %419 = mload %677
+      %678 = 1
+      %420 = sload %678
+      %679 = %420
+      %680 = 1
+      %421 = shr %680, %679
+      %425 = %421
+      %681 = %420
+      %682 = 1
+      %422 = and %682, %681
+      %683 = %422
+      jnz %683, @36_bucket_5_check_split_143_end_if, @142_then
     ; (__main_entry)
 
 
-  48_bucket_28:  ; OUT=[52_bucket_28_check, 5_case]
-      %270 = %2
-      %271 = 0x1509e91a
-      %14 = xor %271, %270
-      jnz %14, @52_bucket_28_check, @5_case
+  27_bucket_9:  ; OUT=[37_bucket_9_check, 6_case]
+      %684 = %2
+      %685 = 0x23b872dd
+      %14 = xor %685, %684
+      jnz %14, @37_bucket_9_check, @6_case
     ; (__main_entry)
 
 
-  52_bucket_28_check:  ; OUT=[]
-      %272 = %2
-      %273 = 0xc9940342
-      %15 = xor %273, %272
-      %218 = iszero %15
-      assert %218
-      %165 = calldatasize
-      %274 = not 3
-      %167 = add %274, %165
-      %275 = 64
-      %168 = sgt %275, %167
-      %169 = iszero %168
-      assert %169
-      %278 = 64
-      %174 = mload %278
-      %276 = 4
-      %170 = calldataload %276
-      %277 = 36
-      %171 = calldataload %277
-      %175 = gt %171, %170
-      %279 = %174
-      mstore %279, %175
-      %280 = 32
-      %281 = %174
-      return %281, %280
+  37_bucket_9_check:  ; OUT=[123_inline_cleanup_require_helper_stringliteral_17d9, 124_then]
+      %686 = %2
+      %687 = 0x7c88e3d9
+      %15 = xor %687, %686
+      %610 = iszero %15
+      assert %610
+      %335 = calldatasize
+      %692 = %335
+      %688 = 4
+      %333 = calldataload %688
+      %689 = 4
+      %334 = add %689, %333
+      %690 = %334
+      %691 = 31
+      %336 = add %691, %690
+      %337 = slt %336, %692
+      assert %337
+      %694 = %334
+      %695 = 32
+      %339 = add %695, %694
+      %700 = %335
+      %693 = %334
+      %338 = calldataload %693
+      %696 = %338
+      %697 = 5
+      %340 = shl %697, %696
+      %698 = %334
+      %341 = add %698, %340
+      %699 = 32
+      %342 = add %699, %341
+      %343 = gt %342, %700
+      %344 = iszero %343
+      assert %344
+      %349 = calldatasize
+      %705 = %349
+      %701 = 36
+      %347 = calldataload %701
+      %702 = 4
+      %348 = add %702, %347
+      %703 = %348
+      %704 = 31
+      %350 = add %704, %703
+      %351 = slt %350, %705
+      assert %351
+      %707 = %348
+      %708 = 32
+      %353 = add %708, %707
+      %713 = %349
+      %706 = %348
+      %352 = calldataload %706
+      %709 = %352
+      %710 = 5
+      %354 = shl %710, %709
+      %711 = %348
+      %355 = add %711, %354
+      %712 = 32
+      %356 = add %712, %355
+      %357 = gt %356, %713
+      %358 = iszero %357
+      assert %358
+      %714 = 2
+      %362 = sload %714
+      %715 = 8
+      %363 = shr %715, %362
+      %716 = 0xffffffffffffffffffffffffffffffffffffffff
+      %366 = and %716, %363
+      %361 = caller
+      %607 = xor %361, %366
+      %619 = iszero %607
+      jnz %619, @123_inline_cleanup_require_helper_stringliteral_17d9, @124_then
+    ; 37_bucket_9_check
     ; (__main_entry)
 
 
-  36_bucket_5:  ; OUT=[53_bucket_5_check, 6_case]
-      %282 = %2
-      %283 = 0x250cf21e
-      %17 = xor %283, %282
-      jnz %17, @53_bucket_5_check, @6_case
+  28_bucket_11:  ; OUT=[38_bucket_11_check, 7_case]
+      %717 = %2
+      %718 = 0x313ce567
+      %17 = xor %718, %717
+      jnz %17, @38_bucket_11_check, @7_case
     ; (__main_entry)
 
 
-  53_bucket_5_check:  ; OUT=[54_bucket_5_check, 10_case]
-      %284 = %2
-      %285 = 0x4f4f220d
-      %18 = xor %285, %284
-      jnz %18, @54_bucket_5_check, @10_case
+  38_bucket_11_check:  ; OUT=[94_end_if, 93_then]
+      %719 = %2
+      %720 = 0x423f6cef
+      %18 = xor %720, %719
+      %611 = iszero %18
+      assert %611
+      %721 = 4
+      %240 = calldataload %721
+      %242 = caller
+      %723 = %242
+      %724 = 96
+      %244 = shl %724, %723
+      %725 = 0x87a211a2
+      %245 = or %725, %244
+      %726 = 12
+      mstore %726, %245
+      %727 = 32
+      %728 = 12
+      %246 = sha3 %728, %727
+      %729 = %246
+      %247 = sload %729
+      %730 = %247
+      %722 = 36
+      %243 = calldataload %722
+      %731 = %243
+      %248 = gt %731, %730
+      %620 = iszero %248
+      jnz %620, @94_end_if, @93_then
     ; (__main_entry)
 
 
-  54_bucket_5_check:  ; OUT=[]
-      %286 = %2
-      %287 = 0xf4aee8ab
-      %19 = xor %287, %286
-      %219 = iszero %19
-      assert %219
-      %288 = 64
-      %204 = mload %288
-      %289 = not 0x7fffffffffffffffffffffffffffffff
-      %290 = %204
-      mstore %290, %289
-      %293 = 0x7fffffffffffffffffffffffffffffff
-      %291 = %204
-      %292 = 32
-      %206 = add %292, %291
-      mstore %206, %293
-      %294 = 64
-      %295 = %204
-      return %295, %294
+  31_bucket_17:  ; OUT=[39_bucket_17_check, 8_case]
+      %732 = %2
+      %733 = 0x3644e515
+      %20 = xor %733, %732
+      jnz %20, @39_bucket_17_check, @8_case
     ; (__main_entry)
 
 
-  34_bucket_3:  ; OUT=[55_bucket_3_check, 7_case]
-      %296 = %2
-      %297 = 0x31351785
-      %21 = xor %297, %296
-      jnz %21, @55_bucket_3_check, @7_case
+  39_bucket_17_check:  ; OUT=[85_inline_cleanup_require_helper_stringliteral_17d9, 86_then]
+      %734 = %2
+      %735 = 0x40c10f19
+      %21 = xor %735, %734
+      %612 = iszero %21
+      assert %612
+      %736 = 4
+      %216 = calldataload %736
+      %737 = 2
+      %219 = sload %737
+      %738 = 8
+      %220 = shr %738, %219
+      %739 = 0xffffffffffffffffffffffffffffffffffffffff
+      %223 = and %739, %220
+      %218 = caller
+      %606 = xor %218, %223
+      %621 = iszero %606
+      jnz %621, @85_inline_cleanup_require_helper_stringliteral_17d9, @86_then
     ; (__main_entry)
 
 
-  55_bucket_3_check:  ; OUT=[]
-      %298 = %2
-      %299 = 0xe5b5019a
-      %22 = xor %299, %298
-      %220 = iszero %22
-      assert %220
-      %300 = 64
-      %176 = mload %300
-      %301 = not 0
-      %302 = %176
-      mstore %302, %301
-      %303 = 32
-      %304 = %176
-      return %304, %303
+  32_bucket_18:  ; OUT=[40_bucket_18_check, 11_case]
+      %740 = %2
+      %741 = 0x42842e0e
+      %23 = xor %741, %740
+      jnz %23, @40_bucket_18_check, @11_case
     ; (__main_entry)
 
 
-  37_bucket_6:  ; OUT=[37_bucket_6_split_63_end_if, 62_then]
-      %305 = %2
-      %306 = 0x35f1085f
-      %24 = xor %306, %305
-      %221 = iszero %24
-      assert %221
-      %307 = 4
-      %67 = calldataload %307
-      %308 = 255
-      %68 = and %308, %67
-      %309 = %68
-      %69 = iszero %309
-      %310 = %69
-      %70 = iszero %310
-      %73 = %70
-      %311 = %69
-      jnz %311, @37_bucket_6_split_63_end_if, @62_then
+  40_bucket_18_check:  ; OUT=[185_end_if, 184_then]
+      %742 = %2
+      %743 = 0xdd62ed3e
+      %24 = xor %743, %742
+      %613 = iszero %24
+      assert %613
+      %744 = 4
+      %591 = calldataload %744
+      %745 = 36
+      %593 = calldataload %745
+      %746 = %593
+      %747 = 0xffffffffffffffffffffffffffffffffffffffff
+      %597 = and %747, %746
+      %748 = 0x22d473030f116ddee9f6b43ac78ba3
+      %646 = xor %748, %597
+      jnz %646, @185_end_if, @184_then
     ; (__main_entry)
 
 
-  44_bucket_18:  ; OUT=[]
-      %312 = %2
-      %313 = 0x47398011
-      %26 = xor %313, %312
-      %222 = iszero %26
-      assert %222
-      %314 = 64
-      %93 = mload %314
-      %315 = 0
-      %316 = %93
-      mstore %316, %315
-      %319 = 255
-      %317 = %93
-      %318 = 32
-      %94 = add %318, %317
-      mstore %94, %319
-      %320 = 64
-      %321 = %93
-      return %321, %320
+  26_bucket_8:  ; OUT=[108_end_if, 107_then]
+      %749 = %2
+      %750 = 0x42966c68
+      %26 = xor %750, %749
+      %614 = iszero %26
+      assert %614
+      %752 = 0x87a211a2
+      %753 = 12
+      mstore %753, %752
+      %295 = caller
+      %754 = %295
+      %755 = 0
+      mstore %755, %754
+      %756 = 32
+      %757 = 12
+      %297 = sha3 %757, %756
+      %758 = %297
+      %298 = sload %758
+      %759 = %298
+      %751 = 4
+      %296 = calldataload %751
+      %760 = %296
+      %299 = gt %760, %759
+      %623 = iszero %299
+      jnz %623, @108_end_if, @107_then
     ; (__main_entry)
 
 
-  42_bucket_14:  ; OUT=[]
-      %322 = %2
-      %323 = 0x52631aea
-      %28 = xor %323, %322
-      %223 = iszero %28
-      assert %223
-      %324 = 64
-      %97 = mload %324
-      %325 = 0xffffffffffffffffffffffffffffffff
-      %326 = %97
-      mstore %326, %325
-      %327 = 32
-      %328 = %97
-      return %328, %327
+  23_bucket_1:  ; OUT=[]
+      %761 = %2
+      %762 = 0x70a08231
+      %28 = xor %762, %761
+      %615 = iszero %28
+      assert %615
+      %764 = 0x87a211a2
+      %765 = 12
+      mstore %765, %764
+      %763 = 4
+      %306 = calldataload %763
+      %766 = 0
+      mstore %766, %306
+      %767 = 32
+      %768 = 12
+      %308 = sha3 %768, %767
+      %769 = 64
+      %310 = mload %769
+      %309 = sload %308
+      %770 = %310
+      mstore %770, %309
+      %771 = 32
+      %772 = %310
+      return %772, %771
     ; (__main_entry)
 
 
-  41_bucket_13:  ; OUT=[56_bucket_13_check, 12_case]
-      %329 = %2
-      %330 = 0x59f1a071
-      %30 = xor %330, %329
-      jnz %30, @56_bucket_13_check, @12_case
+  29_bucket_12:  ; OUT=[41_bucket_12_check, 14_case]
+      %773 = %2
+      %774 = 0x79cc6790
+      %30 = xor %774, %773
+      jnz %30, @41_bucket_12_check, @14_case
     ; (__main_entry)
 
 
-  56_bucket_13_check:  ; OUT=[57_bucket_13_check, 25_case]
-      %331 = %2
-      %332 = 0xe6cb9013
-      %31 = xor %332, %331
-      jnz %31, @57_bucket_13_check, @25_case
+  41_bucket_12_check:  ; OUT=[]
+      %775 = %2
+      %776 = 0x7ecebe00
+      %31 = xor %776, %775
+      %616 = iszero %31
+      assert %616
+      %778 = 0x38377508
+      %779 = 12
+      mstore %779, %778
+      %777 = 4
+      %408 = calldataload %777
+      %780 = 0
+      mstore %780, %408
+      %781 = 32
+      %782 = 12
+      %410 = sha3 %782, %781
+      %783 = 64
+      %412 = mload %783
+      %411 = sload %410
+      %784 = %412
+      mstore %784, %411
+      %785 = 32
+      %786 = %412
+      return %786, %785
     ; (__main_entry)
 
 
-  57_bucket_13_check:  ; OUT=[]
-      %333 = %2
-      %334 = 0xf189e25a
-      %32 = xor %334, %333
-      %224 = iszero %32
-      assert %224
-      %335 = 64
-      %201 = mload %335
-      %336 = not 127
-      %337 = %201
-      mstore %337, %336
-      %340 = 127
-      %338 = %201
-      %339 = 32
-      %203 = add %339, %338
-      mstore %203, %340
-      %341 = 64
-      %342 = %201
-      return %342, %341
+  30_bucket_15:  ; OUT=[]
+      %787 = %2
+      %788 = 0x8da5cb5b
+      %33 = xor %788, %787
+      %617 = iszero %33
+      assert %617
+      %792 = 64
+      %418 = mload %792
+      %789 = 2
+      %413 = sload %789
+      %790 = 8
+      %414 = shr %790, %413
+      %791 = 0xffffffffffffffffffffffffffffffffffffffff
+      %417 = and %791, %414
+      %793 = %418
+      mstore %793, %417
+      %794 = 32
+      %795 = %418
+      return %795, %794
     ; (__main_entry)
 
 
-  32_bucket_1:  ; OUT=[72_end_if, 71_then]
-      %343 = %2
-      %344 = 0x6763b692
-      %34 = xor %344, %343
-      %225 = iszero %34
-      assert %225
-      %345 = 4
-      %100 = calldataload %345
-      %346 = %100
-      %347 = 256
-      %101 = gt %347, %346
-      jnz %101, @72_end_if, @71_then
+  25_bucket_7:  ; OUT=[42_bucket_7_check, 19_case]
+      %796 = %2
+      %797 = 0xa9059cbb
+      %35 = xor %797, %796
+      jnz %35, @42_bucket_7_check, @19_case
     ; (__main_entry)
 
 
-  33_bucket_2:  ; OUT=[58_bucket_2_check, 14_case]
-      %348 = %2
-      %349 = 0x687db44c
-      %36 = xor %349, %348
-      jnz %36, @58_bucket_2_check, @14_case
+  42_bucket_7_check:  ; OUT=[162_end_if, 161_then]
+      %798 = %2
+      %799 = 0xd505accf
+      %36 = xor %799, %798
+      %618 = iszero %36
+      assert %618
+      %800 = 4
+      %495 = calldataload %800
+      %803 = 100
+      %500 = calldataload %803
+      %804 = 132
+      %501 = calldataload %804
+      %802 = 68
+      %499 = calldataload %802
+      %808 = %499
+      %506 = not %808
+      %507 = iszero %506
+      %801 = 36
+      %497 = calldataload %801
+      %805 = 0xffffffffffffffffffffffffffffffffffffffff
+      %504 = and %805, %497
+      %806 = %504
+      %807 = 0x22d473030f116ddee9f6b43ac78ba3
+      %505 = xor %807, %806
+      %508 = or %505, %507
+      jnz %508, @162_end_if, @161_then
     ; (__main_entry)
 
 
-  58_bucket_2_check:  ; OUT=[]
-      %350 = %2
-      %351 = 0x9a02ea65
-      %37 = xor %351, %350
-      %226 = iszero %37
-      assert %226
-      %128 = calldatasize
-      %352 = not 3
-      %130 = add %352, %128
-      %353 = 64
-      %131 = sgt %353, %130
-      %132 = iszero %131
-      assert %132
-      %356 = 64
-      %137 = mload %356
-      %355 = 36
-      %134 = calldataload %355
-      %138 = not %134
-      %354 = 4
-      %133 = calldataload %354
-      %139 = gt %133, %138
-      %357 = %137
-      mstore %357, %139
-      %358 = 32
-      %359 = %137
-      return %359, %358
+  22_fallback:  ; OUT=[]
+      %809 = 0
+      %810 = 0
+      revert %810, %809
     ; (__main_entry)
 
 
-  35_bucket_4:  ; OUT=[]
-      %360 = %2
-      %361 = 0x6b9241fc
-      %39 = xor %361, %360
-      %227 = iszero %39
-      assert %227
-      %362 = 64
-      %120 = mload %362
-      %363 = shl 224, 0x1ffc9a7
-      %364 = %120
-      mstore %364, %363
-      %365 = 32
-      %366 = %120
-      return %366, %365
+  3_case:  ; OUT=[3_case_split_45_end_if, 44_then]
+      %811 = 64
+      %37 = mload %811
+      %812 = 0
+      %38 = sload %812
+      %813 = %38
+      %814 = 1
+      %39 = shr %814, %813
+      %43 = %39
+      %815 = %38
+      %816 = 1
+      %40 = and %816, %815
+      %817 = %40
+      jnz %817, @3_case_split_45_end_if, @44_then
     ; (__main_entry)
 
 
-  39_bucket_10:  ; OUT=[59_bucket_10_check, 16_case]
-      %367 = %2
-      %368 = 0x7b602edf
-      %41 = xor %368, %367
-      jnz %41, @59_bucket_10_check, @16_case
+  44_then:  ; OUT=[45_end_if]
+      %818 = %39
+      %819 = 127
+      %42 = and %819, %818
+      %44 = %42
+      jmp @45_end_if
     ; (__main_entry)
 
 
-  59_bucket_10_check:  ; OUT=[]
-      %369 = %2
-      %370 = 0xeb967ec2
-      %42 = xor %370, %369
-      %228 = iszero %42
-      assert %228
-      %371 = 64
-      %198 = mload %371
-      %372 = not 0x7fffffffffffffff
-      %373 = %198
-      mstore %373, %372
-      %376 = 0x7fffffffffffffff
-      %374 = %198
-      %375 = 32
-      %200 = add %375, %374
-      mstore %200, %376
-      %377 = 64
-      %378 = %198
-      return %378, %377
+  45_end_if:  ; OUT=[47_end_if, 46_then]
+      %45 = phi @3_case_split_45_end_if, %43, @44_then, %44
+      %820 = %45
+      %821 = 32
+      %46 = gt %821, %820
+      %822 = %40
+      %647 = xor %822, %46
+      jnz %647, @47_end_if, @46_then
     ; (__main_entry)
 
 
-  45_bucket_19:  ; OUT=[]
-      %379 = %2
-      %380 = 0x97b3805f
-      %44 = xor %380, %379
-      %229 = iszero %44
-      assert %229
-      %381 = 64
-      %126 = mload %381
-      %382 = 0
-      %383 = %126
-      mstore %383, %382
-      %386 = 0xffff
-      %384 = %126
-      %385 = 32
-      %127 = add %385, %384
-      mstore %127, %386
-      %387 = 64
-      %388 = %126
-      return %388, %387
+  46_then:  ; OUT=[]
+      %823 = shl 224, 0x4e487b71
+      %824 = 0
+      mstore %824, %823
+      %825 = 34
+      %826 = 4
+      mstore %826, %825
+      %827 = 36
+      %828 = 0
+      revert %828, %827
     ; (__main_entry)
 
 
-  38_bucket_9:  ; OUT=[]
-      %389 = %2
-      %390 = 0x9a295e73
-      %46 = xor %390, %389
-      %230 = iszero %46
-      assert %230
-      %391 = 64
-      %140 = mload %391
-      %392 = not 0
-      %393 = %140
-      mstore %393, %392
-      %396 = shl 255, 1
-      %394 = %140
-      %395 = 32
-      %142 = add %395, %394
-      mstore %142, %396
-      %399 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-      %397 = %140
-      %398 = 64
-      %144 = add %398, %397
-      mstore %144, %399
-      %402 = 0xffffffffffffffffffffffffffffffff
-      %400 = %140
-      %401 = 96
-      %147 = add %401, %400
-      mstore %147, %402
-      %403 = 128
-      %404 = %140
-      return %404, %403
+  47_end_if:  ; OUT=[52_case_check, 49_case]
+      %829 = %45
+      %830 = %37
+      mstore %830, %829
+      %831 = %40
+      jnz %831, @52_case_check, @49_case
     ; (__main_entry)
 
 
-  40_bucket_12:  ; OUT=[60_bucket_12_check, 20_case]
-      %405 = %2
-      %406 = 0x9c250177
-      %48 = xor %406, %405
-      jnz %48, @60_bucket_12_check, @20_case
+  52_case_check:  ; OUT=[50_case, 51_fallback]
+      %832 = %40
+      %833 = 1
+      %50 = xor %833, %832
+      %625 = iszero %50
+      jnz %625, @50_case, @51_fallback
     ; (__main_entry)
 
 
-  60_bucket_12_check:  ; OUT=[]
-      %407 = %2
-      %408 = 0xf9788ec3
-      %49 = xor %408, %407
-      %231 = iszero %49
-      assert %231
-      %409 = 64
-      %211 = mload %409
-      %410 = 4
-      %212 = calldataload %410
-      %411 = shl 128, 1
-      %213 = gt %411, %212
-      %412 = %211
-      mstore %412, %213
-      %413 = 32
-      %414 = %211
-      return %414, %413
+  51_fallback:  ; OUT=[48_switch_end]
+      %77 = 0
+      jmp @48_switch_end
     ; (__main_entry)
 
 
-  46_bucket_21:  ; OUT=[46_bucket_21_split_80_end_if, 79_then]
-      %415 = %2
-      %416 = 0xbef75fb2
-      %51 = xor %416, %415
-      %232 = iszero %51
-      assert %232
-      %417 = 4
-      %151 = calldataload %417
-      %418 = %151
-      %419 = not 0x7fffffffffffffff
-      %153 = sgt %419, %418
-      %420 = %153
-      %154 = iszero %420
-      %157 = %154
-      %421 = %153
-      jnz %421, @46_bucket_21_split_80_end_if, @79_then
+  49_case:  ; OUT=[48_switch_end]
+      %836 = %38
+      %837 = not 255
+      %53 = and %837, %836
+      %834 = %37
+      %835 = 32
+      %51 = add %835, %834
+      mstore %51, %53
+      %838 = %45
+      %54 = iszero %838
+      %55 = iszero %54
+      %839 = 5
+      %56 = shl %839, %55
+      %840 = %37
+      %57 = add %840, %56
+      %841 = 32
+      %58 = add %841, %57
+      %75 = %58
+      jmp @48_switch_end
     ; (__main_entry)
 
 
-  31_fallback:  ; OUT=[]
-      %422 = 0
-      %423 = 0
-      revert %423, %422
+  50_case:  ; OUT=[53_blk_loop_start]
+      %62 = 0
+      %842 = 0
+      %843 = 0
+      mstore %843, %842
+      %844 = 32
+      %845 = 0
+      %59 = sha3 %845, %844
+      %60 = %59
+      jmp @53_blk_loop_start
     ; (__main_entry)
 
 
-  3_case:  ; OUT=[]
-      %424 = shl 255, 1
-      %425 = 256
-      mstore %425, %424
-      %426 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-      %427 = 288
-      mstore %427, %426
-      %428 = 64
-      %429 = 256
-      return %429, %428
+  53_blk_loop_start:  ; OUT=[54_blk_loop_body, 56_blk_loop_end]
+      %61:1 = phi @50_case, %60, @54_blk_loop_body, %71
+      %63:1 = phi @50_case, %62, @54_blk_loop_body, %72
+      %847 = %63:1
+      %846 = %45
+      %64 = gt %846, %847
+      jnz %64, @54_blk_loop_body, @56_blk_loop_end
     ; (__main_entry)
 
 
-  4_case:  ; OUT=[]
-      %430 = 64
-      %56 = mload %430
-      %431 = 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-      %432 = %56
-      mstore %432, %431
-      %433 = 32
-      %434 = %56
-      return %434, %433
+  54_blk_loop_body:  ; OUT=[53_blk_loop_start]
+      %851 = %61:1
+      %68 = sload %851
+      %848 = %63:1
+      %849 = %37
+      %66 = add %849, %848
+      %850 = 32
+      %67 = add %850, %66
+      mstore %67, %68
+      %854 = %63:1
+      %855 = 32
+      %70 = add %855, %854
+      %72 = %70
+      %852 = %61:1
+      %853 = 1
+      %69 = add %853, %852
+      %71 = %69
+      jmp @53_blk_loop_start
+    ; (__main_entry)
+
+
+  56_blk_loop_end:  ; OUT=[48_switch_end]
+      %856 = %63:1
+      %857 = %37
+      %73 = add %857, %856
+      %858 = 32
+      %74 = add %858, %73
+      %76 = %74
+      jmp @48_switch_end
+    ; (__main_entry)
+
+
+  48_switch_end:  ; OUT=[]
+      %78 = phi @49_case, %75, @56_blk_loop_end, %76, @51_fallback, %77
+      %859 = %37
+      %79 = sub %78, %859
+      %860 = 31
+      %80 = add %860, %79
+      %861 = not 31
+      %82 = and %861, %80
+      %862 = %37
+      %83 = add %862, %82
+      %863 = 64
+      mstore %863, %83
+      %864 = 64
+      %85 = mload %864
+      %865 = 32
+      %866 = %85
+      mstore %866, %865
+      %867 = %37
+      %86 = mload %867
+      %870 = %86
+      %868 = %85
+      %869 = 32
+      %87 = add %869, %868
+      mstore %87, %870
+      %875 = %86
+      %873 = %37
+      %874 = 32
+      %89 = add %874, %873
+      %871 = %85
+      %872 = 64
+      %88 = add %872, %871
+      mcopy %88, %89, %875
+      %879 = 0
+      %876 = %86
+      %877 = %85
+      %90 = add %877, %876
+      %878 = 64
+      %91 = add %878, %90
+      mstore %91, %879
+      %885 = %85
+      %880 = %86
+      %881 = 31
+      %92 = add %881, %880
+      %882 = not 31
+      %94 = and %882, %92
+      %883 = %85
+      %95 = add %883, %94
+      %884 = 64
+      %96 = add %884, %95
+      %98 = sub %96, %885
+      %886 = %85
+      return %886, %98
+    ; 48_switch_end
+    ; (__main_entry)
+
+
+  59_then:  ; OUT=[]
+      %887 = 0x3f68539a
+      %888 = 0
+      mstore %888, %887
+      %889 = 4
+      %890 = 28
+      revert %890, %889
+    ; (__main_entry)
+
+
+  60_end_if:  ; OUT=[]
+      %899 = %101
+      %891 = %99
+      %892 = 32
+      mstore %892, %891
+      %893 = 0x7f5e9f20
+      %894 = 12
+      mstore %894, %893
+      %110 = caller
+      %895 = %110
+      %896 = 0
+      mstore %896, %895
+      %897 = 52
+      %898 = 12
+      %111 = sha3 %898, %897
+      sstore %111, %899
+      %900 = %101
+      %901 = 0
+      mstore %901, %900
+      %902 = 44
+      %113 = mload %902
+      %903 = 96
+      %114 = shr %903, %113
+      %904 = %110
+      %905 = 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925
+      %906 = 32
+      %907 = 0
+      log3 %907, %906, %905, %904, %114
+      %908 = 64
+      %115 = mload %908
+      %909 = 1
+      %910 = %115
+      mstore %910, %909
+      %911 = 32
+      %912 = %115
+      return %912, %911
+    ; 60_end_if
     ; (__main_entry)
 
 
   5_case:  ; OUT=[]
-      %435 = 64
-      %59 = mload %435
-      %436 = 0
-      %437 = %59
-      mstore %437, %436
-      %440 = 0xffffffff
-      %438 = %59
-      %439 = 32
-      %60 = add %439, %438
-      mstore %60, %440
-      %441 = 64
-      %442 = %59
-      return %442, %441
+      %914 = 64
+      %117 = mload %914
+      %913 = 0x5345cdf77eb68f44c
+      %116 = sload %913
+      %915 = %117
+      mstore %915, %116
+      %916 = 32
+      %917 = %117
+      return %917, %916
     ; (__main_entry)
 
 
-  6_case:  ; OUT=[]
-      %443 = 64
-      %61 = mload %443
-      %444 = not 0x7fff
-      %445 = %61
-      mstore %445, %444
-      %448 = 0x7fff
-      %446 = %61
-      %447 = 32
-      %63 = add %447, %446
-      mstore %63, %448
-      %449 = 64
-      %450 = %61
-      return %450, %449
+  6_case:  ; OUT=[62_then, 6_case_split_63_end_if]
+      %118 = calldatasize
+      %918 = not 3
+      %120 = add %918, %118
+      %919 = 96
+      %121 = sgt %919, %120
+      %122 = iszero %121
+      assert %122
+      %921 = 36
+      %124 = calldataload %921
+      %922 = 68
+      %125 = calldataload %922
+      %920 = 4
+      %123 = calldataload %920
+      %923 = %123
+      %924 = 96
+      %129 = shl %924, %923
+      %130 = caller
+      %925 = 0x22d473030f116ddee9f6b43ac78ba3
+      %131 = xor %925, %130
+      jnz %131, @62_then, @6_case_split_63_end_if
     ; (__main_entry)
 
 
-  7_case:  ; OUT=[]
-      %451 = 64
-      %64 = mload %451
-      %452 = 0
-      %453 = %64
-      mstore %453, %452
-      %456 = not 0
-      %454 = %64
-      %455 = 32
-      %65 = add %455, %454
-      mstore %65, %456
-      %457 = 64
-      %458 = %64
-      return %458, %457
+  62_then:  ; OUT=[64_then, 62_then_split_65_end_if]
+      %132 = caller
+      %926 = 32
+      mstore %926, %132
+      %927 = %129
+      %928 = 0x7f5e9f20
+      %133 = or %928, %927
+      %929 = 12
+      mstore %929, %133
+      %930 = 52
+      %931 = 12
+      %134 = sha3 %931, %930
+      %932 = %134
+      %135 = sload %932
+      %933 = %135
+      %136 = not %933
+      jnz %136, @64_then, @62_then_split_65_end_if
     ; (__main_entry)
 
 
-  62_then:  ; OUT=[63_end_if]
-      %74 = 1
+  64_then:  ; OUT=[67_end_if, 66_then]
+      %934 = %135
+      %935 = %125
+      %137 = gt %935, %934
+      %626 = iszero %137
+      jnz %626, @67_end_if, @66_then
+    ; (__main_entry)
+
+
+  66_then:  ; OUT=[]
+      %936 = 0x13be252b
+      %937 = 0
+      mstore %937, %936
+      %938 = 4
+      %939 = 28
+      revert %939, %938
+    ; (__main_entry)
+
+
+  67_end_if:  ; OUT=[65_end_if]
+      %940 = %125
+      %941 = %135
+      %138 = sub %941, %940
+      %942 = %134
+      sstore %942, %138
+      jmp @65_end_if
+    ; (__main_entry)
+
+
+  65_end_if:  ; OUT=[63_end_if]
       jmp @63_end_if
     ; (__main_entry)
 
 
-  63_end_if:  ; OUT=[65_end_if, 64_then]
-      %75 = phi @37_bucket_6_split_63_end_if, %73, @62_then, %74
-      jnz %75, @65_end_if, @64_then
-    ; (__main_entry)
-
-
-  64_then:  ; OUT=[]
-      %459 = 64
-      %77 = mload %459
-      %460 = shl 229, 0x461bcd
-      %461 = %77
-      mstore %461, %460
-      %464 = 32
-      %462 = %77
-      %463 = 4
-      %79 = add %463, %462
-      mstore %79, %464
-      %467 = 12
-      %465 = %77
-      %466 = 36
-      %80 = add %466, %465
-      mstore %80, %467
-      %470 = shl 160, 0x496e76616c69642062697473
-      %468 = %77
-      %469 = 68
-      %81 = add %469, %468
-      mstore %81, %470
-      %471 = 100
-      %472 = %77
-      revert %472, %471
-    ; (__main_entry)
-
-
-  65_end_if:  ; OUT=[67_end_if, 66_then]
-      %473 = %68
-      %474 = 256
-      %241 = xor %474, %473
-      jnz %241, @67_end_if, @66_then
-    ; (__main_entry)
-
-
-  66_then:  ; OUT=[61_inline_cleanup_fun_maxForBits]
-      %89 = not 0
-      jmp @61_inline_cleanup_fun_maxForBits
-    ; (__main_entry)
-
-
-  67_end_if:  ; OUT=[69_end_if, 68_then]
-      %475 = 1
-      %476 = %68
-      %84 = shl %476, %475
-      %479 = %84
-      %477 = %84
-      %478 = not 0
-      %86 = add %478, %477
-      %480 = %86
-      %87 = gt %480, %479
-      %236 = iszero %87
-      jnz %236, @69_end_if, @68_then
+  63_end_if:  ; OUT=[69_end_if, 68_then]
+      %943 = %129
+      %944 = 0x87a211a2
+      %139 = or %944, %943
+      %945 = 12
+      mstore %945, %139
+      %946 = 32
+      %947 = 12
+      %140 = sha3 %947, %946
+      %948 = %140
+      %141 = sload %948
+      %949 = %141
+      %950 = %125
+      %142 = gt %950, %949
+      %627 = iszero %142
+      jnz %627, @69_end_if, @68_then
     ; (__main_entry)
 
 
   68_then:  ; OUT=[]
-      %481 = shl 224, 0x4e487b71
-      %482 = 0
-      mstore %482, %481
-      %483 = 17
-      %484 = 4
-      mstore %484, %483
-      %485 = 36
-      %486 = 0
-      revert %486, %485
+      %951 = 0xf4d678b8
+      %952 = 0
+      mstore %952, %951
+      %953 = 4
+      %954 = 28
+      revert %954, %953
     ; (__main_entry)
 
 
-  69_end_if:  ; OUT=[61_inline_cleanup_fun_maxForBits]
-      %90 = %86
-      jmp @61_inline_cleanup_fun_maxForBits
+  69_end_if:  ; OUT=[]
+      %955 = %125
+      %956 = %141
+      %143 = sub %956, %955
+      %957 = %140
+      sstore %957, %143
+      %958 = 0
+      mstore %958, %124
+      %959 = 32
+      %960 = 12
+      %144 = sha3 %960, %959
+      %961 = %144
+      %145 = sload %961
+      %962 = %125
+      %146 = add %962, %145
+      %963 = %144
+      sstore %963, %146
+      %964 = %125
+      %965 = 32
+      mstore %965, %964
+      %968 = 12
+      %150 = mload %968
+      %969 = 96
+      %151 = shr %969, %150
+      %966 = %123
+      %967 = 0xffffffffffffffffffffffffffffffffffffffff
+      %149 = and %967, %966
+      %970 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %971 = 32
+      %972 = 32
+      log3 %972, %971, %970, %149, %151
+      %973 = 64
+      %152 = mload %973
+      %974 = 1
+      %975 = %152
+      mstore %975, %974
+      %976 = 32
+      %977 = %152
+      return %977, %976
+    ; 69_end_if
     ; (__main_entry)
 
 
-  61_inline_cleanup_fun_maxForBits:  ; OUT=[]
-      %91 = phi @66_then, %89, @69_end_if, %90
-      %487 = 64
-      %92 = mload %487
-      %488 = %92
-      mstore %488, %91
-      %489 = 32
-      %490 = %92
-      return %490, %489
+  7_case:  ; OUT=[]
+      %980 = 64
+      %155 = mload %980
+      %978 = 2
+      %153 = sload %978
+      %979 = 255
+      %154 = and %979, %153
+      %981 = %155
+      mstore %981, %154
+      %982 = 32
+      %983 = %155
+      return %983, %982
     ; (__main_entry)
 
 
-  10_case:  ; OUT=[]
-      %491 = 64
-      %95 = mload %491
-      %492 = 0
-      %493 = %95
-      mstore %493, %492
-      %496 = 0xffffffffffffffff
-      %494 = %95
-      %495 = 32
-      %96 = add %495, %494
-      mstore %96, %496
-      %497 = 64
-      %498 = %95
-      return %498, %497
+  8_case:  ; OUT=[8_case_split_72_end_if, 71_then]
+      %984 = 64
+      %156 = mload %984
+      %985 = 0
+      %157 = sload %985
+      %986 = %157
+      %987 = 1
+      %158 = shr %987, %986
+      %162 = %158
+      %988 = %157
+      %989 = 1
+      %159 = and %989, %988
+      %990 = %159
+      jnz %990, @8_case_split_72_end_if, @71_then
     ; (__main_entry)
 
 
-  12_case:  ; OUT=[]
-      %499 = 64
-      %98 = mload %499
-      %500 = 0
-      %501 = %98
-      mstore %501, %500
-      %504 = 0xffffffffffffffffffffffffffffffff
-      %502 = %98
-      %503 = 32
-      %99 = add %503, %502
-      mstore %99, %504
-      %505 = 64
-      %506 = %98
-      return %506, %505
+  71_then:  ; OUT=[72_end_if]
+      %991 = %158
+      %992 = 127
+      %161 = and %992, %991
+      %163 = %161
+      jmp @72_end_if
     ; (__main_entry)
 
 
-  71_then:  ; OUT=[70_inline_cleanup_fun_clampToUint8]
-      %103 = 255
-      jmp @70_inline_cleanup_fun_clampToUint8
+  72_end_if:  ; OUT=[74_end_if, 73_then]
+      %164 = phi @8_case_split_72_end_if, %162, @71_then, %163
+      %993 = %164
+      %994 = 32
+      %165 = gt %994, %993
+      %995 = %159
+      %648 = xor %995, %165
+      jnz %648, @74_end_if, @73_then
     ; (__main_entry)
 
 
-  72_end_if:  ; OUT=[70_inline_cleanup_fun_clampToUint8]
-      %507 = %100
-      %508 = 255
-      %102 = and %508, %507
-      %104 = %102
-      jmp @70_inline_cleanup_fun_clampToUint8
+  73_then:  ; OUT=[]
+      %996 = shl 224, 0x4e487b71
+      %997 = 0
+      mstore %997, %996
+      %998 = 34
+      %999 = 4
+      mstore %999, %998
+      %1000 = 36
+      %1001 = 0
+      revert %1001, %1000
     ; (__main_entry)
 
 
-  70_inline_cleanup_fun_clampToUint8:  ; OUT=[]
-      %105 = phi @71_then, %103, @72_end_if, %104
-      %509 = 64
-      %106 = mload %509
-      %510 = 255
-      %107 = and %510, %105
-      %511 = %106
-      mstore %511, %107
-      %512 = 32
-      %513 = %106
-      return %513, %512
+  74_end_if:  ; OUT=[79_case_check, 76_case]
+      %1002 = %164
+      %1003 = %156
+      mstore %1003, %1002
+      %1004 = %159
+      jnz %1004, @79_case_check, @76_case
     ; (__main_entry)
 
 
-  14_case:  ; OUT=[75_end_if, 74_then]
-      %514 = 4
-      %108 = calldataload %514
-      %515 = %108
-      %516 = shl 127, 1
-      %109 = sgt %516, %515
-      jnz %109, @75_end_if, @74_then
+  79_case_check:  ; OUT=[77_case, 78_fallback]
+      %1005 = %159
+      %1006 = 1
+      %169 = xor %1006, %1005
+      %629 = iszero %169
+      jnz %629, @77_case, @78_fallback
     ; (__main_entry)
 
 
-  74_then:  ; OUT=[73_inline_cleanup_fun_clampToInt128]
-      %114 = 0x7fffffffffffffffffffffffffffffff
-      jmp @73_inline_cleanup_fun_clampToInt128
+  78_fallback:  ; OUT=[75_switch_end]
+      %196 = 0
+      jmp @75_switch_end
     ; (__main_entry)
 
 
-  75_end_if:  ; OUT=[77_end_if, 76_then]
-      %517 = %108
-      %518 = not 0x80000000000000000000000000000000
-      %111 = slt %518, %517
-      jnz %111, @77_end_if, @76_then
+  76_case:  ; OUT=[75_switch_end]
+      %1009 = %157
+      %1010 = not 255
+      %172 = and %1010, %1009
+      %1007 = %156
+      %1008 = 32
+      %170 = add %1008, %1007
+      mstore %170, %172
+      %1011 = %164
+      %173 = iszero %1011
+      %174 = iszero %173
+      %1012 = 5
+      %175 = shl %1012, %174
+      %1013 = %156
+      %176 = add %1013, %175
+      %1014 = 32
+      %177 = add %1014, %176
+      %194 = %177
+      jmp @75_switch_end
     ; (__main_entry)
 
 
-  76_then:  ; OUT=[73_inline_cleanup_fun_clampToInt128]
-      %115 = not 0x7fffffffffffffffffffffffffffffff
-      jmp @73_inline_cleanup_fun_clampToInt128
+  77_case:  ; OUT=[80_blk_loop_start]
+      %181 = 0
+      %1015 = 0
+      %1016 = 0
+      mstore %1016, %1015
+      %1017 = 32
+      %1018 = 0
+      %178 = sha3 %1018, %1017
+      %179 = %178
+      jmp @80_blk_loop_start
     ; (__main_entry)
 
 
-  77_end_if:  ; OUT=[73_inline_cleanup_fun_clampToInt128]
-      %116 = %108
-      jmp @73_inline_cleanup_fun_clampToInt128
+  80_blk_loop_start:  ; OUT=[81_blk_loop_body, 83_blk_loop_end]
+      %180:1 = phi @77_case, %179, @81_blk_loop_body, %190
+      %182:1 = phi @77_case, %181, @81_blk_loop_body, %191
+      %1020 = %182:1
+      %1019 = %164
+      %183 = gt %1019, %1020
+      jnz %183, @81_blk_loop_body, @83_blk_loop_end
     ; (__main_entry)
 
 
-  73_inline_cleanup_fun_clampToInt128:  ; OUT=[]
-      %117 = phi @74_then, %114, @76_then, %115, @77_end_if, %116
-      %519 = 64
-      %118 = mload %519
-      %520 = 15
-      %119 = signextend %520, %117
-      %521 = %118
-      mstore %521, %119
-      %522 = 32
-      %523 = %118
-      return %523, %522
+  81_blk_loop_body:  ; OUT=[80_blk_loop_start]
+      %1024 = %180:1
+      %187 = sload %1024
+      %1021 = %182:1
+      %1022 = %156
+      %185 = add %1022, %1021
+      %1023 = 32
+      %186 = add %1023, %185
+      mstore %186, %187
+      %1027 = %182:1
+      %1028 = 32
+      %189 = add %1028, %1027
+      %191 = %189
+      %1025 = %180:1
+      %1026 = 1
+      %188 = add %1026, %1025
+      %190 = %188
+      jmp @80_blk_loop_start
     ; (__main_entry)
 
 
-  16_case:  ; OUT=[]
-      %524 = 64
-      %122 = mload %524
-      %525 = 4
-      %123 = calldataload %525
-      %526 = shl 255, 1
-      %125 = eq %526, %123
-      %527 = %122
-      mstore %527, %125
-      %528 = 32
-      %529 = %122
-      return %529, %528
+  83_blk_loop_end:  ; OUT=[75_switch_end]
+      %1029 = %182:1
+      %1030 = %156
+      %192 = add %1030, %1029
+      %1031 = 32
+      %193 = add %1031, %192
+      %195 = %193
+      jmp @75_switch_end
     ; (__main_entry)
 
 
-  20_case:  ; OUT=[]
-      %530 = 64
-      %148 = mload %530
-      %531 = not 0x7fffffff
-      %532 = %148
-      mstore %532, %531
-      %535 = 0x7fffffff
-      %533 = %148
-      %534 = 32
-      %150 = add %534, %533
-      mstore %150, %535
-      %536 = 64
-      %537 = %148
-      return %537, %536
+  75_switch_end:  ; OUT=[]
+      %197 = phi @76_case, %194, @83_blk_loop_end, %195, @78_fallback, %196
+      %1032 = %156
+      %198 = sub %197, %1032
+      %1033 = 31
+      %199 = add %1033, %198
+      %1034 = not 31
+      %201 = and %1034, %199
+      %1035 = %156
+      %202 = add %1035, %201
+      %1036 = 64
+      mstore %1036, %202
+      %1039 = %156
+      %205 = mload %1039
+      %1037 = %156
+      %1038 = 32
+      %204 = add %1038, %1037
+      %206 = sha3 %204, %205
+      %1040 = 64
+      %207 = mload %1040
+      %1041 = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f
+      %1042 = %207
+      mstore %1042, %1041
+      %1043 = %207
+      %1044 = 32
+      %208 = add %1044, %1043
+      mstore %208, %206
+      %1047 = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6
+      %1045 = %207
+      %1046 = 64
+      %209 = add %1046, %1045
+      mstore %209, %1047
+      %211 = chainid
+      %1048 = %207
+      %1049 = 96
+      %210 = add %1049, %1048
+      mstore %210, %211
+      %213 = address
+      %1050 = %207
+      %1051 = 128
+      %212 = add %1051, %1050
+      mstore %212, %213
+      %1054 = 64
+      %215 = mload %1054
+      %1052 = 160
+      %1053 = %207
+      %214 = sha3 %1053, %1052
+      %1055 = %215
+      mstore %1055, %214
+      %1056 = 32
+      %1057 = %215
+      return %1057, %1056
+    ; 75_switch_end
     ; (__main_entry)
 
 
-  79_then:  ; OUT=[80_end_if]
-      %538 = %151
-      %539 = shl 63, 1
-      %155 = sgt %539, %538
-      %158 = %155
-      jmp @80_end_if
+  86_then:  ; OUT=[]
+      %1058 = 64
+      %226 = mload %1058
+      %1059 = shl 229, 0x461bcd
+      %1060 = %226
+      mstore %1060, %1059
+      %1063 = 32
+      %1061 = %226
+      %1062 = 4
+      %228 = add %1062, %1061
+      mstore %228, %1063
+      %1066 = 10
+      %1064 = %226
+      %1065 = 36
+      %229 = add %1065, %1064
+      mstore %229, %1066
+      %1069 = shl 177, 0x27b7363c9037bbb732b9
+      %1067 = %226
+      %1068 = 68
+      %230 = add %1068, %1067
+      mstore %230, %1069
+      %1070 = 100
+      %1071 = %226
+      revert %1071, %1070
     ; (__main_entry)
 
 
-  80_end_if:  ; OUT=[]
-      %159 = phi @46_bucket_21_split_80_end_if, %157, @79_then, %158
-      %540 = 64
-      %160 = mload %540
-      %161 = iszero %159
-      %162 = iszero %161
-      %541 = %160
-      mstore %541, %162
-      %542 = 32
-      %543 = %160
-      return %543, %542
+  85_inline_cleanup_require_helper_stringliteral_17d9:  ; OUT=[90_end_if, 89_then]
+      %1073 = 0x5345cdf77eb68f44c
+      %232 = sload %1073
+      %1076 = %232
+      %1072 = 36
+      %231 = calldataload %1072
+      %1074 = %231
+      %1075 = %232
+      %233 = add %1075, %1074
+      %1077 = %233
+      %234 = lt %1077, %1076
+      %630 = iszero %234
+      jnz %630, @90_end_if, @89_then
     ; (__main_entry)
 
 
-  25_case:  ; OUT=[84_end_if, 83_then]
-      %178 = calldatasize
-      %544 = not 3
-      %180 = add %544, %178
-      %545 = 64
-      %181 = sgt %545, %180
-      %182 = iszero %181
-      assert %182
-      %547 = 36
-      %184 = calldataload %547
-      %548 = %184
-      %187 = not %548
-      %546 = 4
-      %183 = calldataload %546
-      %549 = %183
-      %188 = gt %549, %187
-      %239 = iszero %188
-      jnz %239, @84_end_if, @83_then
+  89_then:  ; OUT=[]
+      %1078 = 0xe5cfe957
+      %1079 = 0
+      mstore %1079, %1078
+      %1080 = 4
+      %1081 = 28
+      revert %1081, %1080
     ; (__main_entry)
 
 
-  83_then:  ; OUT=[]
-      %550 = 64
-      %189 = mload %550
-      %551 = shl 229, 0x461bcd
-      %552 = %189
-      mstore %552, %551
-      %555 = 32
-      %553 = %189
-      %554 = 4
-      %191 = add %554, %553
-      mstore %191, %555
-      %558 = 8
-      %556 = %189
-      %557 = 36
-      %192 = add %557, %556
-      mstore %192, %558
-      %561 = shl 192, 0x6f766572666c6f77
-      %559 = %189
-      %560 = 68
-      %193 = add %560, %559
-      mstore %193, %561
-      %562 = 100
-      %563 = %189
-      revert %563, %562
+  90_end_if:  ; OUT=[]
+      %1082 = %233
+      %1083 = 0x5345cdf77eb68f44c
+      sstore %1083, %1082
+      %1084 = 0x87a211a2
+      %1085 = 12
+      mstore %1085, %1084
+      %1086 = 0
+      mstore %1086, %216
+      %1087 = 32
+      %1088 = 12
+      %235 = sha3 %1088, %1087
+      %1089 = %235
+      %236 = sload %1089
+      %1090 = %231
+      %237 = add %1090, %236
+      %1091 = %235
+      sstore %1091, %237
+      %1092 = %231
+      %1093 = 32
+      mstore %1093, %1092
+      %1094 = 12
+      %238 = mload %1094
+      %1095 = 96
+      %239 = shr %1095, %238
+      %1096 = 0
+      %1097 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1098 = 32
+      %1099 = 32
+      log3 %1099, %1098, %1097, %1096, %239
+      %1100 = 0
+      %1101 = 0
+      return %1101, %1100
+    ; 90_end_if
     ; (__main_entry)
 
 
-  84_end_if:  ; OUT=[86_end_if, 85_then]
-      %564 = %184
-      %565 = %183
-      %194 = add %565, %564
-      %566 = %194
-      %567 = %183
-      %195 = gt %567, %566
-      %240 = iszero %195
-      jnz %240, @86_end_if, @85_then
+  93_then:  ; OUT=[]
+      %1102 = 0xf4d678b8
+      %1103 = 0
+      mstore %1103, %1102
+      %1104 = 4
+      %1105 = 28
+      revert %1105, %1104
     ; (__main_entry)
 
 
-  85_then:  ; OUT=[]
-      %568 = shl 224, 0x4e487b71
-      %569 = 0
-      mstore %569, %568
-      %570 = 17
-      %571 = 4
-      mstore %571, %570
-      %572 = 36
-      %573 = 0
-      revert %573, %572
+  94_end_if:  ; OUT=[]
+      %1106 = %243
+      %1107 = %247
+      %249 = sub %1107, %1106
+      %1108 = %246
+      sstore %1108, %249
+      %1109 = 0
+      mstore %1109, %240
+      %1110 = 32
+      %1111 = 12
+      %250 = sha3 %1111, %1110
+      %1112 = %250
+      %251 = sload %1112
+      %1113 = %243
+      %252 = add %1113, %251
+      %1114 = %250
+      sstore %1114, %252
+      %1115 = %243
+      %1116 = 32
+      mstore %1116, %1115
+      %1119 = 12
+      %256 = mload %1119
+      %1120 = 96
+      %257 = shr %1120, %256
+      %1117 = %242
+      %1118 = 0xffffffffffffffffffffffffffffffffffffffff
+      %255 = and %1118, %1117
+      %1121 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1122 = 32
+      %1123 = 32
+      log3 %1123, %1122, %1121, %255, %257
+      %1124 = 64
+      %258 = mload %1124
+      %1125 = 1
+      %1126 = %258
+      mstore %1126, %1125
+      %1127 = 32
+      %1128 = %258
+      return %1128, %1127
+    ; 94_end_if
     ; (__main_entry)
 
 
-  86_end_if:  ; OUT=[]
-      %574 = 64
-      %197 = mload %574
-      %575 = %194
-      %576 = %197
-      mstore %576, %575
-      %577 = 32
-      %578 = %197
-      return %578, %577
+  11_case:  ; OUT=[98_end_if, 11_case_split_96_inline_cleanup_fun_spendAllowance]
+      %259 = calldatasize
+      %1129 = not 3
+      %261 = add %1129, %259
+      %1130 = 96
+      %262 = sgt %1130, %261
+      %263 = iszero %262
+      assert %263
+      %1131 = 4
+      %264 = calldataload %1131
+      %1132 = 36
+      %265 = calldataload %1132
+      %1133 = 68
+      %266 = calldataload %1133
+      %270 = caller
+      %1134 = %270
+      %1135 = 0xffffffffffffffffffffffffffffffffffffffff
+      %273 = and %1135, %1134
+      %1136 = 0x22d473030f116ddee9f6b43ac78ba3
+      %649 = xor %1136, %273
+      jnz %649, @98_end_if, @11_case_split_96_inline_cleanup_fun_spendAllowance
     ; (__main_entry)
 
 
-  37_bucket_6_split_63_end_if:  ; OUT=[63_end_if]
+  98_end_if:  ; OUT=[99_then, 98_end_if_split_100_end_if]
+      %1137 = %270
+      %1138 = 32
+      mstore %1138, %1137
+      %1139 = 0x7f5e9f20
+      %1140 = 12
+      mstore %1140, %1139
+      %1141 = %264
+      %1142 = 0
+      mstore %1142, %1141
+      %1143 = 52
+      %1144 = 12
+      %275 = sha3 %1144, %1143
+      %1145 = %275
+      %276 = sload %1145
+      %1146 = %276
+      %277 = not %1146
+      jnz %277, @99_then, @98_end_if_split_100_end_if
+    ; (__main_entry)
+
+
+  99_then:  ; OUT=[102_end_if, 101_then]
+      %1147 = %276
+      %1148 = %266
+      %278 = gt %1148, %1147
+      %632 = iszero %278
+      jnz %632, @102_end_if, @101_then
+    ; (__main_entry)
+
+
+  101_then:  ; OUT=[]
+      %1149 = 0x13be252b
+      %1150 = 0
+      mstore %1150, %1149
+      %1151 = 4
+      %1152 = 28
+      revert %1152, %1151
+    ; (__main_entry)
+
+
+  102_end_if:  ; OUT=[100_end_if]
+      %1153 = %266
+      %1154 = %276
+      %279 = sub %1154, %1153
+      %1155 = %275
+      sstore %1155, %279
+      jmp @100_end_if
+    ; (__main_entry)
+
+
+  100_end_if:  ; OUT=[96_inline_cleanup_fun_spendAllowance]
+      jmp @96_inline_cleanup_fun_spendAllowance
+    ; (__main_entry)
+
+
+  96_inline_cleanup_fun_spendAllowance:  ; OUT=[105_end_if, 104_then]
+      %1156 = %264
+      %1157 = 96
+      %280 = shl %1157, %1156
+      %1158 = 0x87a211a2
+      %281 = or %1158, %280
+      %1159 = 12
+      mstore %1159, %281
+      %1160 = 32
+      %1161 = 12
+      %282 = sha3 %1161, %1160
+      %1162 = %282
+      %283 = sload %1162
+      %1163 = %283
+      %1164 = %266
+      %284 = gt %1164, %1163
+      %633 = iszero %284
+      jnz %633, @105_end_if, @104_then
+    ; (__main_entry)
+
+
+  104_then:  ; OUT=[]
+      %1165 = 0xf4d678b8
+      %1166 = 0
+      mstore %1166, %1165
+      %1167 = 4
+      %1168 = 28
+      revert %1168, %1167
+    ; (__main_entry)
+
+
+  105_end_if:  ; OUT=[]
+      %1169 = %266
+      %1170 = %283
+      %285 = sub %1170, %1169
+      %1171 = %282
+      sstore %1171, %285
+      %1172 = 0
+      mstore %1172, %265
+      %1173 = 32
+      %1174 = 12
+      %286 = sha3 %1174, %1173
+      %1175 = %286
+      %287 = sload %1175
+      %1176 = %266
+      %288 = add %1176, %287
+      %1177 = %286
+      sstore %1177, %288
+      %1178 = %266
+      %1179 = 32
+      mstore %1179, %1178
+      %1182 = 12
+      %292 = mload %1182
+      %1183 = 96
+      %293 = shr %1183, %292
+      %1180 = %264
+      %1181 = 0xffffffffffffffffffffffffffffffffffffffff
+      %291 = and %1181, %1180
+      %1184 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1185 = 32
+      %1186 = 32
+      log3 %1186, %1185, %1184, %291, %293
+      %1187 = 64
+      %294 = mload %1187
+      %1188 = 1
+      %1189 = %294
+      mstore %1189, %1188
+      %1190 = 32
+      %1191 = %294
+      return %1191, %1190
+    ; 105_end_if
+    ; (__main_entry)
+
+
+  107_then:  ; OUT=[]
+      %1192 = 0xf4d678b8
+      %1193 = 0
+      mstore %1193, %1192
+      %1194 = 4
+      %1195 = 28
+      revert %1195, %1194
+    ; (__main_entry)
+
+
+  108_end_if:  ; OUT=[]
+      %1196 = %296
+      %1197 = %298
+      %300 = sub %1197, %1196
+      %1198 = %297
+      sstore %1198, %300
+      %1199 = 0x5345cdf77eb68f44c
+      %301 = sload %1199
+      %1200 = %296
+      %302 = sub %301, %1200
+      %1201 = 0x5345cdf77eb68f44c
+      sstore %1201, %302
+      %1202 = %296
+      %1203 = 0
+      mstore %1203, %1202
+      %1206 = 0
+      %1204 = %295
+      %1205 = 0xffffffffffffffffffffffffffffffffffffffff
+      %305 = and %1205, %1204
+      %1207 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1208 = 32
+      %1209 = 0
+      log3 %1209, %1208, %1207, %305, %1206
+      %1210 = 0
+      %1211 = 0
+      return %1211, %1210
+    ; (__main_entry)
+
+
+  14_case:  ; OUT=[113_end_if, 14_case_split_111_inline_cleanup_fun_spendAllowance]
+      %1212 = 4
+      %311 = calldataload %1212
+      %1213 = 36
+      %313 = calldataload %1213
+      %314 = caller
+      %1214 = %314
+      %1215 = 0xffffffffffffffffffffffffffffffffffffffff
+      %317 = and %1215, %1214
+      %1216 = 0x22d473030f116ddee9f6b43ac78ba3
+      %650 = xor %1216, %317
+      jnz %650, @113_end_if, @14_case_split_111_inline_cleanup_fun_spendAllowance
+    ; (__main_entry)
+
+
+  113_end_if:  ; OUT=[114_then, 113_end_if_split_115_end_if]
+      %1217 = %314
+      %1218 = 32
+      mstore %1218, %1217
+      %1219 = 0x7f5e9f20
+      %1220 = 12
+      mstore %1220, %1219
+      %1221 = %311
+      %1222 = 0
+      mstore %1222, %1221
+      %1223 = 52
+      %1224 = 12
+      %319 = sha3 %1224, %1223
+      %1225 = %319
+      %320 = sload %1225
+      %1226 = %320
+      %321 = not %1226
+      jnz %321, @114_then, @113_end_if_split_115_end_if
+    ; (__main_entry)
+
+
+  114_then:  ; OUT=[117_end_if, 116_then]
+      %1227 = %320
+      %1228 = %313
+      %322 = gt %1228, %1227
+      %635 = iszero %322
+      jnz %635, @117_end_if, @116_then
+    ; (__main_entry)
+
+
+  116_then:  ; OUT=[]
+      %1229 = 0x13be252b
+      %1230 = 0
+      mstore %1230, %1229
+      %1231 = 4
+      %1232 = 28
+      revert %1232, %1231
+    ; (__main_entry)
+
+
+  117_end_if:  ; OUT=[115_end_if]
+      %1233 = %313
+      %1234 = %320
+      %323 = sub %1234, %1233
+      %1235 = %319
+      sstore %1235, %323
+      jmp @115_end_if
+    ; (__main_entry)
+
+
+  115_end_if:  ; OUT=[111_inline_cleanup_fun_spendAllowance]
+      jmp @111_inline_cleanup_fun_spendAllowance
+    ; (__main_entry)
+
+
+  111_inline_cleanup_fun_spendAllowance:  ; OUT=[120_end_if, 119_then]
+      %1236 = 0x87a211a2
+      %1237 = 12
+      mstore %1237, %1236
+      %1238 = %311
+      %1239 = 0
+      mstore %1239, %1238
+      %1240 = 32
+      %1241 = 12
+      %324 = sha3 %1241, %1240
+      %1242 = %324
+      %325 = sload %1242
+      %1243 = %325
+      %1244 = %313
+      %326 = gt %1244, %1243
+      %636 = iszero %326
+      jnz %636, @120_end_if, @119_then
+    ; (__main_entry)
+
+
+  119_then:  ; OUT=[]
+      %1245 = 0xf4d678b8
+      %1246 = 0
+      mstore %1246, %1245
+      %1247 = 4
+      %1248 = 28
+      revert %1248, %1247
+    ; (__main_entry)
+
+
+  120_end_if:  ; OUT=[]
+      %1249 = %313
+      %1250 = %325
+      %327 = sub %1250, %1249
+      %1251 = %324
+      sstore %1251, %327
+      %1252 = 0x5345cdf77eb68f44c
+      %328 = sload %1252
+      %1253 = %313
+      %329 = sub %328, %1253
+      %1254 = 0x5345cdf77eb68f44c
+      sstore %1254, %329
+      %1255 = %313
+      %1256 = 0
+      mstore %1256, %1255
+      %1259 = 0
+      %1257 = %311
+      %1258 = 0xffffffffffffffffffffffffffffffffffffffff
+      %332 = and %1258, %1257
+      %1260 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1261 = 32
+      %1262 = 0
+      log3 %1262, %1261, %1260, %332, %1259
+      %1263 = 0
+      %1264 = 0
+      return %1264, %1263
+    ; (__main_entry)
+
+
+  124_then:  ; OUT=[]
+      %1265 = 64
+      %369 = mload %1265
+      %1266 = shl 229, 0x461bcd
+      %1267 = %369
+      mstore %1267, %1266
+      %1270 = 32
+      %1268 = %369
+      %1269 = 4
+      %371 = add %1269, %1268
+      mstore %371, %1270
+      %1273 = 10
+      %1271 = %369
+      %1272 = 36
+      %372 = add %1272, %1271
+      mstore %372, %1273
+      %1276 = shl 177, 0x27b7363c9037bbb732b9
+      %1274 = %369
+      %1275 = 68
+      %373 = add %1275, %1274
+      mstore %373, %1276
+      %1277 = 100
+      %1278 = %369
+      revert %1278, %1277
+    ; (__main_entry)
+
+
+  123_inline_cleanup_require_helper_stringliteral_17d9:  ; OUT=[127_end_if, 126_then]
+      %1279 = %352
+      %1280 = %338
+      %374 = xor %1280, %1279
+      %637 = iszero %374
+      jnz %637, @127_end_if, @126_then
+    ; (__main_entry)
+
+
+  126_then:  ; OUT=[]
+      %1281 = 64
+      %375 = mload %1281
+      %1282 = shl 229, 0x461bcd
+      %1283 = %375
+      mstore %1283, %1282
+      %1286 = 32
+      %1284 = %375
+      %1285 = 4
+      %377 = add %1285, %1284
+      mstore %377, %1286
+      %1289 = 15
+      %1287 = %375
+      %1288 = 36
+      %378 = add %1288, %1287
+      mstore %378, %1289
+      %1292 = shl 139, 0x98cadccee8d040dad2e6dac2e8c6d
+      %1290 = %375
+      %1291 = 68
+      %379 = add %1291, %1290
+      mstore %379, %1292
+      %1293 = 100
+      %1294 = %375
+      revert %1294, %1293
+    ; (__main_entry)
+
+
+  127_end_if:  ; OUT=[128_blk_loop_start]
+      %380 = 0
+      jmp @128_blk_loop_start
+    ; (__main_entry)
+
+
+  128_blk_loop_start:  ; OUT=[129_blk_loop_body, 131_blk_loop_end]
+      %381:1 = phi @127_end_if, %380, @140_end_if, %407
+      %1296 = %381:1
+      %1295 = %338
+      %382 = gt %1295, %1296
+      %1297 = %382
+      jnz %1297, @129_blk_loop_body, @131_blk_loop_end
+    ; (__main_entry)
+
+
+  129_blk_loop_body:  ; OUT=[134_end_if, 133_then]
+      %1298 = %382
+      jnz %1298, @134_end_if, @133_then
+    ; (__main_entry)
+
+
+  133_then:  ; OUT=[]
+      %1299 = shl 224, 0x4e487b71
+      %1300 = 0
+      mstore %1300, %1299
+      %1301 = 50
+      %1302 = 4
+      mstore %1302, %1301
+      %1303 = 36
+      %1304 = 0
+      revert %1304, %1303
+    ; (__main_entry)
+
+
+  134_end_if:  ; OUT=[137_end_if, 136_then]
+      %1305 = %381:1
+      %1306 = 5
+      %387 = shl %1306, %1305
+      %388 = add %339, %387
+      %390 = calldataload %388
+      %1307 = %352
+      %1308 = %381:1
+      %391 = lt %1308, %1307
+      jnz %391, @137_end_if, @136_then
+    ; (__main_entry)
+
+
+  136_then:  ; OUT=[]
+      %1309 = shl 224, 0x4e487b71
+      %1310 = 0
+      mstore %1310, %1309
+      %1311 = 50
+      %1312 = 4
+      mstore %1312, %1311
+      %1313 = 36
+      %1314 = 0
+      revert %1314, %1313
+    ; (__main_entry)
+
+
+  137_end_if:  ; OUT=[140_end_if, 139_then]
+      %1317 = 0x5345cdf77eb68f44c
+      %398 = sload %1317
+      %1320 = %398
+      %1315 = %381:1
+      %1316 = 5
+      %394 = shl %1316, %1315
+      %395 = add %353, %394
+      %397 = calldataload %395
+      %1318 = %397
+      %1319 = %398
+      %399 = add %1319, %1318
+      %1321 = %399
+      %400 = lt %1321, %1320
+      %638 = iszero %400
+      jnz %638, @140_end_if, @139_then
+    ; (__main_entry)
+
+
+  139_then:  ; OUT=[]
+      %1322 = 0xe5cfe957
+      %1323 = 0
+      mstore %1323, %1322
+      %1324 = 4
+      %1325 = 28
+      revert %1325, %1324
+    ; (__main_entry)
+
+
+  140_end_if:  ; OUT=[128_blk_loop_start]
+      %1326 = %399
+      %1327 = 0x5345cdf77eb68f44c
+      sstore %1327, %1326
+      %1328 = 0x87a211a2
+      %1329 = 12
+      mstore %1329, %1328
+      %1330 = 0
+      mstore %1330, %390
+      %1331 = 32
+      %1332 = 12
+      %401 = sha3 %1332, %1331
+      %1333 = %401
+      %402 = sload %1333
+      %1334 = %397
+      %403 = add %1334, %402
+      %1335 = %401
+      sstore %1335, %403
+      %1336 = %397
+      %1337 = 32
+      mstore %1337, %1336
+      %1338 = 12
+      %404 = mload %1338
+      %1339 = 96
+      %405 = shr %1339, %404
+      %1340 = 0
+      %1341 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1342 = 32
+      %1343 = 32
+      log3 %1343, %1342, %1341, %1340, %405
+      %1344 = %381:1
+      %1345 = 1
+      %406 = add %1345, %1344
+      %407 = %406
+      jmp @128_blk_loop_start
+    ; 140_end_if
+    ; (__main_entry)
+
+
+  131_blk_loop_end:  ; OUT=[]
+      %1346 = 0
+      %1347 = 0
+      return %1347, %1346
+    ; (__main_entry)
+
+
+  142_then:  ; OUT=[143_end_if]
+      %1348 = %421
+      %1349 = 127
+      %424 = and %1349, %1348
+      %426 = %424
+      jmp @143_end_if
+    ; (__main_entry)
+
+
+  143_end_if:  ; OUT=[145_end_if, 144_then]
+      %427 = phi @36_bucket_5_check_split_143_end_if, %425, @142_then, %426
+      %1350 = %427
+      %1351 = 32
+      %428 = gt %1351, %1350
+      %1352 = %422
+      %651 = xor %1352, %428
+      jnz %651, @145_end_if, @144_then
+    ; (__main_entry)
+
+
+  144_then:  ; OUT=[]
+      %1353 = shl 224, 0x4e487b71
+      %1354 = 0
+      mstore %1354, %1353
+      %1355 = 34
+      %1356 = 4
+      mstore %1356, %1355
+      %1357 = 36
+      %1358 = 0
+      revert %1358, %1357
+    ; (__main_entry)
+
+
+  145_end_if:  ; OUT=[150_case_check, 147_case]
+      %1359 = %427
+      %1360 = %419
+      mstore %1360, %1359
+      %1361 = %422
+      jnz %1361, @150_case_check, @147_case
+    ; (__main_entry)
+
+
+  150_case_check:  ; OUT=[148_case, 149_fallback]
+      %1362 = %422
+      %1363 = 1
+      %432 = xor %1363, %1362
+      %640 = iszero %432
+      jnz %640, @148_case, @149_fallback
+    ; (__main_entry)
+
+
+  149_fallback:  ; OUT=[146_switch_end]
+      %459 = 0
+      jmp @146_switch_end
+    ; (__main_entry)
+
+
+  147_case:  ; OUT=[146_switch_end]
+      %1366 = %420
+      %1367 = not 255
+      %435 = and %1367, %1366
+      %1364 = %419
+      %1365 = 32
+      %433 = add %1365, %1364
+      mstore %433, %435
+      %1368 = %427
+      %436 = iszero %1368
+      %437 = iszero %436
+      %1369 = 5
+      %438 = shl %1369, %437
+      %1370 = %419
+      %439 = add %1370, %438
+      %1371 = 32
+      %440 = add %1371, %439
+      %457 = %440
+      jmp @146_switch_end
+    ; (__main_entry)
+
+
+  148_case:  ; OUT=[151_blk_loop_start]
+      %444 = 0
+      %1372 = 1
+      %1373 = 0
+      mstore %1373, %1372
+      %1374 = 32
+      %1375 = 0
+      %441 = sha3 %1375, %1374
+      %442 = %441
+      jmp @151_blk_loop_start
+    ; (__main_entry)
+
+
+  151_blk_loop_start:  ; OUT=[152_blk_loop_body, 154_blk_loop_end]
+      %443:1 = phi @148_case, %442, @152_blk_loop_body, %453
+      %445:1 = phi @148_case, %444, @152_blk_loop_body, %454
+      %1377 = %445:1
+      %1376 = %427
+      %446 = gt %1376, %1377
+      jnz %446, @152_blk_loop_body, @154_blk_loop_end
+    ; (__main_entry)
+
+
+  152_blk_loop_body:  ; OUT=[151_blk_loop_start]
+      %1381 = %443:1
+      %450 = sload %1381
+      %1378 = %445:1
+      %1379 = %419
+      %448 = add %1379, %1378
+      %1380 = 32
+      %449 = add %1380, %448
+      mstore %449, %450
+      %1384 = %445:1
+      %1385 = 32
+      %452 = add %1385, %1384
+      %454 = %452
+      %1382 = %443:1
+      %1383 = 1
+      %451 = add %1383, %1382
+      %453 = %451
+      jmp @151_blk_loop_start
+    ; (__main_entry)
+
+
+  154_blk_loop_end:  ; OUT=[146_switch_end]
+      %1386 = %445:1
+      %1387 = %419
+      %455 = add %1387, %1386
+      %1388 = 32
+      %456 = add %1388, %455
+      %458 = %456
+      jmp @146_switch_end
+    ; (__main_entry)
+
+
+  146_switch_end:  ; OUT=[]
+      %460 = phi @147_case, %457, @154_blk_loop_end, %458, @149_fallback, %459
+      %1389 = %419
+      %461 = sub %460, %1389
+      %1390 = 31
+      %462 = add %1390, %461
+      %1391 = not 31
+      %464 = and %1391, %462
+      %1392 = %419
+      %465 = add %1392, %464
+      %1393 = 64
+      mstore %1393, %465
+      %1394 = 64
+      %466 = mload %1394
+      %1395 = 32
+      %1396 = %466
+      mstore %1396, %1395
+      %1397 = %419
+      %467 = mload %1397
+      %1400 = %467
+      %1398 = %466
+      %1399 = 32
+      %468 = add %1399, %1398
+      mstore %468, %1400
+      %1405 = %467
+      %1403 = %419
+      %1404 = 32
+      %470 = add %1404, %1403
+      %1401 = %466
+      %1402 = 64
+      %469 = add %1402, %1401
+      mcopy %469, %470, %1405
+      %1409 = 0
+      %1406 = %467
+      %1407 = %466
+      %471 = add %1407, %1406
+      %1408 = 64
+      %472 = add %1408, %471
+      mstore %472, %1409
+      %1415 = %466
+      %1410 = %467
+      %1411 = 31
+      %473 = add %1411, %1410
+      %1412 = not 31
+      %475 = and %1412, %473
+      %1413 = %466
+      %476 = add %1413, %475
+      %1414 = 64
+      %477 = add %1414, %476
+      %479 = sub %477, %1415
+      %1416 = %466
+      return %1416, %479
+    ; 146_switch_end
+    ; (__main_entry)
+
+
+  19_case:  ; OUT=[158_end_if, 157_then]
+      %1417 = 4
+      %480 = calldataload %1417
+      %1419 = 0x87a211a2
+      %1420 = 12
+      mstore %1420, %1419
+      %483 = caller
+      %1421 = 0
+      mstore %1421, %483
+      %1422 = 32
+      %1423 = 12
+      %484 = sha3 %1423, %1422
+      %1424 = %484
+      %485 = sload %1424
+      %1425 = %485
+      %1418 = 36
+      %482 = calldataload %1418
+      %1426 = %482
+      %486 = gt %1426, %1425
+      %641 = iszero %486
+      jnz %641, @158_end_if, @157_then
+    ; (__main_entry)
+
+
+  157_then:  ; OUT=[]
+      %1427 = 0xf4d678b8
+      %1428 = 0
+      mstore %1428, %1427
+      %1429 = 4
+      %1430 = 28
+      revert %1430, %1429
+    ; (__main_entry)
+
+
+  158_end_if:  ; OUT=[]
+      %1431 = %482
+      %1432 = %485
+      %487 = sub %1432, %1431
+      %1433 = %484
+      sstore %1433, %487
+      %1434 = 0
+      mstore %1434, %480
+      %1435 = 32
+      %1436 = 12
+      %488 = sha3 %1436, %1435
+      %1437 = %488
+      %489 = sload %1437
+      %1438 = %482
+      %490 = add %1438, %489
+      %1439 = %488
+      sstore %1439, %490
+      %1440 = %482
+      %1441 = 32
+      mstore %1441, %1440
+      %1442 = 12
+      %492 = mload %1442
+      %1443 = 96
+      %493 = shr %1443, %492
+      %491 = caller
+      %1444 = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef
+      %1445 = 32
+      %1446 = 32
+      log3 %1446, %1445, %1444, %491, %493
+      %1447 = 64
+      %494 = mload %1447
+      %1448 = 1
+      %1449 = %494
+      mstore %1449, %1448
+      %1450 = 32
+      %1451 = %494
+      return %1451, %1450
+    ; 158_end_if
+    ; (__main_entry)
+
+
+  161_then:  ; OUT=[]
+      %1452 = 0x3f68539a
+      %1453 = 0
+      mstore %1453, %1452
+      %1454 = 4
+      %1455 = 28
+      revert %1455, %1454
+    ; (__main_entry)
+
+
+  162_end_if:  ; OUT=[162_end_if_split_165_end_if, 164_then]
+      %1456 = 64
+      %510 = mload %1456
+      %1457 = 0
+      %511 = sload %1457
+      %1458 = %511
+      %1459 = 1
+      %512 = shr %1459, %1458
+      %516 = %512
+      %1460 = %511
+      %1461 = 1
+      %513 = and %1461, %1460
+      %1462 = %513
+      jnz %1462, @162_end_if_split_165_end_if, @164_then
+    ; (__main_entry)
+
+
+  164_then:  ; OUT=[165_end_if]
+      %1463 = %512
+      %1464 = 127
+      %515 = and %1464, %1463
+      %517 = %515
+      jmp @165_end_if
+    ; (__main_entry)
+
+
+  165_end_if:  ; OUT=[167_end_if, 166_then]
+      %518 = phi @162_end_if_split_165_end_if, %516, @164_then, %517
+      %1465 = %518
+      %1466 = 32
+      %519 = gt %1466, %1465
+      %1467 = %513
+      %652 = xor %1467, %519
+      jnz %652, @167_end_if, @166_then
+    ; (__main_entry)
+
+
+  166_then:  ; OUT=[]
+      %1468 = shl 224, 0x4e487b71
+      %1469 = 0
+      mstore %1469, %1468
+      %1470 = 34
+      %1471 = 4
+      mstore %1471, %1470
+      %1472 = 36
+      %1473 = 0
+      revert %1473, %1472
+    ; (__main_entry)
+
+
+  167_end_if:  ; OUT=[172_case_check, 169_case]
+      %1474 = %518
+      %1475 = %510
+      mstore %1475, %1474
+      %1476 = %513
+      jnz %1476, @172_case_check, @169_case
+    ; (__main_entry)
+
+
+  172_case_check:  ; OUT=[170_case, 171_fallback]
+      %1477 = %513
+      %1478 = 1
+      %523 = xor %1478, %1477
+      %643 = iszero %523
+      jnz %643, @170_case, @171_fallback
+    ; (__main_entry)
+
+
+  171_fallback:  ; OUT=[168_switch_end]
+      %550 = 0
+      jmp @168_switch_end
+    ; (__main_entry)
+
+
+  169_case:  ; OUT=[168_switch_end]
+      %1481 = %511
+      %1482 = not 255
+      %526 = and %1482, %1481
+      %1479 = %510
+      %1480 = 32
+      %524 = add %1480, %1479
+      mstore %524, %526
+      %1483 = %518
+      %527 = iszero %1483
+      %528 = iszero %527
+      %1484 = 5
+      %529 = shl %1484, %528
+      %1485 = %510
+      %530 = add %1485, %529
+      %1486 = 32
+      %531 = add %1486, %530
+      %548 = %531
+      jmp @168_switch_end
+    ; (__main_entry)
+
+
+  170_case:  ; OUT=[173_blk_loop_start]
+      %535 = 0
+      %1487 = 0
+      %1488 = 0
+      mstore %1488, %1487
+      %1489 = 32
+      %1490 = 0
+      %532 = sha3 %1490, %1489
+      %533 = %532
+      jmp @173_blk_loop_start
+    ; (__main_entry)
+
+
+  173_blk_loop_start:  ; OUT=[174_blk_loop_body, 176_blk_loop_end]
+      %534:1 = phi @170_case, %533, @174_blk_loop_body, %544
+      %536:1 = phi @170_case, %535, @174_blk_loop_body, %545
+      %1492 = %536:1
+      %1491 = %518
+      %537 = gt %1491, %1492
+      jnz %537, @174_blk_loop_body, @176_blk_loop_end
+    ; (__main_entry)
+
+
+  174_blk_loop_body:  ; OUT=[173_blk_loop_start]
+      %1496 = %534:1
+      %541 = sload %1496
+      %1493 = %536:1
+      %1494 = %510
+      %539 = add %1494, %1493
+      %1495 = 32
+      %540 = add %1495, %539
+      mstore %540, %541
+      %1499 = %536:1
+      %1500 = 32
+      %543 = add %1500, %1499
+      %545 = %543
+      %1497 = %534:1
+      %1498 = 1
+      %542 = add %1498, %1497
+      %544 = %542
+      jmp @173_blk_loop_start
+    ; (__main_entry)
+
+
+  176_blk_loop_end:  ; OUT=[168_switch_end]
+      %1501 = %536:1
+      %1502 = %510
+      %546 = add %1502, %1501
+      %1503 = 32
+      %547 = add %1503, %546
+      %549 = %547
+      jmp @168_switch_end
+    ; (__main_entry)
+
+
+  168_switch_end:  ; OUT=[178_end_if, 177_then]
+      %551 = phi @169_case, %548, @176_blk_loop_end, %549, @171_fallback, %550
+      %1504 = %510
+      %552 = sub %551, %1504
+      %1505 = 31
+      %553 = add %1505, %552
+      %1506 = not 31
+      %555 = and %1506, %553
+      %1507 = %510
+      %556 = add %1507, %555
+      %1508 = 64
+      mstore %1508, %556
+      %1511 = %510
+      %559 = mload %1511
+      %1509 = %510
+      %1510 = 32
+      %558 = add %1510, %1509
+      %560 = sha3 %558, %559
+      %1512 = %500
+      %561 = timestamp
+      %562 = gt %561, %1512
+      %644 = iszero %562
+      jnz %644, @178_end_if, @177_then
+    ; (__main_entry)
+
+
+  177_then:  ; OUT=[]
+      %1513 = 0x1a15a3cc
+      %1514 = 0
+      mstore %1514, %1513
+      %1515 = 4
+      %1516 = 28
+      revert %1516, %1515
+    ; (__main_entry)
+
+
+  178_end_if:  ; OUT=[180_end_if, 179_then]
+      %1518 = 0xffffffffffffffffffffffffffffffffffffffff
+      %566 = and %1518, %495
+      %1573 = %566
+      %1517 = 64
+      %563 = mload %1517
+      %1519 = 0x383775081901
+      %1520 = 14
+      mstore %1520, %1519
+      %1521 = %566
+      %1522 = 0
+      mstore %1522, %1521
+      %1523 = 32
+      %1524 = 12
+      %567 = sha3 %1524, %1523
+      %1526 = 0x8b73c3c69bb8fe3d512ecc4cf759cc79239f7b179b0ffacaa9a75d522b39400f
+      %1527 = %563
+      mstore %1527, %1526
+      %1528 = %563
+      %1529 = 32
+      %569 = add %1529, %1528
+      %1530 = %569
+      mstore %1530, %560
+      %1533 = 0xc89efdaa54c0f20c7adf612882df0950f5a951637e0307cdcb4c672f298b8bc6
+      %1531 = %563
+      %1532 = 64
+      %570 = add %1532, %1531
+      %1534 = %570
+      mstore %1534, %1533
+      %572 = chainid
+      %1535 = %563
+      %1536 = 96
+      %571 = add %1536, %1535
+      %1537 = %571
+      mstore %1537, %572
+      %574 = address
+      %1538 = %563
+      %1539 = 128
+      %573 = add %1539, %1538
+      %1540 = %573
+      mstore %1540, %574
+      %1541 = 160
+      %1542 = %563
+      %575 = sha3 %1542, %1541
+      %1543 = 46
+      mstore %1543, %575
+      %1544 = 0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9
+      %1545 = %563
+      mstore %1545, %1544
+      %1546 = %566
+      %1547 = %569
+      mstore %1547, %1546
+      %1548 = %504
+      %1549 = %570
+      mstore %1549, %1548
+      %1550 = %499
+      %1551 = %571
+      mstore %1551, %1550
+      %1525 = %567
+      %568 = sload %1525
+      %1552 = %568
+      %1553 = %573
+      mstore %1553, %1552
+      %1556 = %500
+      %1554 = %563
+      %1555 = 160
+      %576 = add %1555, %1554
+      mstore %576, %1556
+      %1557 = 192
+      %1558 = %563
+      %577 = sha3 %1558, %1557
+      %1559 = 78
+      mstore %1559, %577
+      %1560 = 66
+      %1561 = 44
+      %578 = sha3 %1561, %1560
+      %1562 = 0
+      mstore %1562, %578
+      %1563 = 255
+      %579 = and %1563, %501
+      %1564 = 32
+      mstore %1564, %579
+      %1565 = 64
+      %1566 = 164
+      %1567 = 64
+      calldatacopy %1567, %1566, %1565
+      %1568 = 32
+      %1569 = 32
+      %1570 = 128
+      %1571 = 0
+      %1572 = 1
+      %582 = gas
+      %583 = staticcall %582, %1572, %1571, %1570, %1569, %1568
+      %584 = returndatasize
+      %585 = mload %584
+      %586 = xor %585, %1573
+      %645 = iszero %586
+      jnz %645, @180_end_if, @179_then
+    ; 178_end_if
+    ; (__main_entry)
+
+
+  179_then:  ; OUT=[]
+      %1574 = 0xddafbaef
+      %1575 = 0
+      mstore %1575, %1574
+      %1576 = 4
+      %1577 = 28
+      revert %1577, %1576
+    ; (__main_entry)
+
+
+  180_end_if:  ; OUT=[]
+      %1578 = %568
+      %587 = add %1578, %583
+      %1579 = %567
+      sstore %1579, %587
+      %1585 = %499
+      %1580 = %504
+      %1581 = shl 165, 0x3faf4f9
+      %589 = or %1581, %1580
+      %1582 = 64
+      mstore %1582, %589
+      %1583 = 52
+      %1584 = 44
+      %590 = sha3 %1584, %1583
+      sstore %590, %1585
+      %1586 = %504
+      %1587 = %566
+      %1588 = 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925
+      %1589 = 32
+      %1590 = %571
+      log3 %1590, %1589, %1588, %1587, %1586
+      %1591 = 0
+      %1592 = 0
+      return %1592, %1591
+    ; (__main_entry)
+
+
+  184_then:  ; OUT=[183_inline_cleanup_fun_allowance]
+      %602 = not 0
+      jmp @183_inline_cleanup_fun_allowance
+    ; (__main_entry)
+
+
+  185_end_if:  ; OUT=[183_inline_cleanup_fun_allowance]
+      %1593 = %593
+      %1594 = 32
+      mstore %1594, %1593
+      %1595 = 0x7f5e9f20
+      %1596 = 12
+      mstore %1596, %1595
+      %1597 = 0
+      mstore %1597, %591
+      %1598 = 52
+      %1599 = 12
+      %600 = sha3 %1599, %1598
+      %601 = sload %600
+      %603 = %601
+      jmp @183_inline_cleanup_fun_allowance
+    ; (__main_entry)
+
+
+  183_inline_cleanup_fun_allowance:  ; OUT=[]
+      %604 = phi @184_then, %602, @185_end_if, %603
+      %1600 = 64
+      %605 = mload %1600
+      %1601 = %605
+      mstore %1601, %604
+      %1602 = 32
+      %1603 = %605
+      return %1603, %1602
+    ; (__main_entry)
+
+
+  3_case_split_45_end_if:  ; OUT=[45_end_if]
+      jmp @45_end_if
+    ; (__main_entry)
+
+
+  62_then_split_65_end_if:  ; OUT=[65_end_if]
+      jmp @65_end_if
+    ; (__main_entry)
+
+
+  6_case_split_63_end_if:  ; OUT=[63_end_if]
       jmp @63_end_if
     ; (__main_entry)
 
 
-  46_bucket_21_split_80_end_if:  ; OUT=[80_end_if]
-      jmp @80_end_if
+  8_case_split_72_end_if:  ; OUT=[72_end_if]
+      jmp @72_end_if
+    ; (__main_entry)
+
+
+  98_end_if_split_100_end_if:  ; OUT=[100_end_if]
+      jmp @100_end_if
+    ; (__main_entry)
+
+
+  11_case_split_96_inline_cleanup_fun_spendAllowance:  ; OUT=[96_inline_cleanup_fun_spendAllowance]
+      jmp @96_inline_cleanup_fun_spendAllowance
+    ; (__main_entry)
+
+
+  113_end_if_split_115_end_if:  ; OUT=[115_end_if]
+      jmp @115_end_if
+    ; (__main_entry)
+
+
+  14_case_split_111_inline_cleanup_fun_spendAllowance:  ; OUT=[111_inline_cleanup_fun_spendAllowance]
+      jmp @111_inline_cleanup_fun_spendAllowance
+    ; (__main_entry)
+
+
+  36_bucket_5_check_split_143_end_if:  ; OUT=[143_end_if]
+      jmp @143_end_if
+    ; (__main_entry)
+
+
+  162_end_if_split_165_end_if:  ; OUT=[165_end_if]
+      jmp @165_end_if
     ; (__main_entry)
 }  ; close function __main_entry
 
 
 data readonly {
-  dbsection 49_selector_buckets:
-    db @31_fallback
-    db @32_bucket_1
-    db @33_bucket_2
-    db @34_bucket_3
-    db @35_bucket_4
-    db @36_bucket_5
-    db @37_bucket_6
-    db @31_fallback
-    db @31_fallback
-    db @38_bucket_9
-    db @39_bucket_10
-    db @31_fallback
-    db @40_bucket_12
-    db @41_bucket_13
-    db @42_bucket_14
-    db @43_bucket_15
-    db @31_fallback
-    db @31_fallback
-    db @44_bucket_18
-    db @45_bucket_19
-    db @31_fallback
-    db @46_bucket_21
-    db @31_fallback
-    db @31_fallback
-    db @31_fallback
-    db @31_fallback
-    db @31_fallback
-    db @47_bucket_27
-    db @48_bucket_28
+  dbsection 34_selector_buckets:
+    db @22_fallback
+    db @23_bucket_1
+    db @22_fallback
+    db @22_fallback
+    db @22_fallback
+    db @24_bucket_5
+    db @22_fallback
+    db @25_bucket_7
+    db @26_bucket_8
+    db @27_bucket_9
+    db @22_fallback
+    db @28_bucket_11
+    db @29_bucket_12
+    db @22_fallback
+    db @22_fallback
+    db @30_bucket_15
+    db @22_fallback
+    db @31_bucket_17
+    db @32_bucket_18
+    db @33_bucket_19
 }
