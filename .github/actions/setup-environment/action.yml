@@ -49,4 +49,18 @@ runs:
       if: ${{ inputs.install-forge-deps == 'true' }}
       shell: bash
       working-directory: foundry
-      run: forge install --no-git
+      run: |
+        # Check if lib/forge-std exists (from submodules)
+        if [ -d "lib/forge-std/src" ]; then
+          echo "✓ forge-std already installed via submodules"
+        else
+          echo "Installing forge-std..."
+          forge install foundry-rs/forge-std --no-commit 2>/dev/null || forge install foundry-rs/forge-std || true
+        fi
+        # Verify installation
+        if [ ! -f "lib/forge-std/src/Test.sol" ]; then
+          echo "⚠ forge-std not found, installing..."
+          rm -rf lib/forge-std
+          git clone --depth 1 https://github.com/foundry-rs/forge-std.git lib/forge-std
+        fi
+        echo "✓ forge-std ready: $(ls lib/forge-std/src/*.sol | wc -l) files"
