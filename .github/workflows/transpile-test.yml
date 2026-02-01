@@ -1,0 +1,101 @@
+# Reusable Workflow: Transpile and Test Benchmarks
+# Core logic for transpiling Solidity→Yul→Venom→Bytecode and running tests
+#
+# Used by: ci.yml, nightly.yml
+# Tests: Runs test/bench/*.t.sol (benchmark contract tests that verify
+#        transpiled bytecode matches expected behavior)
+# Outputs: test results + transpiled bytecode artifacts
+
+name: Transpile and Test
+
+on:
+  workflow_call:
+    inputs:
+      yul-opt-level:
+        description: 'Yul optimizer level (safe|standard|aggressive|maximum)'
+        type: string
+        default: 'aggressive'
+      python-version:
+        description: 'Python version'
+        type: string
+        default: '3.11'
+      solc-version:
+        description: 'Solc version'
+        type: string
+        default: '0.8.30'
+      upload-artifacts:
+        description: 'Upload transpiled bytecode artifacts'
+        type: boolean
+        default: true
+    outputs:
+      test-passed:
+        description: 'Whether all tests passed'
+        value: ${{ jobs.transpile-test.outputs.test-passed }}
+      test-count:
+        description: 'Number of tests that passed'
+        value: ${{ jobs.transpile-test.outputs.test-count }}
+
+jobs:
+  transpile-test:
+    name: Transpile & Test
+    runs-on: ubuntu-latest
+    outputs:
+      test-passed: ${{ steps.test.outputs.passed }}
+      test-count: ${{ steps.test.outputs.count }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          python-version: ${{ inputs.python-version }}
+          solc-version: ${{ inputs.solc-version }}
+
+      - name: Prepare contracts (Solidity → Yul)
+        run: python3.11 testing/test_framework.py --prepare-all
+
+      - name: Transpile contracts (Yul → Venom → Bytecode)
+        run: python3.11 testing/test_framework.py --transpile-all
+
+      - name: Run Forge tests
+        id: test
+        working-directory: foundry
+        # Runs benchmark contract tests (test/bench/*.t.sol)
+        # These verify that transpiled bytecode executes correctly
+        run: |
+          set +e
+          forge test --match-path "test/bench/*.t.sol" -v 2>&1 | tee ../test-output.txt
+          TEST_EXIT=$?
+          set -e
+
+          # Parse results
+          if grep -qE '[0-9]+ tests passed' ../test-output.txt; then
+            COUNT=$(grep -oE '[0-9]+ tests passed' ../test-output.txt | grep -oE '^[0-9]+')
+            echo "count=${COUNT}" >> $GITHUB_OUTPUT
+          else
+            echo "count=0" >> $GITHUB_OUTPUT
+          fi
+
+          if [ $TEST_EXIT -eq 0 ]; then
+            echo "passed=true" >> $GITHUB_OUTPUT
+          else
+            echo "passed=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        if: ${{ inputs.upload-artifacts && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: transpiled-bytecode
+          path: |
+            output/*.bin
+            output/*.yul
+            debug/*.vnm
+            debug/*.asm
+            test-output.txt
+          retention-days: 7

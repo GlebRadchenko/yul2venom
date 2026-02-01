@@ -259,6 +259,48 @@ cd foundry && forge test
 cd testing && python3.11 test_framework.py --transpile-all
 ```
 
+## CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration. On every push and PR:
+
+### Workflow Overview
+
+| Workflow | Trigger | Description |
+|----------|---------|-------------|
+| `ci.yml` | Push, PR | Lint, transpile, test, benchmark (on PR) |
+| `nightly.yml` | 2 AM UTC daily | Full benchmark suite with historical tracking |
+
+### What CI Does
+
+1. **Lint** - Runs `ruff` on Python code
+2. **Prepare** - Compiles all Solidity → Yul (`test_framework.py --prepare-all`)
+3. **Transpile** - Converts Yul → Venom → Bytecode (`test_framework.py --transpile-all`)
+4. **Test** - Runs Forge tests against transpiled bytecode
+5. **Benchmark** (PRs only) - Generates comparison report and posts as PR comment
+
+### Benchmark Reports on PRs
+
+When you open a PR, the CI will automatically:
+- Transpile all benchmark contracts
+- Run the benchmark suite comparing against Solc
+- Post results as a comment on your PR
+
+This helps reviewers understand the impact of your changes on bytecode size.
+
+### Running CI Locally
+
+To simulate what CI does:
+
+```bash
+# Full pipeline (same as CI)
+python3.11 testing/test_framework.py --prepare-all
+python3.11 testing/test_framework.py --transpile-all
+cd foundry && forge test --match-path "test/bench/*.t.sol"
+
+# Generate benchmark report
+python3.11 tools/benchmark.py --output report.md
+```
+
 ---
 
 Thank you for contributing to Yul2Venom! 🎉
