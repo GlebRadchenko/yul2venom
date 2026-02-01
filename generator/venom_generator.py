@@ -1501,6 +1501,44 @@ class VenomIRBuilder:
             print(f"WARNING: loadimmutable failed for key: {key}. Available: {list(self.ctx.immutables.keys())}", file=sys.stderr)
             return IRLiteral(0)
 
+        if func == "linkersymbol":
+            # External library linking: linkersymbol("path:LibraryName")
+            # Returns a placeholder address for the library.
+            # 
+            # For transpilation, we support two modes:
+            # 1. If library address is in ctx.library_addresses dict, use it
+            # 2. Otherwise, return a placeholder (0xDEADxxxxxx...) that can be patched
+            #
+            # The placeholder format uses the library name hash to create unique addresses.
+            
+            lib_path = None
+            if args and hasattr(args[0], 'value'):
+                val = args[0].value
+                if isinstance(val, str):
+                    lib_path = val.strip('"')
+            
+            if lib_path:
+                # Check if we have a configured address for this library
+                if hasattr(self.ctx, 'library_addresses') and lib_path in self.ctx.library_addresses:
+                    addr = self.ctx.library_addresses[lib_path]
+                    if isinstance(addr, str) and addr.startswith("0x"):
+                        addr = int(addr, 16)
+                    return IRLiteral(addr)
+                
+                # Generate a deterministic placeholder address from library path
+                # Use keccak-like hash of the path to create unique placeholder
+                import hashlib
+                h = hashlib.sha256(lib_path.encode()).hexdigest()[:40]
+                placeholder = int("0x" + h, 16) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+                
+                print(f"WARNING: linkersymbol({lib_path}) using placeholder address: 0x{placeholder:040x}", file=sys.stderr)
+                print(f"  To use a real library address, add to config: library_addresses['{lib_path}'] = '0x...'", file=sys.stderr)
+                
+                return IRLiteral(placeholder)
+            
+            print(f"WARNING: linkersymbol failed - no library path provided", file=sys.stderr)
+            return IRLiteral(0)
+
         # Map opcodes
         # Full mapping based on basicblock.py support
         

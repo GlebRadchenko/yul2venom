@@ -10,7 +10,7 @@
 Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper backend → EVM
 ```
 
-**Status**: 185/185 tests passing ✅ | 8/8 benchmark contracts smaller than Solc (with `--yul-opt-level=aggressive`)
+**Status**: 223/223 tests passing ✅ | 9/9 benchmark contracts smaller than Solc (with `--yul-opt-level=aggressive`)
 
 ---
 

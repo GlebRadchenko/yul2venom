@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "contract": "foundry/src/bench/Modifiers.sol",
+  "yul": "output/Modifiers.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "constructor_args": {},
+  "auto_predicted": {}
+}

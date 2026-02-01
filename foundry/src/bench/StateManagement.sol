@@ -132,35 +132,8 @@ contract StateManagement {
         return dst[size > 0 ? size - 1 : 0];
     }
 
-    // ========== Transient Storage (EIP-1153) ==========
-    function tstore(uint256 slot, uint256 value) external {
-        assembly {
-            tstore(slot, value)
-        }
-    }
-
-    function tload(uint256 slot) external view returns (uint256 value) {
-        assembly {
-            value := tload(slot)
-        }
-    }
-
-    function transientIncrement(uint256 slot) external {
-        uint256 current;
-        assembly {
-            current := tload(slot)
-            tstore(slot, add(current, 1))
-        }
-    }
-
-    function transientSwap(uint256 slotA, uint256 slotB) external {
-        assembly {
-            let a := tload(slotA)
-            let b := tload(slotB)
-            tstore(slotA, b)
-            tstore(slotB, a)
-        }
-    }
+    // ========== Transient Storage ==========
+    // NOTE: Transient storage functions moved to TransientStorage.sol
 
     // ========== Constant/Immutable Access ==========
     function getConstants()

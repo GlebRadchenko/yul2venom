@@ -114,22 +114,5 @@ contract StateManagementTest is Test {
     }
 
     // ========== Transient Storage ==========
-    function test_transientStore() public {
-        target.tstore(0, 999);
-        assertEq(target.tload(0), 999);
-    }
-
-    function test_transientIncrement() public {
-        target.tstore(1, 5);
-        target.transientIncrement(1);
-        assertEq(target.tload(1), 6);
-    }
-
-    function test_transientSwap() public {
-        target.tstore(10, 100);
-        target.tstore(11, 200);
-        target.transientSwap(10, 11);
-        assertEq(target.tload(10), 200);
-        assertEq(target.tload(11), 100);
-    }
+    // NOTE: Transient storage tests moved to TransientStorageTest.t.sol
 }
