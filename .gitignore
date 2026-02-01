@@ -24,10 +24,8 @@ parser_debug.log
 generator_debug.log
 
 # Build artifacts
-*.bin
-output/*.bin
+output/*solc*/
 output/bench/
-output_native/*.bin
 
 # Foundry
 foundry/out/

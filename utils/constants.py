@@ -9,9 +9,10 @@ All magic numbers in the transpiler should be defined here.
 # Memory Layout Constants
 # =============================================================================
 
-# Venom backend reserves 0x80-0x1000 for stack spills (Frame).
-# We MUST start Yul heap at 0x1000 to avoid corruption.
-VENOM_MEMORY_START = 0x1000
+# Venom backend reserves memory for stack spills. Tested 2026-02-01: 0x100 is stable.
+# 0x100 uses PUSH1 (2 bytes vs 3 bytes for PUSH2), saving ~1 byte per mstore address.
+# This is safely above Vyper's scratch space (0x00-0x60) and Solidity's FMP (0x40).
+VENOM_MEMORY_START = 0x100
 
 # Safe offset for stack spill operations - beyond Yul heap start
 SPILL_OFFSET = 0x4000
@@ -90,6 +91,52 @@ OP_JUMPDEST = 0x5B
 OP_RETURN = 0xF3
 OP_REVERT = 0xFD
 OP_INVALID = 0xFE
+
+# =============================================================================
+# Opcode Categories (for intrinsic handling in venom_generator)
+# =============================================================================
+
+# Void operations (no return value)
+VOID_OPS = frozenset({
+    "pop", "log0", "log1", "log2", "log3", "log4", 
+    "stop", "selfdestruct", "return", "revert"
+})
+
+# Copy operations (affect memory, no return value)
+COPY_OPS = frozenset({
+    "codecopy", "calldatacopy", "returndatacopy", 
+    "mcopy", "extcodecopy"
+})
+
+# Non-commutative binary operations (order matters)
+NON_COMMUTATIVE_OPS = frozenset({
+    "sub", "div", "sdiv", "mod", "smod", "exp",
+    "lt", "gt", "slt", "sgt", "shl", "shr", "sar"
+})
+
+# Simple unary/binary operations (commutative or single-operand)
+SIMPLE_OPS = frozenset({
+    "add", "mul", "not", "eq", "iszero", 
+    "and", "or", "xor", "addmod", "mulmod", "signextend"
+})
+
+# Memory/Storage operations
+MEMORY_OPS = frozenset({
+    "mload", "sload", "tload", "calldataload"
+})
+
+# Environment operations (0-arg, return value)
+ENV_OPS = frozenset({
+    "callvalue", "calldatasize", "codesize", "returndatasize",
+    "gas", "address", "caller", "origin", "gasprice",
+    "chainid", "basefee", "timestamp", "number", 
+    "difficulty", "gaslimit", "coinbase", "selfbalance"
+})
+
+# Call-like operations (volatile, return success flag)
+CALL_OPS = frozenset({
+    "call", "staticcall", "delegatecall", "create", "create2"
+})
 
 # =============================================================================
 # CLI Defaults

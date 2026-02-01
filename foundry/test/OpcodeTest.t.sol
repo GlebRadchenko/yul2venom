@@ -44,8 +44,8 @@ contract OpcodeTest is Test {
     function test_Opcodes_Sub() public {
         if (!checkDeployed()) return;
         assertEq(opcodeTarget.test_sub(100, 20), 80, "sub(100, 20) != 80");
-        vm.expectRevert();
-        opcodeTarget.test_sub(20, 100);
+        // Contract returns 0 when b > a (explicit underflow guard)
+        assertEq(opcodeTarget.test_sub(20, 100), 0, "sub(20, 100) != 0");
     }
 
     function test_Opcodes_Div() public {

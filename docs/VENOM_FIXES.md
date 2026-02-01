@@ -627,3 +627,159 @@ All 4 LoopCheckCalldata tests now pass:
 
 ### Impact
 This was a critical bug that caused memory corruption in any contract using dynamic memory allocation (arrays, structs). The fix ensures Yul's dynamic allocations start at address 0x1000, above Venom's reserved region.
+
+---
+
+## Fix 7: Log Instruction Effects Registration
+
+**Date:** 2026-02-01  
+**Status:** FIXED  
+**File:** `vyper/vyper/venom/effects.py`
+
+### Issue
+Event emission (`log1`, `log2`, etc.) returned all-zero data. The optimizer was reordering `mstore` and `log1` instructions, causing `log1` to read uninitialized memory.
+
+### Root Cause
+The effects system only registered the generic `"log"` opcode but not the specific `log0`-`log4` opcodes used in actual IR:
+
+```python
+# effects.py only had:
+_writes = { "log": LOG, ... }
+_reads = { "log": MEMORY, ... }
+
+# But IR uses specific opcodes:
+log1 %ptr, 32, 0x12d199...
+```
+
+Without effects registration, the optimizer treated `log1` as having no memory dependencies. It reordered:
+
+```venom
+# Correct order (raw IR):
+mstore %154, %155    ; Store value to memory
+log1 %154, 32, topic ; Emit log reading from %154
+
+# Incorrect order (optimized IR):
+log1 %154, 32, topic ; Emit log BEFORE value stored!
+mstore %154, %155    ; Value stored AFTER log emitted
+```
+
+### Fix
+Added `log0`-`log4` to both `_reads` and `_writes` dictionaries:
+
+```python
+_writes = {
+    ...
+    "log": LOG,
+    "log0": LOG,
+    "log1": LOG,
+    "log2": LOG,
+    "log3": LOG,
+    "log4": LOG,
+    ...
+}
+
+_reads = {
+    ...
+    "log": MEMORY,
+    "log0": MEMORY,
+    "log1": MEMORY,
+    "log2": MEMORY,
+    "log3": MEMORY,
+    "log4": MEMORY,
+    ...
+}
+```
+
+### Testing
+All Events tests now pass:
+- `test_emitSimple()`: PASS (was FAIL: got 0 instead of 42)
+- `test_emitIndexed()`: PASS
+- `test_emitBytes()`: PASS
+- `test_emitString()`: PASS
+- `test_emitComplex()`: PASS
+- `test_emitMultiIndexed()`: PASS
+- `test_emitMultiple()`: PASS
+
+### Impact
+This fix ensures the optimizer respects memory dependencies for all log instructions, preventing incorrect instruction reordering. Test count: 100 → 105 passing.
+
+---
+
+## Optimization 1: Assign for Literals
+
+**Date:** 2026-02-01  
+**Status:** IMPLEMENTED  
+**File:** `venom_generator.py`
+
+### Change
+Modified `_materialize_literal` to use `assign` for IRLiterals instead of `add val, 0`.
+
+### Rationale
+- `assign` instructions are eliminated by `AssignElimPass`
+- `add val, 0` generates 3 extra bytes and 3 gas per use
+- Literals don't have the liveness issues that require the `add 0` workaround
+
+### Before
+```python
+block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
+```
+
+### After
+```python
+if isinstance(val, IRVariable):
+    # Variables still need add x,0 for DUP handling
+    block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
+else:
+    # Literals use assign (eliminated by AssignElimPass)
+    block.append_instruction("assign", val, outputs=[new_var])
+```
+
+### Impact
+~1% bytecode reduction across benchmark contracts.
+
+---
+
+## Fix 8: Fallback/Receive Function Support
+
+**Date:** 2026-02-01  
+**Status:** FIXED  
+**File:** `venom_generator.py`
+
+### Issue
+Contracts with `fallback()` or `receive()` functions reverted on unknown selectors instead of executing the fallback code.
+
+### Root Cause
+The transpiler's selector dispatch was incorrectly emitting `revert 0, 0` in the fallback block when no default case existed in the switch statement. However, Solidity's fallback/receive code appears **after** the switch statement as sibling statements, not as a `default` case.
+
+```yul
+// Yul pattern for contracts with fallback:
+switch selector
+    case 0x... { ... }
+    case 0x... { ... }
+// END of switch
+if iszero(calldatasize()) { stop() }  // receive
+stop()                                 // fallback
+```
+
+The transpiler was terminating the fallback block with `revert` instead of flowing to the post-switch statements.
+
+### Fix
+Removed automatic `revert` insertion in fallback blocks. The fallback block now flows to the switch end, where post-switch statements (or implicit function termination) handle the fallback behavior:
+
+```python
+# Before (bug):
+if not self.inline_exit_stack and default_case is None:
+    self.current_bb.append_instruction("revert", zero, zero)
+
+# After (fix):
+# DON'T revert - let post-switch statements handle fallback behavior
+# (e.g., Solidity's fallback() or receive() functions)
+```
+
+### Testing
+- `test_fallback()`: PASS (was FAIL)
+- All 106 bench tests: PASS
+
+### Impact
+Enables proper support for Solidity contracts with `fallback()` and `receive()` functions. Test count: 105 → 106 passing.
+

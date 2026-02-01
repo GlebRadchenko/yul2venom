@@ -76,6 +76,9 @@ class BenchmarkConfig:
     # Transpiler optimization level (none, O0, O2, O3, Os, debug, yul-o2, native)
     transpiler_opt_level: str = "O2"
     
+    # Yul source optimizer level (none, safe, standard, aggressive, maximum)
+    yul_opt_level: str = "aggressive"
+    
     # Solc optimization runs to test
     # Note: optimizer-runs affects both default and via-ir modes
     optimization_runs: list[int] = field(default_factory=lambda: [
@@ -97,7 +100,7 @@ class BenchmarkConfig:
     
     # Paths
     foundry_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "foundry")
-    output_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "output" / "bench")
+    output_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "output")
     configs_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "configs" / "bench")
     bench_src: Path = field(default_factory=lambda: PROJECT_ROOT / "foundry" / "src" / "bench")
     
@@ -116,23 +119,92 @@ class BenchmarkConfig:
 
 
 def load_config(config_path: Optional[Path]) -> BenchmarkConfig:
-    """Load configuration from YAML file if provided."""
+    """Load configuration from YAML profile file.
+    
+    Supports two formats:
+    1. Flat format (legacy): keys map directly to BenchmarkConfig fields
+    2. Nested format (new): structured with optimization/solc/output sections
+    
+    Args:
+        config_path: Path to YAML profile file
+        
+    Returns:
+        Populated BenchmarkConfig
+    """
     config = BenchmarkConfig()
     
-    if config_path and config_path.exists():
-        try:
-            import yaml
-            with open(config_path) as f:
-                data = yaml.safe_load(f)
+    if not config_path or not config_path.exists():
+        return config
+    
+    try:
+        import yaml
+        with open(config_path) as f:
+            data = yaml.safe_load(f)
+        
+        if not data:
+            return config
+        
+        # === Parse nested format (new profiles) ===
+        
+        # Contracts list
+        if 'contracts' in data:
+            config.contracts = data['contracts']
+        
+        # Optimization section
+        opt = data.get('optimization', {})
+        if 'venom_level' in opt:
+            config.transpiler_opt_level = opt['venom_level']
+        if 'yul_level' in opt:
+            config.yul_opt_level = opt['yul_level']
+        
+        # Solc section
+        solc = data.get('solc', {})
+        if 'runs' in solc:
+            config.optimization_runs = solc['runs']
+        if 'modes' in solc:
+            config.solc_modes = solc['modes']
+        if 'baseline' in solc:
+            config.baseline = solc['baseline']
+        
+        # Output section
+        output = data.get('output', {})
+        if 'report' in output:
+            config.report_file = PROJECT_ROOT / output['report']
+        if 'json' in output:
+            config.json_file = PROJECT_ROOT / output['json']
+        
+        # Benchmarks section (new format)
+        benchmarks = data.get('benchmarks', {})
+        if 'gas' in benchmarks:
+            config.gas_enabled = benchmarks['gas']
+        if 'bytecode' in benchmarks:
+            # bytecode is always enabled; this is for future extensibility
+            pass
+        
+        # Top-level options
+        if 'gas_enabled' in data:
+            config.gas_enabled = data['gas_enabled']
+        if 'verbose' in data:
+            config.verbose = data['verbose']
+        if 'force_rebuild' in data:
+            config.force_rebuild = data['force_rebuild']
+        
+        # === Legacy flat format fallback ===
+        # Direct key mapping for backward compatibility
+        for key in ['transpiler_opt_level', 'yul_opt_level', 'optimization_runs',
+                    'solc_modes', 'baseline', 'verbose', 'gas_enabled', 'force_rebuild']:
+            if key in data and not isinstance(data[key], dict):
+                setattr(config, key, data[key])
+        
+        if 'report_file' in data:
+            config.report_file = Path(data['report_file'])
+        if 'json_file' in data:
+            config.json_file = Path(data['json_file'])
             
-            if data:
-                for key, value in data.items():
-                    if hasattr(config, key):
-                        setattr(config, key, value)
-        except ImportError:
-            print("[WARN] PyYAML not installed, using defaults")
-        except Exception as e:
-            print(f"[WARN] Failed to load config: {e}")
+    except ImportError:
+        print("[WARN] PyYAML not installed. Run: pip install pyyaml")
+    except Exception as e:
+        print(f"[WARN] Failed to load profile: {e}")
     
     return config
 
@@ -293,37 +365,62 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
                     with open(config_path, 'w') as f:
                         json.dump(cfg, f, indent=2)
         
-        # Run transpile command with specified optimization level
-        rc, stdout, stderr = run_command([
+        # Run transpile command with specified optimization levels
+        cmd = [
             "python3.11", str(PROJECT_ROOT / "yul2venom.py"),
             "transpile", str(config_path),
             "-O", config.transpiler_opt_level,
             "--runtime-only"  # Output runtime bytecode only (no init code)
-        ], cwd=PROJECT_ROOT, timeout=180)
+        ]
+        # Add yul optimization level if specified
+        if config.yul_opt_level and config.yul_opt_level != "none":
+            cmd.extend(["--yul-opt-level", config.yul_opt_level])
+        
+        # Verbose logging
+        if config.verbose:
+            print(f"    → Yul Optimizer: {config.yul_opt_level or 'disabled'}")
+            print(f"    → Venom IR Pipeline: {config.transpiler_opt_level}")
+        
+        rc, stdout, stderr = run_command(cmd, cwd=PROJECT_ROOT, timeout=180)
+        
+        # Parse and show optimization stats if verbose
+        if config.verbose and "Yul Source Optimization Report" in stderr:
+            # Extract key stats from optimizer output
+            for line in stderr.split('\n'):
+                if 'Reduction' in line or 'Applied Rules:' in line:
+                    print(f"    {line.strip()}")
+                elif line.strip().startswith('•'):
+                    print(f"      {line.strip()}")
         
         if rc != 0:
             return CompilationResult(False, 0, f"Transpile failed: {stderr[:300]}")
         
         # Find the output bytecode file
-        # yul2venom.py outputs to output/<Contract>_opt_runtime.bin
+        # yul2venom.py outputs to same directory as yul file, named <Contract>_opt.bin
         with open(config_path) as f:
             cfg = json.load(f)
         
-        # Get contract name from config or use input
+        # Get contract name and output directory from config's yul path
         contract_name = contract
         yul_path = cfg.get("yul", "")
+        yul_output_dir = PROJECT_ROOT / "output"  # default
         if yul_path:
-            # Extract contract name from yul path like "output/bench/Arithmetic.yul"
-            base = Path(yul_path).stem
+            # Extract contract name from yul path like "output/Arithmetic.yul"
+            yul_path_obj = Path(yul_path)
+            base = yul_path_obj.stem
             if base:
                 contract_name = base
+            # yul2venom.py outputs to the same directory as the yul file
+            # e.g., output/Arithmetic.yul -> output/Arithmetic_opt.bin
+            if yul_path_obj.parent.name:
+                yul_output_dir = PROJECT_ROOT / yul_path_obj.parent
         
-        # yul2venom.py outputs to output/bench/<Contract>_opt.bin
-        bin_path = config.output_dir / f"{contract_name}_opt.bin"
+        # Primary: look in same directory as yul file
+        bin_path = yul_output_dir / f"{contract_name}_opt.bin"
         
         if not bin_path.exists():
-            # Try alternative path pattern (direct output dir)
-            bin_path = PROJECT_ROOT / "output" / f"{contract_name}_opt.bin"
+            # Fallback 1: config.output_dir (for backwards compatibility)
+            bin_path = config.output_dir / f"{contract_name}_opt.bin"
         
         if not bin_path.exists():
             # Try _opt_runtime.bin pattern (older format)
@@ -744,6 +841,10 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
             
             # Build gas table
             # Columns: Function | Transpiled | Native | Delta
+            # Build labels with config details
+            transpiled_label = f"Transpiled ({config.yul_opt_level}|{config.transpiler_opt_level})"
+            native_label = f"Native (Solc {config.baseline})"
+            
             transpiled_gas = {g.function: g for g in r.gas_results.get("transpiled", [])}
             native_gas = {g.function: g for g in r.gas_results.get("native", [])}
             
@@ -751,7 +852,7 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
             
             if all_functions:
                 lines.extend([
-                    "| Function | Transpiled | Native (Solc) | Delta |",
+                    f"| Function | {transpiled_label} | {native_label} | Delta |",
                     "|:---------|:----------:|:-------------:|:-----:|",
                 ])
                 
@@ -875,9 +976,9 @@ Examples:
         """
     )
     parser.add_argument(
-        "--config", "-c",
+        "--profile", "-p",
         type=Path,
-        help="Path to YAML config file"
+        help="Path to YAML profile file (tools/profiles/aggressive.yaml)"
     )
     parser.add_argument(
         "--contracts",
@@ -892,8 +993,8 @@ Examples:
     parser.add_argument(
         "--modes",
         type=str,
-        default="default,via_ir",
-        help="Comma-separated Solc modes (default, via_ir)"
+        default=None,  # Use profile value if not specified
+        help="Comma-separated Solc modes (default, via_ir, ir_optimized)"
     )
     parser.add_argument(
         "--baseline",
@@ -924,13 +1025,20 @@ Examples:
         "--transpiler-opt", "-O",
         type=str,
         choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2", "native"],
-        default="O2",
-        help="Transpiler optimization level (default: O2)"
+        default=None,  # Use profile value if not specified
+        help="Venom IR optimization level (profile default: yul-o2)"
+    )
+    parser.add_argument(
+        "--yul-opt-level", "-Y",
+        type=str,
+        choices=["none", "safe", "standard", "aggressive", "maximum"],
+        default=None,  # Use profile value if not specified
+        help="Yul source optimizer level (profile default: aggressive)"
     )
     args = parser.parse_args()
     
-    # Load configuration
-    config = load_config(args.config)
+    # Load configuration from profile file
+    config = load_config(args.profile)
     
     # Apply CLI overrides
     if args.contracts:
@@ -951,13 +1059,16 @@ Examples:
         config.gas_enabled = True
     if args.transpiler_opt:
         config.transpiler_opt_level = args.transpiler_opt
+    if args.yul_opt_level:
+        config.yul_opt_level = args.yul_opt_level
     
     # Print banner
     print("=" * 60)
     print("  Yul2Venom Benchmark Tool")
     print("=" * 60)
     print(f"  Contracts: {len(config.contracts)}")
-    print(f"  Transpiler Optimization: {config.transpiler_opt_level}")
+    print(f"  Venom IR Optimization: {config.transpiler_opt_level}")
+    print(f"  Yul Source Optimization: {config.yul_opt_level}")
     print(f"  Solc Optimization Runs: {config.optimization_runs}")
     print(f"  Solc Modes: {config.solc_modes}")
     print(f"  Baseline: {config.baseline}")

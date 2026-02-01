@@ -1,0 +1,38 @@
+# Yul2Venom Benchmark Profile: Safe
+# Conservative optimization - preserves all runtime checks
+#
+# Usage:
+#   python3.11 tools/benchmark.py --profile tools/profiles/safe.yaml
+
+contracts:
+  - Arithmetic
+  - ControlFlow
+  - StateManagement
+  - DataStructures
+  - Functions
+  - Events
+  - Encoding
+  - Edge
+
+optimization:
+  venom_level: yul-o2
+  yul_level: safe
+
+solc:
+  runs:
+    - 200
+  modes:
+    - default
+    - via_ir
+  baseline: default_200
+
+benchmarks:
+  bytecode: true
+  gas: false
+
+output:
+  report: benchmark_safe_report.md
+  json: benchmark_safe_data.json
+
+verbose: false
+force_rebuild: true

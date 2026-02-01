@@ -44,7 +44,7 @@ cd foundry && forge test
 | `yul2venom.py` | Main CLI with `prepare` and `transpile` commands |
 | `yul_parser.py` | Parses Yul assembly into AST nodes |
 | `yul_extractor.py` | Extracts deployed runtime object from compiler output |
-| `optimizer.py` | Yul-level regex and structural optimizations |
+| `yul_source_optimizer.py` | Pre-transpilation Yul optimizations (regex + structural) |
 | `venom_generator.py` | Converts Yul AST → Venom IR (the core transpilation logic) |
 | `run_venom.py` | Compiles `.vnm` files to EVM bytecode via Vyper backend |
 
@@ -190,6 +190,27 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --optimize O0
 # All available: none, O0, O2 (default), O3, Os, native, debug
 ```
 
+### Yul Source Optimizer
+
+Pre-transpilation optimization of Yul source code:
+
+```bash
+# Enable standard optimization (strips validators, callvalue checks)
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt
+
+# Aggressive optimization (strips runtime checks - use with caution)
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt-level=aggressive
+
+# Optimization levels: safe, standard, aggressive, maximum
+```
+
+| Level | Effect |
+|-------|--------|
+| `safe` | Remove dead validators, empty blocks, algebraic simplifications |
+| `standard` | + Strip callvalue, calldatasize checks |
+| `aggressive` | + Strip extcodesize, returndatasize, memory allocation checks |
+| `maximum` | + Strip overflow, bounds checks (**DANGEROUS**) |
+
 ### Testing
 
 ```bash
@@ -315,9 +336,9 @@ python3.11 testing/trace_memory.py debug/raw_ir.vnm
 
 ## Test Status
 
-**79/79 tests passing ✅** (as of 2026-01-31)
+**185 tests passing ✅** (as of 2026-02-01)
 
-- 19/19 core configs transpile successfully
+- 27 core configs transpile successfully
 - All 8 benchmark contracts transpile successfully
 - All Solidity features supported (loops, storage, memory, events, etc.)
 
