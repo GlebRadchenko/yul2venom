@@ -1254,15 +1254,15 @@ function __main_entry {
   232_then:
       returndatacopy 0, 4, 32
       %508 = mload 0
-      %510 = 1
-      %513 = add %508, 0
+      %510 = add %508, 0
+      %513 = 1
       jmp @233_end_if
 
   233_end_if:
       %511 = phi @229_then, %509, @232_then, %510
       %514 = phi @229_then, %512, @232_then, %513
-      %515 = add %511, 0
-      %516 = add %514, 0
+      %515 = add %514, 0
+      %516 = add %511, 0
       jmp @231_inline_cleanup_try_decode_panic_data
 
   231_inline_cleanup_try_decode_panic_data:

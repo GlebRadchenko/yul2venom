@@ -100,7 +100,7 @@ class BenchmarkConfig:
     
     # Paths
     foundry_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "foundry")
-    output_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "output" / "bench")
+    output_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "output")
     configs_dir: Path = field(default_factory=lambda: PROJECT_ROOT / "configs" / "bench")
     bench_src: Path = field(default_factory=lambda: PROJECT_ROOT / "foundry" / "src" / "bench")
     
@@ -396,25 +396,31 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
             return CompilationResult(False, 0, f"Transpile failed: {stderr[:300]}")
         
         # Find the output bytecode file
-        # yul2venom.py outputs to output/<Contract>_opt_runtime.bin
+        # yul2venom.py outputs to same directory as yul file, named <Contract>_opt.bin
         with open(config_path) as f:
             cfg = json.load(f)
         
-        # Get contract name from config or use input
+        # Get contract name and output directory from config's yul path
         contract_name = contract
         yul_path = cfg.get("yul", "")
+        yul_output_dir = PROJECT_ROOT / "output"  # default
         if yul_path:
-            # Extract contract name from yul path like "output/bench/Arithmetic.yul"
-            base = Path(yul_path).stem
+            # Extract contract name from yul path like "output/Arithmetic.yul"
+            yul_path_obj = Path(yul_path)
+            base = yul_path_obj.stem
             if base:
                 contract_name = base
+            # yul2venom.py outputs to the same directory as the yul file
+            # e.g., output/Arithmetic.yul -> output/Arithmetic_opt.bin
+            if yul_path_obj.parent.name:
+                yul_output_dir = PROJECT_ROOT / yul_path_obj.parent
         
-        # yul2venom.py outputs to output/bench/<Contract>_opt.bin
-        bin_path = config.output_dir / f"{contract_name}_opt.bin"
+        # Primary: look in same directory as yul file
+        bin_path = yul_output_dir / f"{contract_name}_opt.bin"
         
         if not bin_path.exists():
-            # Try alternative path pattern (direct output dir)
-            bin_path = PROJECT_ROOT / "output" / f"{contract_name}_opt.bin"
+            # Fallback 1: config.output_dir (for backwards compatibility)
+            bin_path = config.output_dir / f"{contract_name}_opt.bin"
         
         if not bin_path.exists():
             # Try _opt_runtime.bin pattern (older format)

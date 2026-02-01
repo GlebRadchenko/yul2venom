@@ -1611,8 +1611,8 @@ function __main_entry {
 
 
   229_then:  ; OUT=[229_then_split_233_end_if, 232_then]
-      %509 = 0
       %512 = 0
+      %509 = 0
       %506 = returndatasize
       %1295 = 36
       %507 = gt %1295, %506
@@ -1621,14 +1621,14 @@ function __main_entry {
 
 
   232_then:  ; OUT=[233_end_if]
+      %513 = 1
       %1296 = 32
       %1297 = 4
       %1298 = 0
       returndatacopy %1298, %1297, %1296
       %1299 = 0
       %508 = mload %1299
-      %513 = %508
-      %510 = 1
+      %510 = %508
       jmp @233_end_if
     ; (__main_entry)
 
@@ -1636,12 +1636,12 @@ function __main_entry {
   233_end_if:  ; OUT=[234_then, 233_end_if_split_230_end_if]
       %511 = phi @229_then_split_233_end_if, %509, @232_then, %510
       %514 = phi @229_then_split_233_end_if, %512, @232_then, %513
-      jnz %511, @234_then, @233_end_if_split_230_end_if
+      jnz %514, @234_then, @233_end_if_split_230_end_if
     ; (__main_entry)
 
 
   234_then:  ; OUT=[213_inline_cleanup_fun_tryCallWithPanic]
-      %523 = %514
+      %523 = %511
       %518 = 0
       jmp @213_inline_cleanup_fun_tryCallWithPanic
     ; (__main_entry)

@@ -56,7 +56,7 @@ solc:
 
   # Baseline for delta calculation
   # Format: mode_runs (e.g., "default_200", "via_ir_1000000", "ir_optimized")
-  baseline: default_200
+  baseline: ir_optimized
 
 # ============================================================================
 # Benchmark Types
