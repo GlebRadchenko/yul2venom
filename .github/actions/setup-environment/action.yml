@@ -49,4 +49,4 @@ runs:
       if: ${{ inputs.install-forge-deps == 'true' }}
       shell: bash
       working-directory: foundry
-      run: forge install --no-commit
+      run: forge install --no-git
