@@ -1,6 +1,6 @@
 # Yul2Venom Benchmark Report
 
-**Generated:** 2026-02-01 01:08:30
+**Generated:** 2026-02-01 11:31:32
 **Baseline:** `default_200`
 
 ---
@@ -16,27 +16,27 @@
 
 | Contract           |  Transpiled  | default_200  |  via_ir_200  | ir_optimized |
 |------------------|:----------:|:----------:|:----------:|:----------:|
-| Arithmetic         |     1987     |     1368     |     1368     |     1650     |
-| ControlFlow        |     1310     |     962      |     962      |     1043     |
-| StateManagement    |     3806     |     2832     |     2832     |     3135     |
-| DataStructures     |     2431     |     1576     |     1576     |     2031     |
-| Functions          |     4406     |     2452     |     2452     |     3477     |
-| Events             |     1057     |     826      |     826      |     1163     |
-| Encoding           |     1791     |     976      |     976      |     1264     |
-| Edge               |     4206     |     3112     |     3112     |     3787     |
+| Arithmetic         |     1978     |     1368     |     1368     |     1650     |
+| ControlFlow        |     1268     |     962      |     962      |     1043     |
+| StateManagement    |     3787     |     2832     |     2832     |     3135     |
+| DataStructures     |     2414     |     1576     |     1576     |     2031     |
+| Functions          |     4377     |     2452     |     2452     |     3477     |
+| Events             |     1046     |     826      |     826      |     1163     |
+| Encoding           |     1790     |     976      |     976      |     1264     |
+| Edge               |     4160     |     3112     |     3112     |     3787     |
 
 ## Size Delta vs Baseline (`default_200`)
 
 | Contract           |  Transpiled  |  via_ir_200  | ir_optimized |
 |------------------|:----------:|:----------:|:----------:|
-| Arithmetic         |    +45.2%    |    +0.0%     |    +20.6%    |
-| ControlFlow        |    +36.2%    |    +0.0%     |    +8.4%     |
-| StateManagement    |    +34.4%    |    +0.0%     |    +10.7%    |
-| DataStructures     |    +54.3%    |    +0.0%     |    +28.9%    |
-| Functions          |    +79.7%    |    +0.0%     |    +41.8%    |
-| Events             |    +28.0%    |    +0.0%     |    +40.8%    |
-| Encoding           |    +83.5%    |    +0.0%     |    +29.5%    |
-| Edge               |    +35.2%    |    +0.0%     |    +21.7%    |
+| Arithmetic         |    +44.6%    |    +0.0%     |    +20.6%    |
+| ControlFlow        |    +31.8%    |    +0.0%     |    +8.4%     |
+| StateManagement    |    +33.7%    |    +0.0%     |    +10.7%    |
+| DataStructures     |    +53.2%    |    +0.0%     |    +28.9%    |
+| Functions          |    +78.5%    |    +0.0%     |    +41.8%    |
+| Events             |    +26.6%    |    +0.0%     |    +40.8%    |
+| Encoding           |    +83.4%    |    +0.0%     |    +29.5%    |
+| Edge               |    +33.7%    |    +0.0%     |    +21.7%    |
 
 ---
 
@@ -80,15 +80,15 @@
 
 | Function | Transpiled | Native (Solc) | Delta |
 |:---------|:----------:|:-------------:|:-----:|
-| breakLoop | 2034 | 1858 | +9.5% |
-| continueLoop | 2346 | 1678 | +39.8% |
-| earlyReturn | 638 | 354 | +80.2% |
-| ifElse | 676 | 294 | +129.9% |
-| loopCount | 10895 | 11415 | -4.6% |
-| loopSum | 1208 | 706 | +71.1% |
-| nestedLoop | 2364 | 1778 | +33.0% |
+| breakLoop | 2028 | 1858 | +9.1% |
+| continueLoop | 2340 | 1678 | +39.5% |
+| earlyReturn | 633 | 354 | +78.8% |
+| ifElse | 671 | 294 | +128.2% |
+| loopCount | 10889 | 11415 | -4.6% |
+| loopSum | 1202 | 706 | +70.3% |
+| nestedLoop | 2334 | 1778 | +31.3% |
 | ternary | 681 | 347 | +96.3% |
-| whileLoop | 4795 | 4872 | -1.6% |
+| whileLoop | 4790 | 4872 | -1.7% |
 
 ### StateManagement
 
@@ -97,7 +97,7 @@
 | CONST_HASH | 651 | 1074 | -39.4% |
 | CONST_VALUE | 628 | 964 | -34.9% |
 | balances | 2830 | 2577 | +9.8% |
-| getArrayElement | 939 | 591 | +58.9% |
+| getArrayElement | 934 | 591 | +58.0% |
 | getArrayLength | 2704 | 2289 | +18.1% |
 | getMappingValue | 2773 | 3000 | -7.6% |
 | getNestedMap | 852 | 1279 | -33.4% |
@@ -106,9 +106,9 @@
 | getStoredUint | 2727 | 2890 | -5.6% |
 | incrementBalance | 20464 | 20637 | -0.8% |
 | memoryAlloc | 975 | 770 | +26.6% |
-| memoryCopy | 2732 | 3220 | -15.2% |
-| popArray | 733 | 1417 | -48.3% |
-| pushArray | 42563 | 42764 | -0.5% |
+| memoryCopy | 2722 | 3220 | -15.5% |
+| popArray | 728 | 1417 | -48.6% |
+| pushArray | 42558 | 42764 | -0.5% |
 | setMappingValue | 20285 | 21143 | -4.1% |
 | setNestedMap | 22421 | 22787 | -1.6% |
 | setPackedAB | 22409 | 23086 | -2.9% |
@@ -125,19 +125,19 @@
 |:---------|:----------:|:-------------:|:-----:|
 | bytesConcat | 1309 | 851 | +53.8% |
 | bytesLength | 778 | 385 | +102.1% |
-| createArray | 2324 | 2099 | +10.7% |
+| createArray | 2314 | 2099 | +10.2% |
 | createStruct | 843 | 510 | +65.3% |
-| dynamicArraySum | 1245 | 896 | +39.0% |
-| fixedArraySum | 1359 | 964 | +41.0% |
+| dynamicArraySum | 1239 | 896 | +38.3% |
+| fixedArraySum | 1353 | 964 | +40.4% |
 | processStruct | 666 | 235 | +183.4% |
-| processStructArray | 2565 | 2463 | +4.1% |
+| processStructArray | 2550 | 2463 | +3.5% |
 
 ### Functions
 
 | Function | Transpiled | Native (Solc) | Delta |
 |:---------|:----------:|:-------------:|:-----:|
 | callInternal | 272 | 528 | -48.5% |
-| callSelf | 914 | 1171 | -21.9% |
+| callSelf | 904 | 1171 | -22.8% |
 | callVirtualA | 201 | 594 | -66.2% |
 | callVirtualB | 201 | 142 | +41.5% |
 | factorial | 328 | 487 | -32.6% |
@@ -153,13 +153,13 @@
 
 | Function | Transpiled | Native (Solc) | Delta |
 |:---------|:----------:|:-------------:|:-----:|
-| emitBytes | 2447 | 2068 | +18.3% |
-| emitComplex | 3496 | 3059 | +14.3% |
+| emitBytes | 2438 | 2068 | +17.9% |
+| emitComplex | 3508 | 3059 | +14.7% |
 | emitIndexed | 2038 | 1676 | +21.6% |
 | emitMultiIndexed | 2102 | 2094 | +0.4% |
-| emitMultiple | 6087 | 5564 | +9.4% |
-| emitSimple | 1631 | 1273 | +28.1% |
-| emitString | 2441 | 1969 | +24.0% |
+| emitMultiple | 6082 | 5564 | +9.3% |
+| emitSimple | 1625 | 1273 | +27.7% |
+| emitString | 2426 | 1969 | +23.2% |
 
 ### Encoding
 
@@ -179,16 +179,16 @@
 
 | Function | Transpiled | Native (Solc) | Delta |
 |:---------|:----------:|:-------------:|:-----:|
-| CodeIsLawZ95677371 | 193 | N/A | N/A |
+| CodeIsLawZ95677371 | 204 | N/A | N/A |
 | assertCondition | 269 | 565 | -52.4% |
 | checkGas | 211 | 728 | -71.0% |
 | fallback | N/A | 712 | N/A |
 | getBlockInfo | 247 | 175 | +41.1% |
-| getMsgInfo | 261 | 643 | -59.4% |
+| getMsgInfo | 265 | 643 | -58.8% |
 | mayFail | 331 | 799 | -58.6% |
 | requireTrue | 333 | 598 | -44.3% |
 | requireValue | 246 | 433 | -43.2% |
-| tryCall | 839 | 1390 | -39.6% |
+| tryCall | 828 | 1390 | -40.4% |
 
 
 ---

@@ -1,0 +1,51 @@
+# Yul2Venom Benchmark Profile: Full Matrix  
+# Comprehensive benchmark across all Solc optimization configurations
+#
+# Usage:
+#   python3.11 tools/benchmark.py --profile tools/profiles/full.yaml
+
+contracts:
+  - Arithmetic
+  - ControlFlow
+  - StateManagement
+  - DataStructures
+  - Functions
+  - Events
+  - Encoding
+  - Edge
+
+optimization:
+  venom_level: yul-o2
+  yul_level: aggressive
+
+solc:
+  # Full matrix of optimizer runs
+  # - 0: No optimization
+  # - 200: Foundry default
+  # - 1000000: Maximum (production contracts)
+  runs:
+    - 0
+    - 200
+    - 1000000
+
+  # All 3 compilation modes
+  # - default: Traditional optimizer (works with runs)
+  # - via_ir: Yul-based optimizer (works with runs)
+  # - ir_optimized: No runs, single output
+  modes:
+    - default
+    - via_ir
+    - ir_optimized
+
+  baseline: default_200
+
+benchmarks:
+  bytecode: true
+  gas: true
+
+output:
+  report: benchmark_full_report.md
+  json: benchmark_full_data.json
+
+verbose: true
+force_rebuild: true

@@ -514,6 +514,15 @@ def main():
             print(json.dumps([r.to_dict() for r in results], indent=2))
     
     elif args.test_all:
+        # Transpile all contracts first to ensure binaries are up-to-date
+        print("Transpiling all contracts before testing...")
+        transpile_all(runtime_only=False, include_bench=True)
+        # Re-transpile bench with runtime-only for vm.etch tests
+        print("Re-transpiling bench contracts with --runtime-only...")
+        for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
+            if check_yul_exists(str(config)):
+                transpile_contract(str(config), runtime_only=True)
+        
         success, output, passed, failed = run_forge_tests()
         sys.exit(0 if success else 1)
     

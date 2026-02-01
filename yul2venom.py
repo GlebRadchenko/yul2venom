@@ -23,14 +23,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 try:
-    from yul2venom.optimizer import YulOptimizer
+    from yul2venom.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
     from yul2venom.utils.constants import (
         SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
         OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
     )
 except ImportError:
     try:
-        from optimizer import YulOptimizer
+        from yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
         from utils.constants import (
             SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
             OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
@@ -38,7 +38,7 @@ except ImportError:
     except ImportError:
         # Fallback if running from root without package context
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from optimizer import YulOptimizer
+        from yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
         try:
             from utils.constants import (
                 SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
@@ -689,25 +689,29 @@ def cmd_transpile(args):
             raw_yul = f.read()
             
         opt_config = config.copy()
-        # Inject computed immutables (id -> hex value)
-        # DISABLE: We want to keep setimmutable calls in Init Code intact.
-        # The optimizer uses regex which corrupts nested calls (e.g. setimmutable(..., mload(...))).
-        # opt_config['immutables'] = {k: hex(v) if isinstance(v, int) else v for k, v in immutables_map.items()}
         
-        # ENABLED: Optimization fixed (revert(0,0) target removed)
-        # opt = YulOptimizer(opt_config)
-        # optimized_yul = opt.optimize(raw_yul)
-        # opt.print_report()
+        # Configure YulSourceOptimizer based on CLI flags
+        # Levels: safe, standard, aggressive, maximum
+        yul_opt_level = getattr(args, 'yul_opt_level', None)
         
-        # Bypass optimizer but keep patch flow
-        optimized_yul = raw_yul
-        
-        # PATCH: Move Heap Start... REMOVED (Native Compliance)
-        # optimized_yul = optimized_yul.replace("memoryguard(0x80)", "memoryguard(0x1000)")
-        # optimized_yul = optimized_yul.replace("memoryguard(128)", "memoryguard(4096)")
-        
-        # PATCH: Initialize Free Memory Pointer... REMOVED
-        # optimized_yul = optimized_yul.replace("mstore(64, 128)", "mstore(64, 4096)")
+        if yul_opt_level or getattr(args, 'yul_opt', False) or getattr(args, 'strip_checks', False):
+            # Determine optimization level
+            if yul_opt_level:
+                level = OptimizationLevel(yul_opt_level)
+            elif getattr(args, 'strip_checks', False):
+                level = OptimizationLevel.AGGRESSIVE
+            elif getattr(args, 'yul_opt', False):
+                level = OptimizationLevel.STANDARD
+            else:
+                level = OptimizationLevel.SAFE
+            
+            print(f"Running Yul source optimizer (level: {level.value})...", file=sys.stderr)
+            opt = YulSourceOptimizer(level=level, config=config)
+            optimized_yul = opt.optimize(raw_yul)
+            opt.print_report()
+        else:
+            # Skip Yul optimizer (default for compatibility)
+            optimized_yul = raw_yul
         
         # PATCH: Move Free Memory Pointer Storage... REMOVED
         # optimized_yul = re.sub(r"mload\(\s*64\s*\)", "mload(4096)", optimized_yul)
@@ -837,10 +841,12 @@ def cmd_transpile(args):
             MemMergePass, LowerDloadPass, ConcretizeMemLocPass,
             BranchOptimizationPass, CSE, LoadElimination,
             SCCP, AlgebraicOptimizationPass, DeadStoreElimination,
-            SingleUseExpansion, DFTPass
+            SingleUseExpansion, DFTPass, AssertEliminationPass,
+            AssertCombinerPass, ReduceLiteralsCodesize, MemoryCopyElisionPass
         )
         from vyper.venom.analysis import IRAnalysesCache
         from vyper.venom.check_venom import check_calling_convention, check_venom_ctx
+        from vyper.evm.address_space import MEMORY, STORAGE, TRANSIENT
         import traceback
         
         # VALIDATION: Check IR before optimization
@@ -862,37 +868,42 @@ def cmd_transpile(args):
         except Exception as e:
             print(f"ERROR: check_calling_convention FAILED: {e}", file=sys.stderr)
         
-        # Define Safe O2 Pipeline for Yul (Validated 2026-01-28)
-        # Excludes: SCCP, AlgebraicOpt, SingleUse, DFT, DSE (Proven Unsafe/Buggy for Yul)
+        # Define Safe O2 Pipeline for Yul (Validated 2026-02-01)
+        # NOTE: SCCP disabled - increases bytecode due to single-use expansion conflicts
         PASSES_YUL_O2 = [
             FloatAllocas,
             SimplifyCFGPass,
             Mem2Var,
             MakeSSA,
             PhiEliminationPass,
-            # SCCP,  # TEMP DISABLED - Causes failures with transpiled IR
+            SCCP,  # Early constant propagation
             SimplifyCFGPass,
             AssignElimination,
-            # AlgebraicOptimizationPass,  # Fails with transpiled IR - needs investigation
+            AlgebraicOptimizationPass,  # Enable early algebraic optimizations
             LoadElimination,
             PhiEliminationPass,
             AssignElimination,
-            # SCCP,  # TEMP DISABLED - Second instance
+            SCCP,  # Third SCCP after LoadElimination/AssignElimination
             AssignElimination,
             RevertToAssert,
+            AssertEliminationPass,  # Remove provably-true assertions
+            AssertCombinerPass,     # Combine consecutive assert statements
             MemMergePass,
             LowerDloadPass,
             RemoveUnusedVariablesPass,
-            # DeadStoreElimination,
+            (DeadStoreElimination, {'addr_space': MEMORY}),  # Eliminate dead memory stores
             AssignElimination,
             RemoveUnusedVariablesPass,
             ConcretizeMemLocPass,
-            # SCCP,
+            SCCP,  # Re-enabled: constant propagation after other passes
             SimplifyCFGPass,
             MemMergePass,
+            MemoryCopyElisionPass,  # Eliminate redundant memory copies
             RemoveUnusedVariablesPass,
             BranchOptimizationPass,
-            # AlgebraicOptimizationPass,  # Fails with transpiled IR - needs investigation
+            AlgebraicOptimizationPass,  # div→shr, mul→shl, iszero chains, range-based elimination
+            (DeadStoreElimination, {'addr_space': STORAGE}),  # Eliminate dead storage writes
+            (DeadStoreElimination, {'addr_space': TRANSIENT}),  # Eliminate dead transient writes
             RemoveUnusedVariablesPass,
             PhiEliminationPass,
             AssignElimination,
@@ -901,6 +912,7 @@ def cmd_transpile(args):
             AssignElimination,
             RemoveUnusedVariablesPass,
             SingleUseExpansion,
+            ReduceLiteralsCodesize,  # Transform large literals to smaller forms (not, shl)
             DFTPass,
             CFGNormalization,
         ]
@@ -1174,6 +1186,12 @@ Examples:
     trans.add_argument("-o", "--output", help="Output bytecode path")
     trans.add_argument("-O", "--optimize", choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2", "native"], default="O2",
                        help="Optimization level. 'native' uses Vyper's O2 pipeline. 'O2' is the safe Yul pipeline. 'O0' minimal.")
+    trans.add_argument("--yul-opt", action="store_true",
+                       help="Enable Yul-level source optimization (standard level - strips validators, callvalue)")
+    trans.add_argument("--yul-opt-level", choices=["safe", "standard", "aggressive", "maximum"],
+                       help="Yul optimizer aggressiveness. safe=minimal, standard=strip callvalue, aggressive=strip all checks, maximum=DANGEROUS strips overflow checks")
+    trans.add_argument("--strip-checks", action="store_true",
+                       help="Alias for --yul-opt-level=aggressive (strips runtime checks for gas savings)")
     trans.add_argument("--runtime-only", action="store_true", 
                        help="Output only runtime bytecode (no init code). Use for testing with CREATE.")
     trans.add_argument("--dump-ir", action="store_true", help="Dump Intermediate Representation (.vnm files)")

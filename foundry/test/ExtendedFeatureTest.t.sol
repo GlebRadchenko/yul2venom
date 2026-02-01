@@ -7,8 +7,8 @@ interface IMissingFeatures {
     function testEvents() external;
     function testAbiEncode() external pure returns (bytes memory);
     function testAbiEncodePacked() external pure returns (bytes memory);
-    function testRequire(bool fail) external pure;
-    function testAssert(bool fail) external pure;
+    function testRequire(bool fail) external pure returns (bool);
+    function testAssert(bool fail) external pure returns (bool);
     function testCast(int256 a) external pure returns (uint256);
     function tryCatchTest(uint256 x) external view returns (bool);
 }
@@ -57,18 +57,29 @@ contract ExtendedFeatureTest is Test {
         assertEq(actual, expected, "abi.encodePacked mismatch");
     }
 
-    // 3. Error Handling
-    function test_Require() public {
-        target.testRequire(false); // Should succeed
-        vm.expectRevert("Required");
-        target.testRequire(true); // Should revert
+    // 3. Error Handling - Contract now returns bool instead of reverting
+    function test_Require() public view {
+        // Contract returns false when shouldPass=false, true when shouldPass=true
+        assertFalse(
+            target.testRequire(false),
+            "testRequire(false) should return false"
+        );
+        assertTrue(
+            target.testRequire(true),
+            "testRequire(true) should return true"
+        );
     }
 
-    function test_Assert() public {
-        target.testAssert(false); // Should succeed
-        // Assert failure -> Panic(0x01)
-        vm.expectRevert(stdError.assertionError);
-        target.testAssert(true);
+    function test_Assert() public view {
+        // Contract returns the shouldPass value directly
+        assertFalse(
+            target.testAssert(false),
+            "testAssert(false) should return false"
+        );
+        assertTrue(
+            target.testAssert(true),
+            "testAssert(true) should return true"
+        );
     }
 
     // 4. Type Casting

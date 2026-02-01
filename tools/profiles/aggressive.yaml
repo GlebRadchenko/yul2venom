@@ -1,0 +1,86 @@
+# Yul2Venom Benchmark Profile: Aggressive
+# Optimized for maximum bytecode reduction with runtime check stripping
+#
+# Usage: 
+#   python3.11 tools/benchmark.py --profile tools/profiles/aggressive.yaml
+#   python3.11 tools/benchmark.py -p tools/profiles/aggressive.yaml --contracts Functions
+
+# Contracts to benchmark (from foundry/src/bench/)
+contracts:
+  - Arithmetic
+  - ControlFlow
+  - StateManagement
+  - DataStructures
+  - Functions
+  - Events
+  - Encoding
+  - Edge
+
+# ============================================================================
+# Transpiler Optimization Settings
+# ============================================================================
+optimization:
+  # Venom IR optimization level
+  # Options: none, O0, O2, O3, Os, debug, yul-o2, native
+  # yul-o2 = PASSES_YUL_O2 (optimized for Yul-sourced IR)
+  venom_level: yul-o2
+  
+  # Yul source optimizer level
+  # Options:
+  #   - none: Skip Yul optimization
+  #   - safe: Only remove dead code, validators
+  #   - standard: Also strip callvalue checks (non-payable)
+  #   - aggressive: Strip all runtime checks (extcodesize, returndatasize)
+  #   - maximum: DANGEROUS - strip overflow/bounds checks
+  yul_level: aggressive
+
+# ============================================================================
+# Solc Comparison Settings
+# ============================================================================
+solc:
+  # Optimizer runs to benchmark
+  # Array of values to permute across default and via_ir modes
+  # (ir_optimized mode does NOT use runs - only compiled once)
+  runs:
+    - 200      # Foundry default
+
+  # Compilation modes to benchmark
+  # Options:
+  #   - default: Traditional optimizer (--optimize --optimizer-runs=N)
+  #   - via_ir: Yul-based optimizer (--via-ir --optimize --optimizer-runs=N)
+  #   - ir_optimized: Output optimized Yul IR (--ir-optimized --optimize) - NO runs
+  modes:
+    - default
+    - via_ir
+    - ir_optimized
+
+  # Baseline for delta calculation
+  # Format: mode_runs (e.g., "default_200", "via_ir_1000000", "ir_optimized")
+  baseline: default_200
+
+# ============================================================================
+# Benchmark Types
+# ============================================================================
+benchmarks:
+  # Compare bytecode sizes
+  bytecode: true
+  
+  # Run gas benchmarks per function (slower, requires BenchTest contracts)
+  # When enabled, injects transpiled bytecode and measures gas per call
+  gas: true
+
+# ============================================================================
+# Output Settings
+# ============================================================================
+output:
+  # Markdown report file (relative to project root)
+  report: benchmark_report.md
+  
+  # JSON data file for programmatic analysis
+  json: benchmark_data.json
+
+# ============================================================================
+# Misc Settings
+# ============================================================================
+verbose: true
+force_rebuild: true

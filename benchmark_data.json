@@ -1,5 +1,5 @@
 {
-  "generated": "2026-02-01T01:08:30.968041",
+  "generated": "2026-02-01T11:31:32.672722",
   "config": {
     "baseline": "default_200",
     "optimization_runs": [
@@ -10,13 +10,13 @@
       "via_ir",
       "ir_optimized"
     ],
-    "transpiler_opt_level": "O2"
+    "transpiler_opt_level": "yul-o2"
   },
   "results": {
     "Arithmetic": {
       "transpiled": {
         "success": true,
-        "size": 1987,
+        "size": 1978,
         "error": null
       },
       "solc": {
@@ -452,7 +452,7 @@
     "ControlFlow": {
       "transpiled": {
         "success": true,
-        "size": 1310,
+        "size": 1268,
         "error": null
       },
       "solc": {
@@ -476,51 +476,51 @@
         "transpiled": [
           {
             "function": "breakLoop",
-            "avg_gas": 2034,
-            "min_gas": 2034,
-            "max_gas": 2034,
+            "avg_gas": 2028,
+            "min_gas": 2028,
+            "max_gas": 2028,
             "calls": 1
           },
           {
             "function": "continueLoop",
-            "avg_gas": 2346,
-            "min_gas": 2346,
-            "max_gas": 2346,
+            "avg_gas": 2340,
+            "min_gas": 2340,
+            "max_gas": 2340,
             "calls": 1
           },
           {
             "function": "earlyReturn",
-            "avg_gas": 638,
-            "min_gas": 638,
-            "max_gas": 638,
+            "avg_gas": 633,
+            "min_gas": 633,
+            "max_gas": 633,
             "calls": 1
           },
           {
             "function": "ifElse",
-            "avg_gas": 676,
-            "min_gas": 676,
-            "max_gas": 676,
+            "avg_gas": 671,
+            "min_gas": 671,
+            "max_gas": 671,
             "calls": 1
           },
           {
             "function": "loopCount",
-            "avg_gas": 10895,
-            "min_gas": 10895,
-            "max_gas": 10895,
+            "avg_gas": 10889,
+            "min_gas": 10889,
+            "max_gas": 10889,
             "calls": 1
           },
           {
             "function": "loopSum",
-            "avg_gas": 1208,
-            "min_gas": 1208,
-            "max_gas": 1208,
+            "avg_gas": 1202,
+            "min_gas": 1202,
+            "max_gas": 1202,
             "calls": 1
           },
           {
             "function": "nestedLoop",
-            "avg_gas": 2364,
-            "min_gas": 2364,
-            "max_gas": 2364,
+            "avg_gas": 2334,
+            "min_gas": 2334,
+            "max_gas": 2334,
             "calls": 1
           },
           {
@@ -532,9 +532,9 @@
           },
           {
             "function": "whileLoop",
-            "avg_gas": 4795,
-            "min_gas": 4795,
-            "max_gas": 4795,
+            "avg_gas": 4790,
+            "min_gas": 4790,
+            "max_gas": 4790,
             "calls": 1
           }
         ],
@@ -608,7 +608,7 @@
     "StateManagement": {
       "transpiled": {
         "success": true,
-        "size": 3806,
+        "size": 3787,
         "error": null
       },
       "solc": {
@@ -653,23 +653,23 @@
           },
           {
             "function": "pushArray",
-            "avg_gas": 42563,
-            "min_gas": 42563,
-            "max_gas": 42563,
+            "avg_gas": 42558,
+            "min_gas": 42558,
+            "max_gas": 42558,
             "calls": 1
           },
           {
             "function": "getArrayElement",
-            "avg_gas": 939,
-            "min_gas": 939,
-            "max_gas": 939,
+            "avg_gas": 934,
+            "min_gas": 934,
+            "max_gas": 934,
             "calls": 1
           },
           {
             "function": "popArray",
-            "avg_gas": 733,
-            "min_gas": 733,
-            "max_gas": 733,
+            "avg_gas": 728,
+            "min_gas": 728,
+            "max_gas": 728,
             "calls": 1
           },
           {
@@ -709,9 +709,9 @@
           },
           {
             "function": "memoryCopy",
-            "avg_gas": 2732,
-            "min_gas": 2732,
-            "max_gas": 2732,
+            "avg_gas": 2722,
+            "min_gas": 2722,
+            "max_gas": 2722,
             "calls": 1
           },
           {
@@ -974,7 +974,7 @@
     "DataStructures": {
       "transpiled": {
         "success": true,
-        "size": 2431,
+        "size": 2414,
         "error": null
       },
       "solc": {
@@ -1012,9 +1012,9 @@
           },
           {
             "function": "createArray",
-            "avg_gas": 2324,
-            "min_gas": 2324,
-            "max_gas": 2324,
+            "avg_gas": 2314,
+            "min_gas": 2314,
+            "max_gas": 2314,
             "calls": 1
           },
           {
@@ -1026,16 +1026,16 @@
           },
           {
             "function": "dynamicArraySum",
-            "avg_gas": 1245,
-            "min_gas": 1245,
-            "max_gas": 1245,
+            "avg_gas": 1239,
+            "min_gas": 1239,
+            "max_gas": 1239,
             "calls": 1
           },
           {
             "function": "fixedArraySum",
-            "avg_gas": 1359,
-            "min_gas": 1359,
-            "max_gas": 1359,
+            "avg_gas": 1353,
+            "min_gas": 1353,
+            "max_gas": 1353,
             "calls": 1
           },
           {
@@ -1047,9 +1047,9 @@
           },
           {
             "function": "processStructArray",
-            "avg_gas": 2565,
-            "min_gas": 2565,
-            "max_gas": 2565,
+            "avg_gas": 2550,
+            "min_gas": 2550,
+            "max_gas": 2550,
             "calls": 1
           }
         ],
@@ -1116,7 +1116,7 @@
     "Functions": {
       "transpiled": {
         "success": true,
-        "size": 4406,
+        "size": 4377,
         "error": null
       },
       "solc": {
@@ -1147,9 +1147,9 @@
           },
           {
             "function": "callSelf",
-            "avg_gas": 914,
-            "min_gas": 914,
-            "max_gas": 914,
+            "avg_gas": 904,
+            "min_gas": 904,
+            "max_gas": 904,
             "calls": 1
           },
           {
@@ -1314,7 +1314,7 @@
     "Events": {
       "transpiled": {
         "success": true,
-        "size": 1057,
+        "size": 1046,
         "error": null
       },
       "solc": {
@@ -1338,16 +1338,16 @@
         "transpiled": [
           {
             "function": "emitBytes",
-            "avg_gas": 2447,
-            "min_gas": 2447,
-            "max_gas": 2447,
+            "avg_gas": 2438,
+            "min_gas": 2438,
+            "max_gas": 2438,
             "calls": 1
           },
           {
             "function": "emitComplex",
-            "avg_gas": 3496,
-            "min_gas": 3496,
-            "max_gas": 3496,
+            "avg_gas": 3508,
+            "min_gas": 3508,
+            "max_gas": 3508,
             "calls": 1
           },
           {
@@ -1366,23 +1366,23 @@
           },
           {
             "function": "emitMultiple",
-            "avg_gas": 6087,
-            "min_gas": 6087,
-            "max_gas": 6087,
+            "avg_gas": 6082,
+            "min_gas": 6082,
+            "max_gas": 6082,
             "calls": 1
           },
           {
             "function": "emitSimple",
-            "avg_gas": 1631,
-            "min_gas": 1631,
-            "max_gas": 1631,
+            "avg_gas": 1625,
+            "min_gas": 1625,
+            "max_gas": 1625,
             "calls": 1
           },
           {
             "function": "emitString",
-            "avg_gas": 2441,
-            "min_gas": 2441,
-            "max_gas": 2441,
+            "avg_gas": 2426,
+            "min_gas": 2426,
+            "max_gas": 2426,
             "calls": 1
           }
         ],
@@ -1442,7 +1442,7 @@
     "Encoding": {
       "transpiled": {
         "success": true,
-        "size": 1791,
+        "size": 1790,
         "error": null
       },
       "solc": {
@@ -1598,7 +1598,7 @@
     "Edge": {
       "transpiled": {
         "success": true,
-        "size": 4206,
+        "size": 4160,
         "error": null
       },
       "solc": {
@@ -1636,9 +1636,9 @@
           },
           {
             "function": "CodeIsLawZ95677371",
-            "avg_gas": 193,
-            "min_gas": 193,
-            "max_gas": 193,
+            "avg_gas": 204,
+            "min_gas": 204,
+            "max_gas": 204,
             "calls": 1
           },
           {
@@ -1650,9 +1650,9 @@
           },
           {
             "function": "getMsgInfo",
-            "avg_gas": 261,
-            "min_gas": 261,
-            "max_gas": 261,
+            "avg_gas": 265,
+            "min_gas": 265,
+            "max_gas": 265,
             "calls": 1
           },
           {
@@ -1671,9 +1671,9 @@
           },
           {
             "function": "tryCall",
-            "avg_gas": 839,
-            "min_gas": 839,
-            "max_gas": 839,
+            "avg_gas": 828,
+            "min_gas": 828,
+            "max_gas": 828,
             "calls": 1
           },
           {
