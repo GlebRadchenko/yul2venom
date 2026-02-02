@@ -30,7 +30,7 @@ contract ModifiersTest is Test {
 
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/Modifiers_opt.bin")
+            string("../output/Modifiers_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

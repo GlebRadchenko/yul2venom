@@ -15,7 +15,7 @@ contract TypeLimitsTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/TypeLimits_opt.bin")
+            string("../output/TypeLimits_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

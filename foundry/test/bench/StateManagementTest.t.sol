@@ -25,7 +25,7 @@ contract StateManagementTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/StateManagement_opt.bin")
+            string("../output/StateManagement_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

@@ -23,7 +23,7 @@ contract LibrariesTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/Libraries_opt.bin")
+            string("../output/Libraries_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {
