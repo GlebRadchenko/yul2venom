@@ -307,9 +307,11 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
     """Transpile all contracts and return results.
     
     Args:
-        runtime_only: If True, use --runtime-only for bench contracts (vm.etch tests)
-        include_bench: If True, include bench contracts
-        include_init: If True, include init contracts (uses --with-init flag)
+        runtime_only: If True, passes --runtime-only to all core and bench contracts
+                      (used for vm.etch tests that need runtime bytecode only).
+                      Does NOT apply to init contracts which always use --with-init.
+        include_bench: If True, include bench contracts from configs/bench/
+        include_init: If True, include init contracts from configs/init/ (uses --with-init flag)
     """
     results = []
     

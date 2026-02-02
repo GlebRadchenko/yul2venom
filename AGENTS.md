@@ -10,7 +10,7 @@
 Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper backend → EVM
 ```
 
-**Status**: 339/339 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
+**Status**: 344/344 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
 
 ---
 
@@ -96,7 +96,7 @@ cd foundry && forge test --match-test "name" -vvvv       # Verbose
 # 1. Start from clean state (stash or commit current changes)
 git stash --include-untracked
 
-# 2. Verify baseline: All 339 tests should pass
+# 2. Verify baseline: All tests should pass (0 failed)
 python3.11 testing/test_framework.py --test-all
 
 # 3. Apply changes ONE AT A TIME and test
@@ -108,11 +108,14 @@ python3.11 testing/test_framework.py --test-all
 # 5. If tests fail, investigate immediately - don't stack changes
 ```
 
-**Config/Test counts:**
-- `configs/` = 21 core configs
-- `configs/bench/` = 15 bench configs  
-- `configs/init/` = 10 init configs
-- **Total: 46 configs, 339 tests**
+**Config/Test discovery:**
+```bash
+# Get current counts dynamically
+ls configs/*.json | wc -l              # Core configs
+ls configs/bench/*.json | wc -l        # Bench configs  
+ls configs/init/*.json | wc -l         # Init configs
+forge test 2>&1 | tail -1              # Total test count
+```
 
 ### Debugging
 ```bash

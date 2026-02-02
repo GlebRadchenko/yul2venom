@@ -541,7 +541,16 @@ class VenomIRBuilder:
                 self._collect_assigned_vars(stmt.post, result_set)
 
     def _count_statements(self, node):
-        """Count the number of statements in a Yul AST node (for inlining threshold)."""
+        """Count statements in a Yul AST node for inlining complexity analysis.
+        
+        Used by inlining heuristics to decide whether a function is too complex
+        to inline everywhere. Currently unused but retained for future optimization.
+        
+        Counting rules:
+        - YulBlock: sum of all contained statements
+        - YulIf/YulSwitch/YulForLoop: 1 + sum of body statements
+        - Simple statements (assignment, declaration, expression, leave, break, continue): 1
+        """
         if node is None:
             return 0
         node_type = type(node).__name__
