@@ -38,7 +38,7 @@ runs:
         # Install local Vyper fork in editable mode
         # Required: patched version with phi ordering, log effects, Yul opcodes
         pip install -e vyper/
-        python -c "import vyper; print(f'Vyper {vyper.__version__} installed')"
+        python -c "import vyper; print('Vyper fork installed successfully')"
 
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
