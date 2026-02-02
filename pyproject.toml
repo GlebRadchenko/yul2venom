@@ -47,3 +47,34 @@ py-modules = ["yul2venom", "transpiler", "venom_generator", "yul_parser", "yul_e
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ir*", "testing*"]
+
+[tool.ruff]
+# Target Python 3.11
+target-version = "py311"
+
+# Exclude vyper submodule
+exclude = ["vyper/"]
+
+[tool.ruff.lint]
+# Select rules to check
+select = ["E", "F", "W"]
+
+# Ignore common patterns that are intentional in this codebase
+ignore = [
+    "E402",  # Module level import not at top of file (conditional imports)
+    "E701",  # Multiple statements on one line (compact code style)
+    "E702",  # Multiple statements on one line (semicolon)
+    "E722",  # Do not use bare except (intentional fallback handling)
+    "E741",  # Ambiguous variable name (l, O, I)
+    "F401",  # Imported but unused (re-exports, type hints)
+    "F541",  # f-string without placeholders (consistent formatting)
+    "F811",  # Redefinition of unused name (conditional imports)
+    "F841",  # Local variable assigned but never used (intentional debugging)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Allow star imports and unused imports in __init__.py files
+"__init__.py" = ["F401", "F403"]
+# Test files can have more relaxed rules
+"testing/*" = ["F401", "F841"]
+"scripts/*" = ["F401", "F541"]
