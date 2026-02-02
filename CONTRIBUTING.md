@@ -64,6 +64,16 @@ yul2venom/
 └── vyper/                 # Vyper fork (submodule)
 ```
 
+### Vyper Fork
+
+The `vyper/` submodule is on branch `yul2venom` with critical patches for Yul support:
+
+- **liveness.py**: Phi operand ordering fix for nested loops
+- **effects.py**: log0-4 effect registration
+- **venom_to_assembly.py**: Yul opcodes, duplicate literals, assign stack fix
+
+See [docs/VENOM_CHANGES.md](docs/VENOM_CHANGES.md) for the complete change audit.
+
 ## Transpilation Workflow
 
 ```bash
@@ -102,12 +112,14 @@ cd foundry && forge test
 # Verbose single test
 cd foundry && forge test --match-test "test_name" -vvvv
 
-# Full pipeline
+# Full pipeline (transpile + retranspile for tests + run Forge)
 python3.11 testing/test_framework.py --test-all
 
 # Init bytecode tests only
 python3.11 testing/test_framework.py --test-init
 ```
+
+> **Important**: `--test-all` automatically retranspiles all contracts with `--runtime-only` for `vm.etch` tests before running Forge. Always use this command to ensure bytecode is up-to-date.
 
 ### Test Pattern
 

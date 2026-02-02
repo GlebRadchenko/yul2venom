@@ -28,14 +28,17 @@ Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper ba
 | `core/pipeline.py` | Orchestration, config loading | Pipeline changes |
 | `ir/*.py` | Local IR types: BasicBlock, IRInstruction | Adding opcodes |
 
-### Vyper Fork (`vyper/`) — Avoid Modifying
+### Vyper Fork (`vyper/`) — Critical Patches
 
-| File | Role | Modify? |
-|------|------|---------| 
-| `vyper/venom/parser.py` | VNM text → IRContext. **REVERSES OPERANDS** | Read-only |
-| `vyper/venom/venom_to_assembly.py` | IR → EVM assembly | Avoid |
-| `vyper/venom/passes/*.py` | Optimization passes | DCE disabled here |
-| `vyper/venom/analysis/liveness.py` | Liveness analysis | Phi ordering fix here |
+**Branch**: `yul-optimization` (commit 798d288f)  
+**Patches**: See [docs/VENOM_CHANGES.md](docs/VENOM_CHANGES.md) for full audit.
+
+| File | Patch Purpose | Revert Risk |
+|------|--------------|-------------| 
+| `vyper/venom/analysis/liveness.py` | Phi operand ordering fix | ⚠️ Critical |
+| `vyper/venom/effects.py` | Register log0-4 effects | ⚠️ Critical |
+| `vyper/venom/venom_to_assembly.py` | Yul opcodes, duplicate literals, assign fix | ⚠️ Critical |
+| `vyper/venom/parser.py` | **REVERSES OPERANDS** (read-only) | N/A |
 
 ---
 
@@ -208,10 +211,10 @@ Batch transpilation and testing.
 
 ### Session Start Protocol
 
-1. **Read docs**: This file, `docs/REFERENCE.md`
+1. **Read docs**: This file, `docs/REFERENCE.md`, `docs/VENOM_CHANGES.md`
 2. **Check status**: `python3.11 testing/test_framework.py --test-all`
-3. **Check Vyper**: Understand `vyper/venom/parser.py` operand reversal
-4. **Diff fork**: `cd vyper && git diff origin/master -- vyper/venom/`
+3. **Check Vyper**: Understand parser operand reversal and Vyper patches
+4. **Verify branch**: `cd vyper && git log -1 --oneline` (expect `yul-optimization`)
 
 ### Incremental Development Loop
 

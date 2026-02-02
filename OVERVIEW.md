@@ -498,6 +498,22 @@ After transpilation with `--dump-ir`:
 
 ---
 
+## Vyper Fork
+
+**Branch**: `yul-optimization` (commit 798d288f)
+
+The `vyper/` submodule contains patches critical for Yul2Venom operation:
+
+| File | Patch | Impact |
+|------|-------|--------|
+| `analysis/liveness.py` | Phi operand ordering | Nested loops |
+| `effects.py` | log0-4 effect registration | Events/logging |
+| `venom_to_assembly.py` | Yul opcodes, duplicate literals, assign fix | Core transpilation |
+
+See [docs/VENOM_CHANGES.md](docs/VENOM_CHANGES.md) for the complete change audit.
+
+---
+
 ## CI/CD Integration
 
 ```bash
