@@ -1,0 +1,151 @@
+# Yul2Venom Transpiler Configuration
+# ===================================
+# Copy this file to customize transpiler behavior.
+# CLI arguments override these settings.
+
+# =============================================================================
+# FUNCTION INLINING (venom_generator.py)
+# =============================================================================
+# Controls when functions are EMITTED as separate callable functions vs INLINED.
+# 
+# HOW IT WORKS:
+# - Functions with statements > stmt_threshold AND calls > call_threshold
+#   are emitted as separate functions and called via `invoke`
+# - This enables O(1) dispatch via Venom's native djmp jump tables
+# - Smaller/less-frequent functions are inlined at each call site
+#
+# TRADE-OFF:
+# - Lower thresholds = more functions emitted = smaller bytecode, slower calls
+# - Higher thresholds = more inlining = larger bytecode, faster calls
+
+inlining:
+  # Functions with MORE than this many statements may be emitted instead of inlined
+  # Default: 1 (aggressive - emit almost everything with >1 statement)
+  stmt_threshold: 1
+  
+  # Functions called MORE than this many times may be emitted instead of inlined
+  # Default: 2 (emit if called 3+ times)
+  call_threshold: 2
+  
+  # Set to false to inline everything (except recursive functions which always use invoke)
+  enabled: true
+
+# =============================================================================
+# YUL SOURCE OPTIMIZER (yul_source_optimizer.py)
+# =============================================================================
+# Pre-transpilation optimization of Yul source code.
+# Runs BEFORE IR generation to simplify the Yul AST.
+
+yul_optimizer:
+  # Optimization aggressiveness level:
+  # - safe: Only remove clearly dead code (validators, empty blocks)
+  # - standard: Remove non-payable checks, basic ABI decoder checks
+  # - aggressive: Remove runtime checks (extcodesize, returndatasize)
+  # - maximum: Remove overflow/bounds checks (DANGEROUS - use with caution)
+  level: aggressive
+  
+  # Maximum number of optimization passes before stopping
+  # Optimizer runs until no changes or this limit is reached
+  # Default: 5
+  max_passes: 5
+
+# =============================================================================
+# VENOM OPTIMIZATION PASSES (yul2venom.py)
+# =============================================================================
+# Post-transpilation optimization of Venom IR.
+# Runs AFTER IR generation via Vyper's optimization pipeline.
+
+optimization:
+  # Optimization level for Venom IR passes:
+  # - none: No optimization passes at all
+  # - O0: Minimal - only store elimination and SSA conversion
+  # - O2: Safe Yul pipeline - balanced optimization (DEFAULT)
+  # - O3/Os: Same as O2 (safe pipeline)
+  # - yul-o2: Alias for O2
+  # - native: Vyper's O2 pipeline via run_passes_on
+  # - debug: Legacy debug pipeline
+  level: yul-o2
+
+# =============================================================================
+# MEMORY LAYOUT (utils/constants.py)
+# =============================================================================
+# Low-level memory addresses used by the Venom backend.
+# These values override the defaults in utils/constants.py at runtime.
+
+memory:
+  # Where Venom starts allocating memory for stack spills
+  # Must be above Vyper scratch space (0x00-0x60) and Solidity FMP (0x40)
+  # 0x100 uses PUSH1 (saves ~1 byte per mstore vs PUSH2)
+  venom_start: 0x100
+  
+  # Offset for stack spill operations - safely beyond Yul heap
+  spill_offset: 0x4000
+  
+  # Solidity/Yul free memory pointer slot location
+  fmp_slot: 0x40
+  
+  # Solidity/Yul heap start (after scratch space and FMP)
+  heap_start: 0x80
+
+# =============================================================================
+# DEBUG OUTPUT
+# =============================================================================
+# Control what intermediate files are saved for debugging.
+
+debug:
+  # Save raw IR (before optimization) to debug/raw_ir.vnm
+  save_raw_ir: true
+  
+  # Save optimized IR to debug/opt_ir.vnm
+  save_opt_ir: true
+  
+  # Save generated assembly to debug/assembly.asm
+  save_assembly: true
+  
+  # Print inlining decisions to stderr during transpilation
+  verbose_inlining: true
+  
+  # Directory for debug output files
+  output_dir: debug
+
+# =============================================================================
+# OUTPUT PATHS
+# =============================================================================
+
+output:
+  # Directory for transpiled bytecode binaries
+  dir: output
+  
+  # Suffix added to output filenames (e.g., Contract_opt.bin)
+  suffix: _opt
+
+# =============================================================================
+# PARSER
+# =============================================================================
+
+parser:
+  # Python recursion limit for parsing deep Yul AST structures
+  # Increase if you get RecursionError on complex contracts
+  recursion_limit: 5000
+
+# =============================================================================
+# BACKEND
+# =============================================================================
+
+backend:
+  # Target EVM version for bytecode generation
+  evm_version: cancun
+  
+  # Enable experimental/unstable features
+  experimental: false
+
+# =============================================================================
+# PROJECT PATHS
+# =============================================================================
+
+paths:
+  # Default directory for contract config files
+  configs: configs
+  
+  # Default directory for Solidity source files
+  sol_dir: foundry/src

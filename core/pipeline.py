@@ -181,7 +181,18 @@ class TranspilationPipeline:
             YulOptLevel.MAXIMUM: OptimizationLevel.MAXIMUM,
         }
         
-        optimizer = YulSourceOptimizer(opt_level_map.get(self.config.yul_opt_level, OptimizationLevel.AGGRESSIVE))
+        # Get max_passes from global config if available
+        try:
+            from config import get_config
+            _global_config = get_config()
+            max_passes = _global_config.yul_optimizer.max_passes
+        except ImportError:
+            max_passes = 5  # Fallback default
+        
+        optimizer = YulSourceOptimizer(
+            level=opt_level_map.get(self.config.yul_opt_level, OptimizationLevel.AGGRESSIVE),
+            max_passes=max_passes
+        )
         optimized_yul = optimizer.optimize(yul_source)
         # Stats available on optimizer.stats if needed
         

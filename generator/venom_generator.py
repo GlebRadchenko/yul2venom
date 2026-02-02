@@ -45,7 +45,22 @@ class VenomIRBuilder:
     
     Calling Convention: param/invoke/ret for inter-function calls
     """
-    def __init__(self):
+    def __init__(self, config=None):
+        # Import config loader if config not provided
+        if config is None:
+            try:
+                from config import get_config
+                config = get_config()
+            except ImportError:
+                config = None
+        self.config = config
+        
+        # Log config values being used
+        if self.config:
+            print(f"CONFIG: inlining.enabled={config.inlining.enabled}, "
+                  f"stmt_threshold={config.inlining.stmt_threshold}, "
+                  f"call_threshold={config.inlining.call_threshold}", file=sys.stderr)
+        
         self.ctx = IRContext()
         self.current_fn = None
         self.current_bb = None
@@ -61,14 +76,19 @@ class VenomIRBuilder:
         self.loop_stack = []        # Stack of (start_label, end_label, post_label) for loops
         self.inline_exit_stack = []  # Stack of function names for inlined function calls
         self.inline_exited = False   # Flag set when leave encountered in inlined context
-        self.recursive_functions = set()  # Functions in recursive cycles - use invoke/ret
-        self.inlinable_functions = set()  # Functions safe to inline (DAG only)
+        self.recursive_functions = set()  # Functions in recursive cycles - must use invoke/ret
+        self.inlinable_functions = set()  # Non-recursive functions (form a DAG, not a cycle) - can inline
+        self.emit_as_functions = set()    # Non-recursive but too large/frequent to inline - emit for invoke
         
         # VENOM-NATIVE: Scratch alloca ID counter for unique memory allocation tracking
         # Mirrors native Vyper's get_scratch_alloca_id() pattern
         self.scratch_alloca_id = 0
         # Track alloca base position for sequential allocation
-        self.alloca_mem_position = VENOM_MEMORY_START  # Start above Venom's spill frame
+        # Use config.memory if available, otherwise fall back to constants
+        if self.config:
+            self.alloca_mem_position = self.config.memory.venom_start
+        else:
+            self.alloca_mem_position = VENOM_MEMORY_START  # Fallback to constant
         
         # DEFERRED FMP PATTERN: Track pending FMP updates to emit after allocation use
         # This fixes the bug where mload(64) result is lost due to stack manipulation
@@ -149,7 +169,12 @@ class VenomIRBuilder:
         for fname in sorted(self.recursive_functions):
             self._build_function(self.functions_ast[fname])
 
-        # 4. Build Global/Main
+        # 5. Build non-recursive functions marked for emission (inlining heuristic)
+        # These are large/frequent functions that benefit from O(1) dispatch via invoke
+        for fname in sorted(self.emit_as_functions):
+            self._build_function(self.functions_ast[fname])
+
+        # 6. Build Global/Main
         self._build_main(yul_ast)
         
         return self.ctx
@@ -204,6 +229,66 @@ class VenomIRBuilder:
             if color[fname] == WHITE:
                 dfs(fname, [])
         self.inlinable_functions = set(self.functions_ast.keys()) - self.recursive_functions
+        
+        # INLINING HEURISTIC: Emit large/frequent functions instead of inlining everywhere
+        # This enables O(1) function dispatch via djmp jump tables
+        # Thresholds configurable via yul2venom.config.yaml
+        if self.config and self.config.inlining.enabled:
+            STMT_THRESHOLD = self.config.inlining.stmt_threshold
+            CALL_THRESHOLD = self.config.inlining.call_threshold
+        else:
+            STMT_THRESHOLD = 1    # Default: Functions with >1 statements 
+            CALL_THRESHOLD = 2    # Default: Called more than 2 times
+        
+        # Count ALL call sites for each function
+        call_site_counts = {fname: 0 for fname in self.functions_ast}
+        
+        def count_calls_in_node(node):
+            """Recursively count function calls in AST node."""
+            if node is None:
+                return
+            node_type = type(node).__name__
+            if node_type == 'YulCall':
+                if node.function in self.functions_ast:
+                    call_site_counts[node.function] += 1
+                for arg in node.args:
+                    count_calls_in_node(arg)
+            elif node_type == 'YulBlock':
+                for stmt in node.statements:
+                    count_calls_in_node(stmt)
+            elif node_type in ('YulVariableDeclaration', 'YulAssignment'):
+                count_calls_in_node(getattr(node, 'value', None))
+            elif node_type == 'YulIf':
+                count_calls_in_node(node.condition)
+                count_calls_in_node(node.body)
+            elif node_type == 'YulSwitch':
+                count_calls_in_node(node.condition)
+                for case in node.cases:
+                    count_calls_in_node(case.body)
+            elif node_type == 'YulForLoop':
+                for part in [node.init, node.condition, node.body, node.post]:
+                    count_calls_in_node(part)
+            elif node_type == 'YulExpressionStmt':
+                count_calls_in_node(node.expr)
+        
+        for fname, f_def in self.functions_ast.items():
+            if f_def.body:
+                count_calls_in_node(f_def.body)
+        
+        # Mark large/frequent functions for emission instead of inlining
+        for fname in list(self.inlinable_functions):
+            f_def = self.functions_ast.get(fname)
+            if f_def and f_def.body:
+                stmt_count = self._count_statements(f_def.body)
+                call_count = call_site_counts.get(fname, 0)
+                
+                if stmt_count > STMT_THRESHOLD and call_count > CALL_THRESHOLD:
+                    self.emit_as_functions.add(fname)
+                    self.inlinable_functions.discard(fname)
+                    print(f"INLINING: Emitting {fname} (stmts={stmt_count}, calls={call_count})", file=sys.stderr)
+        
+        if self.emit_as_functions:
+            print(f"INLINING: {len(self.emit_as_functions)} functions marked for emission", file=sys.stderr)
         
         # OPTIMIZATION: Let the optimization pipeline analyze functions for inlining
         self.optimizer.analyze(self.functions_ast, self.recursive_functions)
@@ -765,12 +850,14 @@ class VenomIRBuilder:
                                    (ptr_arg.value == "64" or ptr_arg.value == "0x40"))
                     is_memguard = isinstance(val_arg, YulCall) and val_arg.function == "memoryguard"
                     if is_fmp_slot and is_memguard:
-                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to VENOM_MEMORY_START
+                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to venom_start
                         # Yul code uses mload(64)/mstore(64) for dynamic memory allocation.
-                        # Venom's MemoryAllocator uses 0x00-VENOM_MEMORY_START for static allocation.
-                        # We initialize FMP to VENOM_MEMORY_START so Yul's dynamic allocation starts
+                        # Venom's MemoryAllocator uses 0x00-venom_start for static allocation.
+                        # We initialize FMP to venom_start so Yul's dynamic allocation starts
                         # above Venom's region, avoiding memory conflicts.
-                        self.current_bb.append_instruction("mstore", IRLiteral(YUL_FMP_SLOT), IRLiteral(VENOM_MEMORY_START))
+                        fmp_slot = self.config.memory.fmp_slot if self.config else YUL_FMP_SLOT
+                        venom_start = self.config.memory.venom_start if self.config else VENOM_MEMORY_START
+                        self.current_bb.append_instruction("mstore", IRLiteral(fmp_slot), IRLiteral(venom_start))
                         return
             self._visit_expr(stmt.expr)
 

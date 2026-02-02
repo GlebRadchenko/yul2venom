@@ -1283,12 +1283,12 @@ Examples:
     trans.add_argument("config", help="Config file (.yul2venom.json)")
     trans.add_argument("-y", "--yul", help="Yul file (optional, defaults to config.yul)")
     trans.add_argument("-o", "--output", help="Output bytecode path")
-    trans.add_argument("-O", "--optimize", choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2", "native"], default="O2",
-                       help="Optimization level. 'native' uses Vyper's O2 pipeline. 'O2' is the safe Yul pipeline. 'O0' minimal.")
+    trans.add_argument("-O", "--optimize", choices=["none", "O0", "O2", "O3", "Os", "debug", "yul-o2", "native"], default=None,
+                       help="Optimization level (overrides config). 'native' uses Vyper's O2 pipeline. 'O2' is the safe Yul pipeline. 'O0' minimal.")
     trans.add_argument("--yul-opt", action="store_true",
                        help="Enable Yul-level source optimization (standard level - strips validators, callvalue)")
     trans.add_argument("--yul-opt-level", choices=["safe", "standard", "aggressive", "maximum"],
-                       help="Yul optimizer aggressiveness. safe=minimal, standard=strip callvalue, aggressive=strip all checks, maximum=DANGEROUS strips overflow checks")
+                       help="Yul optimizer aggressiveness (overrides config.yul_optimizer.level)")
     trans.add_argument("--strip-checks", action="store_true",
                        help="Alias for --yul-opt-level=aggressive (strips runtime checks for gas savings)")
     trans.add_argument("--runtime-only", action="store_true", 
@@ -1297,8 +1297,19 @@ Examples:
                        help="Transpile actual Yul init code (constructor) instead of using minimal stub. Required for contracts with constructor logic.")
     trans.add_argument("--dump-ir", action="store_true", help="Dump Intermediate Representation (.vnm files)")
     trans.add_argument("--vnm-out", help="Explicit path for VNM output (overrides default naming)")
+    trans.add_argument("--transpiler-config", help="Path to transpiler config file (default: yul2venom.config.yaml)")
     
     args = parser.parse_args()
+    
+    # Load transpiler config (file → defaults → CLI overrides)
+    try:
+        from config import load_config, set_config, apply_cli_overrides
+        transpiler_config_path = getattr(args, 'transpiler_config', None)
+        transpiler_config = load_config(transpiler_config_path)
+        transpiler_config = apply_cli_overrides(transpiler_config, args)
+        set_config(transpiler_config)  # Set as global config
+    except ImportError:
+        pass  # Config module not available, use defaults
     
     if args.command == "prepare":
         return cmd_prepare(args)
