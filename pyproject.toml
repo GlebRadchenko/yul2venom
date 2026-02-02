@@ -62,6 +62,7 @@ select = ["E", "F", "W"]
 # Ignore common patterns that are intentional in this codebase
 ignore = [
     "E402",  # Module level import not at top of file (conditional imports)
+    "E501",  # Line too long (not enforced in this project)
     "E701",  # Multiple statements on one line (compact code style)
     "E702",  # Multiple statements on one line (semicolon)
     "E722",  # Do not use bare except (intentional fallback handling)
@@ -70,6 +71,8 @@ ignore = [
     "F541",  # f-string without placeholders (consistent formatting)
     "F811",  # Redefinition of unused name (conditional imports)
     "F841",  # Local variable assigned but never used (intentional debugging)
+    "W291",  # Trailing whitespace (not enforced)
+    "W293",  # Blank line contains whitespace (not enforced)
 ]
 
 [tool.ruff.lint.per-file-ignores]
