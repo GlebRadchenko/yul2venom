@@ -30,7 +30,7 @@ Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper ba
 
 ### Vyper Fork (`vyper/`) — Critical Patches
 
-**Branch**: `yul-optimization` (commit 798d288f)  
+**Branch**: `yul2venom` (commit 798d288f)  
 **Patches**: See [docs/VENOM_CHANGES.md](docs/VENOM_CHANGES.md) for full audit.
 
 | File | Patch Purpose | Revert Risk |

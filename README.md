@@ -145,7 +145,7 @@ yul2venom/
 
 ### Vyper Fork
 
-**Branch**: `yul-optimization` (commit 798d288f)
+**Branch**: `yul2venom` (commit 798d288f)
 
 The Vyper submodule contains critical patches for Yul2Venom:
 - Phi operand ordering fix (nested loops)

@@ -500,7 +500,7 @@ After transpilation with `--dump-ir`:
 
 ## Vyper Fork
 
-**Branch**: `yul-optimization` (commit 798d288f)
+**Branch**: `yul2venom` (commit 798d288f)
 
 The `vyper/` submodule contains patches critical for Yul2Venom operation:
 
