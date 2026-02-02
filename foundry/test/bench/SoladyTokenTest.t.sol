@@ -10,7 +10,7 @@ import "../../src/bench/SoladyToken.sol";
  *      Supports BYTECODE_PATH env var for testing different bytecode versions.
  *
  * Usage:
- *   # Test with default path (../output/SoladyToken_opt.bin)
+ *   # Test with default path (../output/SoladyToken_opt_runtime.bin)
  *   forge test --match-contract SoladyTokenTest
  *
  *   # Test with custom bytecode path
@@ -34,7 +34,7 @@ contract SoladyTokenTest is Test {
         // Check for custom bytecode path, default to transpiled output
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/SoladyToken_opt.bin")
+            string("../output/SoladyToken_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

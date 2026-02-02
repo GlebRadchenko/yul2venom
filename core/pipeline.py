@@ -220,7 +220,7 @@ class TranspilationPipeline:
             optimized_yul=optimized_yul if self.config.debug else None,
             contract_address=contract_address,
             stats={
-                "yul_optimization_stats": stats.__dict__ if hasattr(stats, '__dict__') else {},
+                "yul_optimization_stats": optimizer.stats.__dict__ if hasattr(optimizer, 'stats') and hasattr(optimizer.stats, '__dict__') else {},
                 "runtime_only": self.config.runtime_only,
             }
         )

@@ -25,7 +25,7 @@ contract FunctionsTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/Functions_opt.bin")
+            string("../output/Functions_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

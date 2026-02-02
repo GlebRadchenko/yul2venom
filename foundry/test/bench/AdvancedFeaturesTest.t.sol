@@ -22,7 +22,7 @@ contract AdvancedFeaturesTest is Test {
     function setUp() public {
         string memory bytecodePath = vm.envOr(
             "BYTECODE_PATH",
-            string("../output/AdvancedFeatures_opt.bin")
+            string("../output/AdvancedFeatures_opt_runtime.bin")
         );
 
         if (bytes(bytecodePath).length > 0) {

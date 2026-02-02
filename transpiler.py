@@ -10,11 +10,11 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 try:
-    from yul2venom.yul_parser import YulParser
-    from yul2venom.venom_generator import VenomIRBuilder
+    from parser import YulParser
+    from generator import VenomIRBuilder
 except ImportError:
-    from yul_parser import YulParser
-    from venom_generator import VenomIRBuilder
+    from parser.yul_parser import YulParser
+    from generator.venom_generator import VenomIRBuilder
 
 sys.setrecursionlimit(5000)
 
@@ -42,7 +42,7 @@ class Transpiler:
             print("ERROR: No Yul object found.", file=sys.stderr)
             return
             
-        print(f"DEBUG: Parsed object: {result.name}", file=sys.stderr)
+        # print(f"DEBUG: Parsed object: {result.name}", file=sys.stderr)
 
         # 2. Generate Venom IR (Object Model)
         # print("DEBUG: Starting generation...", file=sys.stderr)

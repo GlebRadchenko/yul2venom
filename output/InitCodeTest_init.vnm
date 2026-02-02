@@ -1,0 +1,13 @@
+function __main_entry {
+  1___main_entry:  ; OUT=[]
+      mstore 64, 256
+      %1 = callvalue
+      %2 = iszero %1
+      assert %2
+      sstore 0, 42
+      %3 = codesize
+      %4 = sub %3, 125
+      codecopy 256, %4, 125
+      return 256, 125
+}  ; close function __main_entry
+

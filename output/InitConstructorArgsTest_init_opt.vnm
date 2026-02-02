@@ -1,0 +1,106 @@
+function __main_entry {
+  1___main_entry:  ; OUT=[3_end_if, 2_then]
+      %1 = callvalue
+      %2 = iszero %1
+      assert %2
+      %47 = 551
+      %3 = codesize
+      %4 = sub %3, %47
+      %48 = %4
+      %49 = 31
+      %5 = add %49, %48
+      %50 = not 31
+      %7 = and %50, %5
+      %51 = 256
+      %8 = add %51, %7
+      %54 = %8
+      %55 = 256
+      %12 = gt %55, %54
+      %52 = %8
+      %53 = 0xffffffffffffffff
+      %11 = lt %53, %52
+      %13 = or %11, %12
+      %46 = iszero %13
+      jnz %46, @3_end_if, @2_then
+
+  2_then:  ; OUT=[]
+      %56 = shl 224, 0x4e487b71
+      %57 = 0
+      mstore %57, %56
+      %58 = 65
+      %59 = 4
+      mstore %59, %58
+      %60 = 36
+      %61 = 0
+      revert %61, %60
+
+  3_end_if:  ; OUT=[]
+      %69 = 256
+      %67 = %4
+      %68 = 256
+      %15 = add %68, %67
+      %16 = sub %15, %69
+      %70 = 96
+      %17 = sgt %70, %16
+      %18 = iszero %17
+      assert %18
+      %62 = %8
+      %63 = 64
+      mstore %63, %62
+      %64 = %4
+      %65 = 551
+      %66 = 256
+      codecopy %66, %65, %64
+      %72 = 288
+      %21 = mload %72
+      %73 = %21
+      %74 = 0xffffffffffffffffffffffffffffffffffffffff
+      %24 = and %74, %73
+      %75 = %24
+      %76 = %21
+      %44 = xor %76, %75
+      %25 = iszero %44
+      assert %25
+      %77 = 320
+      %27 = mload %77
+      %78 = %27
+      %28 = iszero %78
+      %29 = iszero %28
+      %79 = %29
+      %80 = %27
+      %45 = xor %80, %79
+      %30 = iszero %45
+      assert %30
+      %71 = 256
+      %19 = mload %71
+      %81 = 0
+      sstore %81, %19
+      %82 = 1
+      %31 = sload %82
+      %85 = %29
+      %86 = 160
+      %37 = shl %86, %85
+      %87 = shl 160, 255
+      %39 = and %87, %37
+      %84 = %24
+      %83 = shl 168, 0xffffffffffffffffffffff
+      %35 = and %83, %31
+      %36 = or %35, %84
+      %40 = or %36, %39
+      %88 = 1
+      sstore %88, %40
+      %89 = 64
+      %41 = mload %89
+      %91 = 343
+      %90 = 343
+      %42 = codesize
+      %43 = sub %42, %90
+      %92 = %41
+      codecopy %92, %43, %91
+      %93 = 343
+      %94 = %41
+      return %94, %93
+    ; 3_end_if
+    ; (__main_entry)
+}  ; close function __main_entry
+

@@ -246,11 +246,6 @@ class YulParser:
             if self.peek() == ',': self.consume(',')
         self.consume(')')
         
-        # DEBUG: Print parsed function header
-        if "calldata_array_index_access" in name:
-            print(f"DEBUG: Parsed function {name} args={args}", file=sys.stderr)
-        
-        returns = []
         returns = []
         self.skip_whitespace()
         if self.content.startswith('->', self.pos):
@@ -269,9 +264,7 @@ class YulParser:
         
         word = self.consume()
         if not word: return None
-        with open("parser_debug.log", "a") as f:
-            f.write(f"DEBUG: parse_statement word={repr(word)}\n")
-        # print(f"DEBUG: parse_statement word={repr(word)}", file=sys.stderr); sys.stderr.flush()
+
 
         if word == 'let':
             vars_ = []
@@ -330,7 +323,6 @@ class YulParser:
                     body = self.parse_block()
                     cases.append(YulCase(value=None, body=body))
                 else:
-                    print(f"DEBUG: Switch parsing stopped at unknown token '{tok}'", file=sys.stderr)
                     self.pos = saved 
                     break
             return YulSwitch(condition=cond, cases=cases)

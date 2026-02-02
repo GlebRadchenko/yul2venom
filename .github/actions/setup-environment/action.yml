@@ -32,6 +32,14 @@ runs:
       shell: bash
       run: pip install -r requirements.txt
 
+    - name: Install Vyper submodule
+      shell: bash
+      run: |
+        # Install local Vyper fork in editable mode
+        # Required: patched version with phi ordering, log effects, Yul opcodes
+        pip install -e vyper/
+        python -c "import vyper; print('Vyper fork installed successfully')"
+
     - name: Install Foundry
       uses: foundry-rs/foundry-toolchain@v1
       with:

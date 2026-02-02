@@ -36,11 +36,13 @@ SCRIPT_DIR = Path(__file__).parent.absolute()
 YUL2VENOM_DIR = SCRIPT_DIR.parent
 CONFIGS_DIR = YUL2VENOM_DIR / "configs"
 CONFIGS_BENCH_DIR = YUL2VENOM_DIR / "configs" / "bench"
+CONFIGS_INIT_DIR = YUL2VENOM_DIR / "configs" / "init"
 OUTPUT_DIR = YUL2VENOM_DIR / "output"
 DEBUG_DIR = YUL2VENOM_DIR / "debug"
 FOUNDRY_DIR = YUL2VENOM_DIR / "foundry"
 FOUNDRY_SRC = FOUNDRY_DIR / "src"
 FOUNDRY_SRC_BENCH = FOUNDRY_DIR / "src" / "bench"
+FOUNDRY_SRC_INIT = FOUNDRY_DIR / "src" / "init"
 
 # Timeouts
 PREPARE_TIMEOUT = 60
@@ -137,6 +139,15 @@ def get_config_contract_mapping() -> Dict[str, Tuple[Path, Path]]:
             if sol_path.exists():
                 mapping[str(config)] = (sol_path, yul_path)
     
+    # Init configs (configs/init/*.yul2venom.json -> foundry/src/init/*.sol)
+    if CONFIGS_INIT_DIR.exists():
+        for config in CONFIGS_INIT_DIR.glob("*.yul2venom.json"):
+            name = config.stem.replace('.yul2venom', '')
+            sol_path = FOUNDRY_SRC_INIT / f"{name}.sol"
+            yul_path = OUTPUT_DIR / f"{name}.yul"
+            if sol_path.exists():
+                mapping[str(config)] = (sol_path, yul_path)
+    
     return mapping
 
 
@@ -152,12 +163,13 @@ def prepare_contract(config_path: str, sol_path: Path) -> Tuple[bool, str]:
     return True, ""
 
 
-def transpile_contract(config_path: str, runtime_only: bool = False) -> TranspileResult:
+def transpile_contract(config_path: str, runtime_only: bool = False, with_init: bool = False) -> TranspileResult:
     """Transpile a single contract and return results.
     
     Args:
         config_path: Path to the .yul2venom.json config file
         runtime_only: If True, generate runtime-only bytecode (for vm.etch tests)
+        with_init: If True, generate full init+runtime bytecode (for deployment)
     """
     import time
     start = time.time()
@@ -165,6 +177,8 @@ def transpile_contract(config_path: str, runtime_only: bool = False) -> Transpil
     cmd = ["python3.11", "yul2venom.py", "transpile", config_path, "-O", "O2"]
     if runtime_only:
         cmd.append("--runtime-only")
+    if with_init:
+        cmd.append("--with-init")
     success, stdout, stderr = run_command(cmd, cwd=str(YUL2VENOM_DIR), timeout=TRANSPILE_TIMEOUT)
     
     duration = (time.time() - start) * 1000
@@ -489,19 +503,74 @@ def full_pipeline_test(include_bench: bool = True):
     return all_passed
 
 
+def transpile_init_all() -> List[TranspileResult]:
+    """Transpile all init contracts with --with-init flag.
+    
+    Init contracts require full init bytecode (not runtime-only) for deployment testing.
+    """
+    results = []
+    
+    if not CONFIGS_INIT_DIR.exists():
+        print("No init configs found")
+        return results
+    
+    configs = list(CONFIGS_INIT_DIR.glob('*.yul2venom.json'))
+    
+    print(f"Found {len(configs)} init configs to transpile")
+    print("=" * 60)
+    
+    passed = 0
+    failed = 0
+    
+    for config in sorted(configs):
+        name = config.stem.replace('.yul2venom', '')
+        
+        # Check if Yul exists
+        if not check_yul_exists(str(config)):
+            print(f"  {name:30s} ... ✗ Yul file not found")
+            failed += 1
+            results.append(TranspileResult(
+                config_path=str(config),
+                success=False,
+                error_message="Yul file not found"
+            ))
+            continue
+        
+        print(f"  {name:30s} ... ", end='', flush=True)
+        
+        result = transpile_contract(str(config), with_init=True)
+        results.append(result)
+        
+        if result.success:
+            passed += 1
+            print(f"✓ {result.bytecode_size} bytes ({result.duration_ms:.0f}ms)")
+        else:
+            failed += 1
+            print(f"✗ {result.error_message[:50]}")
+    
+    print("=" * 60)
+    print(f"Init Results: {passed} passed, {failed} failed, {len(results)} total")
+    
+    return results
+
+
 def main():
+
     parser = argparse.ArgumentParser(description="Yul2Venom Test Framework")
     parser.add_argument("--prepare-all", action="store_true", help="Prepare all contracts (Solidity -> Yul)")
     parser.add_argument("--transpile-all", action="store_true", help="Transpile all contracts")
+    parser.add_argument("--init-all", action="store_true", help="Transpile all init contracts with --with-init")
     parser.add_argument("--test-all", action="store_true", help="Run all Forge tests")
     parser.add_argument("--test-core", action="store_true", help="Run core Forge tests only")
     parser.add_argument("--test-bench", action="store_true", help="Run bench Forge tests only")
+    parser.add_argument("--test-init", action="store_true", help="Run init Forge tests (InitEdgeCasesTestRunner)")
     parser.add_argument("--analyze", type=str, help="Analyze VNM file")
     parser.add_argument("--compare", nargs=2, metavar=('A', 'B'), help="Compare two VNM files")
     parser.add_argument("--full", action="store_true", help="Full pipeline test")
     parser.add_argument("--json", action="store_true", help="Output JSON format")
     parser.add_argument("--runtime-only", action="store_true", help="Generate runtime-only bytecode")
     parser.add_argument("--no-bench", action="store_true", help="Exclude bench tests")
+
     
     args = parser.parse_args()
     
@@ -510,6 +579,12 @@ def main():
     
     elif args.transpile_all:
         results = transpile_all(runtime_only=args.runtime_only, include_bench=not args.no_bench)
+        if args.json:
+            print(json.dumps([r.to_dict() for r in results], indent=2))
+    
+    elif args.init_all:
+        # Transpile all init contracts with --with-init flag
+        results = transpile_init_all()
         if args.json:
             print(json.dumps([r.to_dict() for r in results], indent=2))
     
@@ -533,6 +608,14 @@ def main():
     elif args.test_bench:
         success, output, passed, failed = run_forge_tests("bench")
         sys.exit(0 if success else 1)
+    
+    elif args.test_init:
+        # Transpile init contracts first, then run init tests
+        print("Transpiling init contracts with --with-init...")
+        transpile_init_all()
+        success, output, passed, failed = run_forge_tests("test/init/*")
+        sys.exit(0 if success else 1)
+
     
     elif args.analyze:
         analysis = analyze_venom(args.analyze)

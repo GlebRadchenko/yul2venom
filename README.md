@@ -29,7 +29,7 @@ cd foundry && forge test
 | Step | Command | Output |
 |------|---------|--------|
 | **1. Prepare** | `yul2venom.py prepare foundry/src/Contract.sol` | `output/Contract.yul` + config |
-| **2. Configure** | Edit `configs/Contract.yul2venom.json` | Set deployer address |
+| **2. Configure** | Edit `configs/Contract.yul2venom.json` | Set deployer, args |
 | **3. Transpile** | `yul2venom.py transpile configs/Contract.yul2venom.json` | `output/Contract_opt.bin` |
 | **4. Test** | `cd foundry && forge test` | Run Foundry tests |
 
@@ -37,40 +37,41 @@ cd foundry && forge test
 
 ## Transpiler Architecture
 
-### Core Components
-
-| File | Purpose |
-|------|---------|
-| `yul2venom.py` | Main CLI with `prepare` and `transpile` commands |
-| `yul_parser.py` | Parses Yul assembly into AST nodes |
-| `yul_extractor.py` | Extracts deployed runtime object from compiler output |
-| `yul_source_optimizer.py` | Pre-transpilation Yul optimizations (regex + structural) |
-| `venom_generator.py` | Converts Yul AST → Venom IR (the core transpilation logic) |
-| `run_venom.py` | Compiles `.vnm` files to EVM bytecode via Vyper backend |
-
-### Transpilation Flow
+### Pipeline Flow
 
 ```
 ┌─────────────────┐     ┌───────────────┐     ┌─────────────────┐
-│  yul_parser.py  │────►│  optimizer.py │────►│venom_generator.py│
-│  Parse Yul AST  │     │ Optimize Yul  │     │ Build Venom IR  │
+│  parser/        │────►│  optimizer/   │────►│  generator/     │
+│  YulParser      │     │ YulOptimizer  │     │ VenomIRBuilder  │
 └─────────────────┘     └───────────────┘     └─────────────────┘
-                                                      │
-                                                      ▼
+                                                       │
+                                                       ▼
 ┌─────────────────┐     ┌───────────────┐     ┌─────────────────┐
-│   Vyper Passes  │◄────│  run_venom.py │◄────│   .vnm output   │
-│ SSA, DCE, SCCP  │     │ Backend Invoke│     │ Venom IR text   │
+│   Vyper Passes  │◄────│  backend/     │◄────│   .vnm output   │
+│ SSA, DCE, SCCP  │     │ run_venom     │     │ Venom IR text   │
 └─────────────────┘     └───────────────┘     └─────────────────┘
          │
          ▼
    EVM Bytecode (.bin)
 ```
 
+### Core Packages
+
+| Package | Purpose |
+|---------|---------|
+| `parser/` | Yul grammar parsing, object extraction |
+| `generator/` | Yul AST → Venom IR transpilation |
+| `optimizer/` | Pre-transpilation Yul source optimization |
+| `backend/` | Venom IR → EVM bytecode via Vyper |
+| `core/` | Pipeline orchestration, error handling |
+| `ir/` | Standalone Venom IR types |
+| `utils/` | Constants, logging utilities |
+
 ---
 
 ## Configuration Files
 
-Configs are stored in `configs/*.yul2venom.json`. Each config defines:
+Configs are stored in `configs/*.yul2venom.json`:
 
 ```json
 {
@@ -86,16 +87,16 @@ Configs are stored in `configs/*.yul2venom.json`. Each config defines:
 }
 ```
 
-> **Note**: All paths in configs are **relative to the yul2venom root directory**. Never use absolute paths.
-
 | Field | Description |
 |-------|-------------|
-| `contract` | Path to source Solidity file (relative to project root) |
-| `yul` | Path to extracted Yul IR (relative to project root) |
-| `deployment.deployer` | Address that will deploy (for CREATE address prediction) |
-| `deployment.nonce` | Deployer nonce at deployment time |
-| `constructor_args` | Named constructor arguments for immutable resolution |
-| `auto_predicted` | Auto-filled predicted addresses (child contracts) |
+| `contract` | Path to source Solidity file |
+| `yul` | Path to extracted Yul IR |
+| `deployment.deployer` | Deployer address (for CREATE prediction) |
+| `deployment.nonce` | Deployer nonce at deployment |
+| `constructor_args` | Named constructor arguments |
+| `auto_predicted` | Auto-computed CREATE addresses for child contracts |
+
+> **Note**: All paths are **relative to the yul2venom root directory**.
 
 ---
 
@@ -104,56 +105,56 @@ Configs are stored in `configs/*.yul2venom.json`. Each config defines:
 ```
 yul2venom/
 ├── yul2venom.py           # Main CLI
-├── venom_generator.py     # Core transpiler (Yul AST → Venom IR)
-├── yul_parser.py          # Yul grammar parser
-├── yul_extractor.py       # Deployed object extraction
-├── optimizer.py           # Yul-level optimizations
-├── run_venom.py           # VNM → bytecode compiler
+├── parser/                # Yul parsing and extraction
+├── generator/             # VenomIRBuilder, optimizations
+├── optimizer/             # Yul source optimizer
+├── backend/               # Vyper backend invocation
+├── core/                  # Pipeline, error handling
+├── ir/                    # Venom IR types
+├── utils/                 # Constants, logging
 │
-├── utils/                 # Shared utilities
-│   ├── constants.py       # Memory layout, panic codes
-│   └── logging_config.py  # Unified logging setup
-│
-├── ir/                    # Standalone Venom IR types
-│   ├── basicblock.py      # IRInstruction, IRVariable, IRLiteral, IRLabel
-│   ├── context.py         # IRContext, DataSection
-│   └── function.py        # IRFunction
-│
-├── tools/                 # Benchmark & debugging tools
+├── tools/                 # Benchmark & debug tools
 │   ├── benchmark.py       # Production benchmark tool
-│   ├── benchmark.sh       # Quick benchmark script
-│   ├── benchmark.example.yaml  # Config template
-│   └── evm_tracer.py      # Step-by-step EVM tracer
+│   └── evm_tracer.py      # EVM execution tracer
 │
-├── testing/               # Debug and test utilities
+├── testing/               # Test framework & utilities
 │   ├── test_framework.py  # Batch transpilation testing
-│   ├── debug_liveness.py  # Liveness analysis debugging
-│   ├── trace_stack.py     # Stack state tracing
-│   ├── trace_memory.py    # Memory operation analysis
-│   ├── export_bytecode.py # Compile Yul via solc
 │   ├── inspect_bytecode.py # EVM disassembler
-│   └── vyper_ir_helper.py # Generate reference Vyper IR
+│   ├── trace_stack.py     # Stack state tracing
+│   └── trace_memory.py    # Memory operation analysis
 │
 ├── configs/               # Contract configuration files
 │   ├── *.yul2venom.json   # Core contract configs
-│   └── bench/             # Benchmark contract configs
-│
-├── vyper/                 # Vyper fork (git submodule)
+│   ├── bench/             # 15 benchmark configs
+│   └── init/              # 10 init bytecode configs
 │
 ├── foundry/               # Foundry project for testing
 │   ├── src/               # Solidity source contracts
-│   │   └── bench/         # 8 benchmark contracts
+│   │   ├── bench/         # 15 benchmark contracts
+│   │   └── init/          # 10 init test contracts
 │   ├── test/              # Forge test files
-│   │   └── bench/         # Benchmark test suites
+│   │   ├── bench/         # Benchmark test suites
+│   │   └── init/          # Init bytecode tests
 │   └── foundry.toml       # solc 0.8.30, cancun, via_ir
 │
 ├── output/                # Generated Yul/VNM/bytecode
-│   └── bench/             # Benchmark outputs
-└── debug/                 # Debug artifacts
-    ├── raw_ir.vnm         # Pre-optimization IR
-    ├── opt_ir.vnm         # Post-optimization IR
-    └── assembly.asm       # Generated assembly
+├── debug/                 # Debug artifacts
+├── docs/                  # Research & reference docs
+└── vyper/                 # Vyper fork (submodule)
 ```
+
+### Vyper Fork
+
+**Branch**: `yul2venom` (commit 798d288f)
+
+The Vyper submodule contains critical patches for Yul2Venom:
+- Phi operand ordering fix (nested loops)
+- Log0-4 effect registration (events)
+- Yul opcode support (sha3, mstore8, byte, pop)
+- Duplicate literal handling
+- Assign instruction stack model fix
+
+See [docs/VENOM_CHANGES.md](docs/VENOM_CHANGES.md) for the complete audit.
 
 ---
 
@@ -168,8 +169,11 @@ python3.11 yul2venom.py prepare foundry/src/Contract.sol
 # Transpile: Yul → Venom → Bytecode
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json
 
-# Transpile with runtime-only output (for testing via vm.etch)
+# Runtime-only output (for vm.etch testing)
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --runtime-only
+
+# Full init bytecode (for deployment)
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --with-init
 
 # Dump intermediate Venom IR
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --dump-ir
@@ -182,34 +186,32 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --dump-ir
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json
 
 # Native Vyper O2 pipeline
-python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --optimize native
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json -O native
 
 # No optimization
-python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --optimize O0
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json -O O0
 
-# All available: none, O0, O2 (default), O3, Os, native, debug
+# All levels: none, O0, O2 (default), O3, Os, native, debug
 ```
 
 ### Yul Source Optimizer
 
-Pre-transpilation optimization of Yul source code:
-
 ```bash
-# Enable standard optimization (strips validators, callvalue checks)
+# Enable standard optimization
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt
 
-# Aggressive optimization (strips runtime checks - use with caution)
+# Aggressive optimization (strips runtime checks)
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt-level=aggressive
 
-# Optimization levels: safe, standard, aggressive, maximum
+# Levels: safe, standard, aggressive, maximum
 ```
 
 | Level | Effect |
 |-------|--------|
-| `safe` | Remove dead validators, empty blocks, algebraic simplifications |
+| `safe` | Remove dead validators, empty blocks |
 | `standard` | + Strip callvalue, calldatasize checks |
-| `aggressive` | + Strip extcodesize, returndatasize, memory allocation checks |
-| `maximum` | + Strip overflow, bounds checks (**DANGEROUS**) |
+| `aggressive` | + Strip extcodesize, returndatasize checks |
+| `maximum` | + Strip overflow checks (**DANGEROUS**) |
 
 ### Testing
 
@@ -217,77 +219,58 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt-leve
 # Run all tests
 cd foundry && forge test
 
-# Run specific test with verbose output
+# Specific test with verbose output
 cd foundry && forge test --match-test "test_name" -vvvv
 
-# Run tests excluding benchmarks
-cd foundry && forge test --no-match-path "test/bench/*"
-
 # Batch transpile all configs
-cd testing && python3.11 test_framework.py --transpile-all
+python3.11 testing/test_framework.py --transpile-all
+
+# Transpile init bytecode configs
+python3.11 testing/test_framework.py --init-all
+
+# Run init bytecode tests
+python3.11 testing/test_framework.py --test-init
 
 # Full pipeline (transpile + test)
-cd testing && python3.11 test_framework.py --full
-
-# Analyze a VNM file
-cd testing && python3.11 test_framework.py --analyze ../debug/raw_ir.vnm
+python3.11 testing/test_framework.py --full
 ```
 
 ---
 
 ## Benchmarking
 
-The benchmark tool compares transpiled bytecode against various Solc configurations.
-
-### Quick Start
-
 ```bash
-# Run with defaults (8 contracts, default/ir_optimized modes)
+# Run with defaults
 python3.11 tools/benchmark.py
 
-# With custom config
-cp tools/benchmark.example.yaml tools/benchmark.yaml
-# Edit benchmark.yaml
-python3.11 tools/benchmark.py --config tools/benchmark.yaml
+# Specific contracts
+python3.11 tools/benchmark.py --contracts "Arithmetic,ControlFlow"
 
-# Specific options
-python3.11 tools/benchmark.py --contracts "Arithmetic,ControlFlow" --runs 200
-```
-
-### Configuration
-
-See `tools/benchmark.example.yaml`:
-
-```yaml
-contracts:
-  - Arithmetic
-  - ControlFlow
-  - StateManagement
-  - DataStructures
-  - Functions
-  - Events
-  - Encoding
-  - Edge
-
-optimization_runs: [0, 200, 20000, 1000000]
-solc_modes: [default, via_ir]
-baseline: default_200
+# Custom optimization runs
+python3.11 tools/benchmark.py --runs 200
 ```
 
 ### Benchmark Contracts
 
-The `foundry/src/bench/` directory contains 8 comprehensive benchmark contracts:
+15 comprehensive benchmark contracts in `foundry/src/bench/`:
 
 | Contract | Features |
 |----------|----------|
-| `Arithmetic.sol` | Safe/unsafe math, comparisons, bitwise operations |
-| `ControlFlow.sol` | Loops, conditionals, break/continue, switch |
-| `StateManagement.sol` | Storage, memory, constants, immutables, transient storage |
-| `DataStructures.sol` | Arrays, structs, nested structs, mappings |
-| `Functions.sol` | Internal/external calls, recursion, inheritance |
-| `Events.sol` | Simple events, indexed events, complex events |
-| `Encoding.sol` | ABI encode/decode, keccak256, signatures |
-| `Edge.sol` | Enums, reverts, try-catch, create/create2 |
+| `Arithmetic.sol` | Math, comparisons, bitwise ops |
+| `ControlFlow.sol` | Loops, conditionals, break/continue |
+| `StateManagement.sol` | Storage, memory, transient storage |
+| `DataStructures.sol` | Arrays, structs, mappings |
+| `Functions.sol` | Internal/external calls, recursion |
+| `Events.sol` | Simple, indexed, complex events |
+| `Encoding.sol` | ABI encode/decode, keccak256 |
+| `Edge.sol` | Enums, reverts, try-catch, create2 |
+| `Libraries.sol` | Using-for, internal libraries |
+| `Modifiers.sol` | Basic, nested, stacked modifiers |
+| `SoladyToken.sol` | Full ERC20 implementation |
+| `TransientStorage.sol` | TLOAD/TSTORE, reentrancy guards |
+| `TypeLimits.sol` | Type introspection, safe math |
+| `AdvancedFeatures.sol` | User-defined types, bytes ops |
+| `ExternalLibrary.sol` | External library linking |
 
 ---
 
@@ -295,58 +278,38 @@ The `foundry/src/bench/` directory contains 8 comprehensive benchmark contracts:
 
 ### EVM Tracer
 
-Step through bytecode execution:
-
 ```bash
 python3.11 tools/evm_tracer.py output/Contract_opt_runtime.bin
 python3.11 tools/evm_tracer.py output/Contract_opt_runtime.bin 0x12345678  # with calldata
 ```
 
-Output shows:
-- Program counter
-- Opcode name  
-- Stack state (before/after)
-- Memory writes
-
 ### Bytecode Inspector
-
-Disassemble bytecode:
 
 ```bash
 python3.11 testing/inspect_bytecode.py output/Contract_opt.bin --limit 100
 ```
 
-### Stack Tracer
+### Debug Files
 
-Trace stack state through blocks:
-
-```bash
-python3.11 testing/trace_stack.py debug/raw_ir.vnm --blocks "loop_start,loop_end"
-```
-
-### Memory Tracer
-
-Analyze memory operations:
-
-```bash
-python3.11 testing/trace_memory.py debug/raw_ir.vnm
-```
+After transpilation:
+- `debug/raw_ir.vnm` - Pre-optimization IR
+- `debug/opt_ir.vnm` - Post-optimization IR
+- `debug/assembly.asm` - Generated assembly
 
 ---
 
 ## Test Status
 
-**185 tests passing ✅** (as of 2026-02-01)
+**339 tests passing ✅** (38 test suites)
 
-- 27 core configs transpile successfully
-- All 8 benchmark contracts transpile successfully
-- All Solidity features supported (loops, storage, memory, events, etc.)
+- 21 core contracts
+- 15 benchmark contracts  
+- 10 init bytecode edge cases
+- Full constructor support (args, immutables, inheritance, CREATE)
 
 ---
 
 ## Utils Package
-
-The `utils/` package centralizes shared constants and configuration:
 
 ### Constants (`utils/constants.py`)
 
@@ -363,7 +326,6 @@ PANIC_CODES = {
     0x01: "Assert failure",
     0x11: "Arithmetic overflow",
     0x12: "Division by zero",
-    0x21: "Invalid enum value",
     ...
 }
 ```
@@ -372,10 +334,9 @@ PANIC_CODES = {
 
 ## Known Limitations
 
-1. Deep function call chains may cause stack overflow
-2. External callbacks (DCE disabled in fork)
-3. Stack depth > 16 may fail
-4. Complex struct encoding edge cases
+1. Deep function call chains (>16 stack depth) may require spilling
+2. External library linking requires manual address configuration
+3. Complex struct encoding edge cases
 
 ---
 
@@ -386,7 +347,7 @@ MIT
 ### Third-Party Licenses
 
 This project includes a modified fork of [Vyper](https://github.com/vyperlang/vyper) 
-(in `vyper/` directory) which is licensed under the **Apache License 2.0**.
+(in `vyper/` directory) licensed under **Apache License 2.0**.
 
 - Copyright 2015 Vitalik Buterin
 - Full license: [vyper/LICENSE](vyper/LICENSE)

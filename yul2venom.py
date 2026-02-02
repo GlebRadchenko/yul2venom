@@ -23,14 +23,14 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 try:
-    from yul2venom.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
+    from yul2venom.optimizer.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
     from yul2venom.utils.constants import (
         SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
         OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
     )
 except ImportError:
     try:
-        from yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
+        from optimizer.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
         from utils.constants import (
             SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
             OP_PUSH0, OP_PUSH1, OP_PUSH2, OP_DUP1, OP_CODECOPY, OP_RETURN
@@ -38,7 +38,7 @@ except ImportError:
     except ImportError:
         # Fallback if running from root without package context
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
+        from optimizer.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
         try:
             from utils.constants import (
                 SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
@@ -666,6 +666,7 @@ def cmd_transpile(args):
     
     # Predict CREATE addresses
     auto_predicted = config.get("auto_predicted", {})
+    config_updated = False
     if auto_predicted:
         print("│")
         print("│ Auto-Predicted (CREATE addresses):")
@@ -677,9 +678,21 @@ def cmd_transpile(args):
             predicted = compute_create_address(main_contract, sidecar_nonce)
             immutables_map[key] = int(predicted, 16)
             print(f"│   • {name} = {predicted}")
+            # Update config with predicted value
+            if info.get('predicted_value') != predicted:
+                config["auto_predicted"][name]["predicted_value"] = predicted
+                config_updated = True
             sidecar_nonce += 1
     
+    # Write updated config with predicted addresses
+    if config_updated:
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        print("│")
+        print("│ ✓ Config updated with predicted addresses")
+    
     print("└─────────────────────────────────────────────────────────")
+
     print()
     
     # Step 0: Optimize Yul
@@ -732,10 +745,10 @@ def cmd_transpile(args):
     # Step 1: Parse Yul (Top-Level)
     print(f"Parsing Yul: {yul_path}")
     try:
-        from yul2venom.yul_parser import YulParser
+        from yul2venom.parser.yul_parser import YulParser
     except ImportError:
         # Fallback for local run
-        from yul_parser import YulParser
+        from parser.yul_parser import YulParser
 
     parser = YulParser(open(yul_path).read())
     all_objects = parser.parse_toplevel_objects()
@@ -765,15 +778,15 @@ def cmd_transpile(args):
     top_obj = target_obj
 
     # Helper function to transpile a single YulObject to bytecode
-    def transpile_object(obj, data_map=None, vnm_output_path=None, immutables=None):
+    def transpile_object(obj, data_map=None, vnm_output_path=None, immutables=None, offset_map=None):
         # 1. Build IR
         try:
-            from yul2venom.venom_generator import VenomIRBuilder
+            from yul2venom.generator.venom_generator import VenomIRBuilder
         except ImportError:
-            from venom_generator import VenomIRBuilder
+            from generator.venom_generator import VenomIRBuilder
             
         builder = VenomIRBuilder()
-        ir_vnm = builder.build(obj, data_map=data_map, immutables=immutables)
+        ir_vnm = builder.build(obj, data_map=data_map, immutables=immutables, offset_map=offset_map)
         # Serialize to text and parse back into Vyper Venom Context
         # This bridges yul2venom.ir -> vyper.venom types
         
@@ -1074,13 +1087,99 @@ def cmd_transpile(args):
                 # import traceback; traceback.print_exc()
                 return 1
 
-    # Step 3: Generate Init Code Stub (RUNTIME-ONLY APPROACH)
-    # Instead of transpiling init code through Venom (which has complex label issues),
-    # we use a minimal init stub that just copies runtime and returns.
+    # Step 3: Generate Init Code
+    with_init = getattr(args, 'with_init', False)
+    
     if runtime_bytecode:
-        print(f"Generating Init Code Stub for runtime ({len(runtime_bytecode)} bytes)")
-        final_bytecode = generate_init_stub(len(runtime_bytecode))
-        print(f"    ✓ Init stub: {len(final_bytecode)} bytes")
+        if with_init:
+            # FULL INIT SUPPORT: Transpile the outer object (constructor code)
+            # Uses TWO-PASS APPROACH to resolve datasize("OuterObject") correctly:
+            #   Pass 1: Estimate init size with placeholder outer object entry
+            #   Pass 2: Re-transpile with correct init+runtime size
+            print(f"Transpiling Init Code (--with-init mode)")
+            try:
+                # Determine IR Dump Path for init
+                init_ir_path = None
+                if args.vnm_out:
+                    init_ir_path = args.vnm_out.replace('.vnm', '_init.vnm')
+                elif args.dump_ir:
+                    init_ir_path = output_path.replace('.bin', '_init.vnm')
+                
+                # Get outer object name for datasize resolution
+                outer_obj_name = top_obj.name.strip('"')
+                runtime_size = len(runtime_bytecode)
+                
+                # PASS 1: Estimate init size with zero outer entry
+                # This makes datasize("OuterObj") return 0, which is wrong for arg parsing
+                # but gives us a size estimate for the init code
+                print(f"    Pass 1: Estimating init code size...")
+                data_map_pass1 = data_map.copy()
+                # Add outer object with just runtime size as placeholder
+                data_map_pass1[outer_obj_name] = runtime_bytecode
+                
+                init_bytecode_pass1 = transpile_object(top_obj, data_map=data_map_pass1, 
+                                                        vnm_output_path=None, 
+                                                        immutables=immutables_map)
+                init_size_estimate = len(init_bytecode_pass1)
+                print(f"        Init size estimate: {init_size_estimate} bytes")
+                
+                # PASS 2: Re-transpile with correct outer object size (init + runtime)
+                # datasize("OuterObj") should return init_size + runtime_size  
+                # so that: codesize() - datasize("Outer") = constructor_args_size
+                print(f"    Pass 2: Finalizing with correct datasize...")
+                
+                # Create a fake bytecode entry of the correct total size
+                # datasize() only needs len(), not actual content
+                total_program_size = init_size_estimate + runtime_size
+                data_map_pass2 = data_map.copy()
+                data_map_pass2[outer_obj_name] = bytes(total_program_size)  # Fake entry with correct size
+                
+                # CRITICAL FIX: Build offset_map for dataoffset("runtime") resolution
+                # Runtime is at offset = init_size (NOT at codesize - runtime_size)
+                # Bytecode layout: [init][runtime][constructor_args]
+                offset_map = {}
+                for obj_name in data_map.keys():
+                    if "_deployed" in obj_name:
+                        # Runtime object starts at init code offset
+                        offset_map[obj_name] = init_size_estimate
+                        print(f"        dataoffset({obj_name}) = {init_size_estimate} (literal)")
+                
+                final_bytecode = transpile_object(top_obj, data_map=data_map_pass2, 
+                                                   vnm_output_path=init_ir_path, 
+                                                   immutables=immutables_map,
+                                                   offset_map=offset_map)
+                
+                # Convergence loop: iterate until init size stabilizes
+                # Using literal offsets changes bytecode size, so we need to iterate
+                max_iterations = 5
+                for iteration in range(max_iterations):
+                    if len(final_bytecode) == init_size_estimate:
+                        break  # Converged
+                    print(f"        Size changed ({init_size_estimate} -> {len(final_bytecode)}), re-converging...")
+                    init_size_estimate = len(final_bytecode)
+                    total_program_size = init_size_estimate + runtime_size
+                    data_map_pass2[outer_obj_name] = bytes(total_program_size)
+                    # Update offset_map with new init size
+                    for obj_name in offset_map:
+                        offset_map[obj_name] = init_size_estimate
+                    final_bytecode = transpile_object(top_obj, data_map=data_map_pass2,
+                                                       vnm_output_path=init_ir_path,
+                                                       immutables=immutables_map,
+                                                       offset_map=offset_map)
+                
+                print(f"    ✓ Init code transpiled: {len(final_bytecode)} bytes")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                print(f"    ✗ Init transpilation failed: {e}", file=sys.stderr)
+                print(f"    → Falling back to minimal init stub...", file=sys.stderr)
+                final_bytecode = generate_init_stub(len(runtime_bytecode))
+                print(f"    ✓ Init stub: {len(final_bytecode)} bytes")
+        else:
+            # LEGACY: Use minimal init stub (just codecopy + return)
+            print(f"Generating Init Code Stub for runtime ({len(runtime_bytecode)} bytes)")
+            final_bytecode = generate_init_stub(len(runtime_bytecode))
+            print(f"    ✓ Init stub: {len(final_bytecode)} bytes")
     else:
         # No sub-objects means no init        # No runtime bytecode - using top-level object as runtime
         print("No runtime bytecode - using top-level object as runtime")
@@ -1194,6 +1293,8 @@ Examples:
                        help="Alias for --yul-opt-level=aggressive (strips runtime checks for gas savings)")
     trans.add_argument("--runtime-only", action="store_true", 
                        help="Output only runtime bytecode (no init code). Use for testing with CREATE.")
+    trans.add_argument("--with-init", action="store_true",
+                       help="Transpile actual Yul init code (constructor) instead of using minimal stub. Required for contracts with constructor logic.")
     trans.add_argument("--dump-ir", action="store_true", help="Dump Intermediate Representation (.vnm files)")
     trans.add_argument("--vnm-out", help="Explicit path for VNM output (overrides default naming)")
     
