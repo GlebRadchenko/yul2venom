@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "contract": "foundry/src/init/InitImmutableTest.sol",
+  "yul": "output/InitImmutableTest.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "constructor_args": {
+    "IMMUTABLE_VALUE": {
+      "id": "4",
+      "type": "uint256",
+      "value": "12345"
+    },
+    "IMMUTABLE_OWNER": {
+      "id": "6",
+      "type": "address",
+      "value": "0x000000000000000000000000000000000000DEAD"
+    }
+  },
+  "auto_predicted": {}
+}

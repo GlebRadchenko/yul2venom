@@ -4,12 +4,12 @@ try:
     from yul2venom.ir.context import IRContext
     from yul2venom.ir.function import IRFunction
     from yul2venom.ir.basicblock import IRBasicBlock, IRInstruction, IRLabel, IRVariable, IRLiteral
-    from yul2venom.yul_parser import YulLiteral, YulCall, YulVariableDeclaration, YulAssignment, YulIf, YulSwitch, YulForLoop, YulBlock, YulCase, YulExpressionStmt
+    from yul2venom.parser.yul_parser import YulLiteral, YulCall, YulVariableDeclaration, YulAssignment, YulIf, YulSwitch, YulForLoop, YulBlock, YulCase, YulExpressionStmt
 except ImportError:
     from ir.context import IRContext
     from ir.function import IRFunction
     from ir.basicblock import IRBasicBlock, IRInstruction, IRLabel, IRVariable, IRLiteral
-    from yul_parser import YulLiteral, YulCall, YulVariableDeclaration, YulAssignment, YulIf, YulSwitch, YulForLoop, YulBlock, YulCase, YulExpressionStmt
+    from parser.yul_parser import YulLiteral, YulCall, YulVariableDeclaration, YulAssignment, YulIf, YulSwitch, YulForLoop, YulBlock, YulCase, YulExpressionStmt
 
 # Import Allocation for proper alloca registration with mem_allocator
 try:
@@ -82,6 +82,11 @@ class VenomIRBuilder:
         # SHA3_64 OPTIMIZATION: Track recent mstore operations for pattern detection
         # Pattern: mstore(0x00, key) + mstore(0x20, slot) + keccak256(0x00, 64) -> sha3_64 slot, key
         self.recent_mstores = []  # List of (offset_operand, value_operand) tuples
+        
+        # INIT CODE SUPPORT: Literal offsets for dataoffset() in init code
+        # Maps object_name -> literal_offset (e.g. "Contract_deployed" -> 202)
+        # When set, dataoffset returns literal instead of codesize - datasize
+        self.offset_map = {}
 
     def new_label(self, suffix="block"):
         # Use Context's label generator for consistency context-wide?
@@ -120,9 +125,10 @@ class VenomIRBuilder:
         # Solc generated "external_fun_" functions use EVM return() and are tail-called
         return f_def.name == "__main_entry" or f_def.name.startswith("external_fun_")
 
-    def build(self, yul_ast, data_map=None, immutables=None):
+    def build(self, yul_ast, data_map=None, immutables=None, offset_map=None):
         self.data_map = data_map or {}
         self.ctx.immutables = immutables or {}
+        self.offset_map = offset_map or {}  # INIT CODE: literal offsets for dataoffset()
         
         # 1. Collect functions (Recursive)
         # Check top-level functions (siblings of code)
@@ -1479,31 +1485,32 @@ class VenomIRBuilder:
         # Special Yul-specific intrinsics
         if func == "dataoffset":
             # dataoffset("name")
-            # Calculate offset = codesize() - datasize(name)
-            # This assumes the data is appended at the very end of the bytecode.
+            # Returns the byte offset where the named object starts in the deployed bytecode.
+            # For init code: runtime is at a LITERAL offset (init_size), not at end.
+            # For runtime: data is appended at end, use codesize - datasize.
             if args and isinstance(args[0], YulLiteral):
                  obj_name = args[0].value.strip('"')
                  
+                 # INIT CODE FIX: Use literal offset if available in offset_map
+                 # This is used when runtime code is in the MIDDLE of bytecode
+                 # (layout: [init][runtime][args]), not at the END.
+                 if obj_name in self.offset_map:
+                     offset = self.offset_map[obj_name]
+                     # print(f"DEBUG: dataoffset({obj_name}) = {offset} (literal from offset_map)", file=sys.stderr)
+                     return IRLiteral(offset)
+                 
+                 # RUNTIME CODE FALLBACK: Dynamic calculation for data at END
                  if obj_name in self.data_map:
                      # data_map stores raw bytes from transpile_object
                      size = len(self.data_map[obj_name])
                      
                      # offset = codesize - size
-                     # See OPCODE_TRUTH_TABLE.md: 'sub' needs operand reversal.
-                     # Yul: sub(codesize, size) -> EVM: codesize - size.
-                     # Venom Reversal: emits [size, codesize] -> stack [size, codesize] (codesize on TOP).
+                     # This works when data is appended at the very end.
                      code_size_var = self.current_bb.append_instruction1("codesize")
                      size_literal = IRLiteral(size)
-                     
-                     # Venom sub(A,B) semantics:
-                     #   - Operands: [A, B]
-                     #   - Backend reverses to: [B, A] (A on top)
-                     #   - EVM SUB computes: A - B
-                     # So sub(A, B) = A - B
-                     # For dataoffset = codesize - size, use sub(codesize, size)
                      return self.current_bb.append_instruction1("sub", code_size_var, size_literal)
                  else:
-                     print(f"WARNING: dataoffset({obj_name}) failed. Keys: {list(self.data_map.keys())}", file=sys.stderr)
+                     print(f"WARNING: dataoffset({obj_name}) failed. Keys: data_map={list(self.data_map.keys())}, offset_map={list(self.offset_map.keys())}", file=sys.stderr)
             
             return IRLiteral(0)
         
@@ -1697,24 +1704,13 @@ class VenomIRBuilder:
              return self.current_bb.append_instruction1(func, *args)
 
         # sha3/keccak256: Yul uses keccak256, Venom uses sha3
-        # SHA3_64 OPTIMIZATION: Check for mapping slot computation pattern
+        # Note: We previously had a sha3_64 optimization here, but it's been removed
+        # because the Vyper backend doesn't handle sha3_64 in the VNM text path,
+        # and expanding it back to mstore+sha3 provides no gas savings.
+        # The Yul code already has the mstores, so we just use native sha3.
         if func in ("sha3", "keccak256"):
-            # Pattern: mstore(0x00, key) + mstore(0x20, slot) + keccak256(0x00, 64)
-            # This is the standard Solidity storage mapping slot computation
-            if len(args) >= 2 and len(self.recent_mstores) >= 2:
-                offset_arg, size_arg = args[0], args[1]
-                sha3_opt = self.optimizer.sha3_optimizer
-                if sha3_opt.can_optimize_keccak(offset_arg, size_arg, self.recent_mstores):
-                    # Extract slot and key from recent mstores
-                    slot, key = sha3_opt.get_sha3_64_operands(self.recent_mstores)
-                    if slot is not None and key is not None:
-                        # Clear tracked mstores since we consumed them
-                        self.recent_mstores.clear()
-                        # sha3_64 slot, key -> keccak256(abi.encode(slot, key))
-                        return self.current_bb.append_instruction1("sha3_64", slot, key)
-            
-            # Fallback: Venom backend uses 'sha3', not 'keccak256'
             return self.current_bb.append_instruction1("sha3", *args)
+
 
         if func in ("add", "mul", "not", "eq", "iszero", "and", "or", "xor", "addmod", "mulmod", "signextend", "mload", "sload", "tload", "calldataload", "callvalue", "calldatasize", "codesize", "returndatasize", "gas", "address", "caller", "origin", "gasprice", "chainid", "basefee", "timestamp", "number", "difficulty", "gaslimit"):
             return self.current_bb.append_instruction1(func, *args)

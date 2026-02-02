@@ -10,19 +10,22 @@
 Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper backend → EVM
 ```
 
-**Status**: 223/223 tests passing ✅ | 9/9 benchmark contracts smaller than Solc (with `--yul-opt-level=aggressive`)
+**Status**: 339/339 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
 
 ---
 
-## File Roles (Priority Order)
+## Package Structure (Priority Order)
 
-| File | Role | Modify When |
-|------|------|-------------|
-| `yul2venom.py` (51KB) | CLI entry: `prepare`, `transpile` | Adding CLI features |
-| `venom_generator.py` (79KB) | **Core transpiler** (Yul AST → Venom IR) | Transpilation bugs |
-| `yul_source_optimizer.py` (19KB) | Pre-transpilation Yul optimization | Adding patterns |
-| `yul_parser.py` (14KB) | Yul → Python AST (lark-based) | Parser issues |
-| `run_venom.py` | VNM → bytecode via Vyper | Backend invocation |
+| Package | Role | Modify When |
+|---------|------|-------------|
+| `yul2venom.py` (57KB) | CLI entry: `prepare`, `transpile` | Adding CLI features |
+| `generator/venom_generator.py` (92KB) | **Core transpiler** (Yul AST → Venom IR) | Transpilation bugs |
+| `generator/optimizations.py` (32KB) | Venom-level optimizations | Adding patterns |
+| `optimizer/yul_source_optimizer.py` (21KB) | Pre-transpilation Yul optimization | Yul patterns |
+| `parser/yul_parser.py` (14KB) | Yul → Python AST (lark-based) | Parser issues |
+| `parser/yul_extractor.py` | Deployed object extraction | Extraction bugs |
+| `backend/run_venom.py` | VNM → bytecode via Vyper | Backend invocation |
+| `core/pipeline.py` | Orchestration, config loading | Pipeline changes |
 | `ir/*.py` | Local IR types: BasicBlock, IRInstruction | Adding opcodes |
 
 ### Vyper Fork (`vyper/`) — Avoid Modifying
@@ -49,6 +52,9 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json
 # Runtime-only (for vm.etch tests)
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --runtime-only
 
+# Full init bytecode (for deployment)
+python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --with-init
+
 # Yul optimizer levels: safe, standard, aggressive, maximum
 python3.11 yul2venom.py transpile configs/Contract.yul2venom.json --yul-opt-level=aggressive
 
@@ -59,6 +65,8 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json -O native
 ### Testing
 ```bash
 python3.11 testing/test_framework.py --test-all   # Full pipeline
+python3.11 testing/test_framework.py --init-all   # Init bytecode only
+python3.11 testing/test_framework.py --test-init  # Init tests
 cd foundry && forge test                          # Run Forge tests
 cd foundry && forge test --match-test "name" -vvvv  # Verbose single test
 ```
@@ -90,7 +98,7 @@ elif opcode not in ("jmp", "jnz", "djmp", "phi"):
 ### 2. Memory Layout
 
 | Zone | Address | Purpose |
-|------|---------|---------|
+|------|---------|---------| 
 | FMP Slot | `0x40` | Free Memory Pointer |
 | FMP Value | `0x100` | Memory Bridge offset |
 | Venom | `0x00-0x100` | Static allocations |
@@ -139,65 +147,31 @@ The `loop_stack` tracks continue sources as 5-tuple: `(start, end, post, continu
 
 ---
 
-## Benchmark Results (2026-02-01)
-
-With `--yul-opt-level=aggressive` vs Solidity O3:
-
-| Contract | Solc | Yul2Venom | Delta |
-|----------|------|-----------|-------|
-| Arithmetic | 1660 | 1596 | **-4%** |
-| ControlFlow | 1223 | 998 | **-18%** |
-| StateManagement | 4434 | 2690 | **-39%** |
-| DataStructures | 2072 | 1874 | **-10%** |
-| Functions | 3640 | 2705 | **-26%** |
-| Events | 1066 | 778 | **-27%** |
-| Encoding | 1421 | 1412 | **-1%** |
-| Edge | 4476 | 2801 | **-37%** |
-
----
-
-## 🎯 Goal: Venom-Native IR
-
-**Generate IR that looks like native Vyper IR.**
-
-### ⚠️ CRITICAL: Transpiler Fixes Over Backend Patches
-
-```
-❌ WRONG: Bug in transpiler → patch backend to handle buggy IR
-✅ RIGHT: Bug in transpiler → fix transpiler to emit correct IR
-```
-
-**Rule**: If backend produces wrong output, bug is almost always in `venom_generator.py`.
-
----
-
-## Key Rules
-
-1. **Transpiler fixes > Backend patches** — Backend designed for native Vyper
-2. **Check parser reversal** — Most bugs are operand order
-3. **Debug files exist** — `debug/raw_ir.vnm`, `debug/opt_ir.vnm`
-4. **Config paths are relative** — All paths relative to yul2venom root
-5. **Python 3.11+ required** — Uses match/case syntax
-6. **Never hardcode bytecode** — Always `vm.readFileBinary()`
-7. **One function at a time** — Focus, verify, move on
-
----
-
 ## Directory Structure
 
 ```
 yul2venom/
-├── *.py                    # Core transpiler (7 files)
-├── ir/                     # Local IR types
-├── vyper/                  # Vyper fork (submodule)
-├── foundry/src/            # Solidity contracts
-│   └── bench/              # 8 benchmark contracts
-├── foundry/test/           # Forge tests
-├── configs/bench/          # Benchmark configs
-├── tools/                  # benchmark.py, evm_tracer.py
-├── testing/                # test_framework.py, debug utils
-├── output/                 # Generated: *.yul, *.vnm, *.bin
-└── debug/                  # raw_ir.vnm, opt_ir.vnm, assembly.asm
+├── yul2venom.py           # Main CLI
+├── parser/                # YulParser, YulExtractor
+├── generator/             # VenomIRBuilder, optimizations
+├── optimizer/             # YulSourceOptimizer
+├── backend/               # run_venom (Vyper backend)
+├── core/                  # Pipeline, errors
+├── ir/                    # IRContext, BasicBlock, etc.
+├── utils/                 # Constants, logging
+├── tools/                 # benchmark.py, evm_tracer.py
+├── testing/               # test_framework.py, debug utils
+├── configs/               # Contract configs
+│   ├── *.yul2venom.json   # Core (21 configs)
+│   ├── bench/             # Benchmark (15 configs)
+│   └── init/              # Init bytecode (10 configs)
+├── foundry/               # Solidity contracts and tests
+│   ├── src/bench/         # 15 benchmark contracts
+│   ├── src/init/          # 10 init test contracts
+│   └── test/              # Forge tests
+├── output/                # Generated: *.yul, *.vnm, *.bin
+├── debug/                 # raw_ir.vnm, opt_ir.vnm, assembly.asm
+└── vyper/                 # Vyper fork (submodule)
 ```
 
 ---
@@ -222,6 +196,8 @@ Batch transpilation and testing.
 ```bash
 --test-all         # Transpile all + run Forge tests
 --transpile-all    # Transpile all configs
+--init-all         # Transpile init configs with --with-init
+--test-init        # Run init bytecode tests
 --analyze <vnm>    # Analyze VNM file
 --compare <a> <b>  # Compare two VNM files
 ```
@@ -232,7 +208,7 @@ Batch transpilation and testing.
 
 ### Session Start Protocol
 
-1. **Read docs**: This file, `docs/REFERENCE.md`, `docs/STATUS.md`
+1. **Read docs**: This file, `docs/REFERENCE.md`
 2. **Check status**: `python3.11 testing/test_framework.py --test-all`
 3. **Check Vyper**: Understand `vyper/venom/parser.py` operand reversal
 4. **Diff fork**: `cd vyper && git diff origin/master -- vyper/venom/`
@@ -250,7 +226,7 @@ Batch transpilation and testing.
    e. IF FAIL:
       - Check debug/raw_ir.vnm (pre-opt)
       - Check debug/opt_ir.vnm (post-opt)
-      - Check venom_generator.py for transpilation bug
+      - Check generator/venom_generator.py for transpilation bug
       - Check parser operand reversal
    f. FIX TRANSPILER (not backend)
    g. REPEAT from step b
@@ -267,7 +243,8 @@ Batch transpilation and testing.
 | 4 | LoopCheck | For loops |
 | 5 | StorageMemory | Storage + memory |
 | 6 | MegaTest | All features |
-| 7 | Benchmark Suite | 8 contracts |
+| 7 | Benchmark Suite | 15 contracts |
+| 8 | Init Bytecode | 10 constructor patterns |
 
 ### Debug Investigation Order
 
@@ -287,9 +264,29 @@ Batch transpilation and testing.
 vyper -f ir testing/vyper_test.vy > debug/native_vyper/reference.ir
 ```
 
-### Focus: Runtime Only
+---
 
-Current strategy: **Skip init bytecode, focus on runtime transpilation.**
-- Init has separate complexities (constructor args, immutables)
-- Runtime is the core value - contract logic
-- Future: Add init support after runtime is robust
+## 🎯 Goal: Venom-Native IR
+
+**Generate IR that looks like native Vyper IR.**
+
+### ⚠️ CRITICAL: Transpiler Fixes Over Backend Patches
+
+```
+❌ WRONG: Bug in transpiler → patch backend to handle buggy IR
+✅ RIGHT: Bug in transpiler → fix transpiler to emit correct IR
+```
+
+**Rule**: If backend produces wrong output, bug is almost always in `generator/venom_generator.py`.
+
+---
+
+## Key Rules
+
+1. **Transpiler fixes > Backend patches** — Backend designed for native Vyper
+2. **Check parser reversal** — Most bugs are operand order
+3. **Debug files exist** — `debug/raw_ir.vnm`, `debug/opt_ir.vnm`
+4. **Config paths are relative** — All paths relative to yul2venom root
+5. **Python 3.11+ required** — Uses match/case syntax
+6. **Never hardcode bytecode** — Always `vm.readFileBinary()`
+7. **One function at a time** — Focus, verify, move on
