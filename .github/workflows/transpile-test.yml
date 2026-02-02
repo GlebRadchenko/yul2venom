@@ -89,7 +89,7 @@ jobs:
 
       - name: Upload artifacts
         if: ${{ inputs.upload-artifacts && always() }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: transpiled-bytecode
           path: |
