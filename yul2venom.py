@@ -992,6 +992,36 @@ def cmd_transpile(args):
                      except Exception as e:
                          print(f"WARNING: Pass {i} ({p_config}) failed: {e}", file=sys.stderr)
         
+        # CLEANUP: Remove redundant phis created by MakeSSA
+        # These include: (1) self-referential phis where all operand values are the output itself
+        #                (2) duplicate phi definitions for the same variable in the same block
+        for fn in ctx.functions.values():
+            for bb in list(fn.get_basic_blocks()):
+                seen_outputs = {}  # Track which outputs have been defined
+                instructions_to_remove = []
+                
+                for inst in list(bb.instructions):
+                    if inst.opcode == "phi":
+                        output = inst.output
+                        # Check if phi is self-referential (all values are the output itself)
+                        operands = inst.operands
+                        values = [op for i, op in enumerate(operands) if i % 2 == 1]  # Every second operand is a value
+                        is_self_ref = all(v == output for v in values)
+                        
+                        if is_self_ref:
+                            # Self-referential phi - mark for removal
+                            instructions_to_remove.append(inst)
+                        elif output in seen_outputs:
+                            # Duplicate phi for same output - mark for removal
+                            instructions_to_remove.append(inst)
+                        else:
+                            seen_outputs[output] = inst
+                
+                # Remove marked instructions
+                for inst in instructions_to_remove:
+                    if inst in bb.instructions:
+                        bb.instructions.remove(inst)
+        
         print(f"DEBUG: Functions after optimization: {list(ctx.functions.keys())}", file=sys.stderr)
 
         # DEBUG: Unconditionally save optimized VNM for debugging

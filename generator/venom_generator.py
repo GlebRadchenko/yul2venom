@@ -491,8 +491,7 @@ class VenomIRBuilder:
                     else:
                         ret_vals.append(IRLiteral(0))
                 # Return values + PC (args already consumed by param instructions)
-                # NOTE: We put PC FIRST so that after parser reversal, PC ends up LAST
-                # which is what the backend expects (operands[-1] = PC)
+                # NOTE: We put PC FIRST - the backend handles this correctly
                 self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
@@ -568,11 +567,21 @@ class VenomIRBuilder:
                     # Should not happen in reachable code, but default to 0
                     result_vals.append(IRLiteral(0))
                 elif len(inputs) == 1:
-                    # Single pth - no PHI needed
-                    # Just materialize the value if needed
-                    val = self._materialize_literal(inputs[0]['val'], inputs[0]['block'])
-                    result_vals.append(val)
-                    self.var_map[ret_name] = val
+                    # Single path - no PHI needed
+                    # Materialize value in CLEANUP block (current_bb), not source block
+                    # This ensures the variable is defined in the block where it's used
+                    val = inputs[0]['val']
+                    if isinstance(val, IRLiteral):
+                        # Literals just get assigned in the cleanup block
+                        new_var = self.current_fn.get_next_variable()
+                        self.current_bb.append_instruction("assign", val, outputs=[new_var])
+                        result_vals.append(new_var)
+                        self.var_map[ret_name] = new_var
+                    else:
+                        # Variables from source block - just use directly 
+                        # (they're still in scope since single path means linear flow)
+                        result_vals.append(val)
+                        self.var_map[ret_name] = val
                 else:
                     # Multiple paths - emit PHI
                     phi_args = []
@@ -1087,13 +1096,13 @@ class VenomIRBuilder:
                         # Pattern: xor %local, expected; jnz xor, fallback, handler
                         # This allows receive() (calldatasize=0) to properly reach fallback
                         val, lbl, case = selectors[0]
-                        local_sel = self.current_bb.append_instruction1("assign", cond_val)
+                        local_sel = self.current_bb.append_instruction1("add", cond_val, IRLiteral(0))
                         xor_result = self.current_bb.append_instruction1("xor", val, local_sel)
                         # jnz: if xor!=0 (mismatch) -> fallback, if xor==0 (match) -> handler
                         self.current_bb.append_instruction("jnz", xor_result, fallback_lbl, lbl)
                     else:
                         # Multiple selectors in bucket - assign then linear search
-                        local_sel = self.current_bb.append_instruction1("assign", cond_val)
+                        local_sel = self.current_bb.append_instruction1("add", cond_val, IRLiteral(0))
                         
                         for i, (val, lbl, case) in enumerate(selectors):
                             # Native pattern: xor for comparison
@@ -1206,6 +1215,13 @@ class VenomIRBuilder:
             for v in vars_needing_phi:
                 inputs = phi_inputs[v]
                 if not inputs: continue
+                
+                # Single-input phi is redundant - just use the value directly
+                if len(inputs) == 1:
+                    val = inputs[0]['val']
+                    self.var_map[v] = val
+                    continue
+                
                 # Flatten args for Phi instruction: label, val, label, val...
                 phi_args = []
                 for item in inputs:
@@ -1431,7 +1447,7 @@ class VenomIRBuilder:
                         ret_vals.append(self.var_map[n])
                     else:
                         ret_vals.append(IRLiteral(0))
-                # NOTE: PC first so parser reversal puts it last (backend expects operands[-1]=PC)
+                # PC first - backend handles this correctly
                 self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
@@ -1771,7 +1787,7 @@ class VenomIRBuilder:
 
 
         if func == "invalid":
-             return self.current_bb.append_instruction("stop")
+             return self.current_bb.append_instruction("invalid")
         
         # OPERAND ORDERING:
         # Extensive testing confirmed that Yul argument order matches EVM stack order (Top -> Bottom).
