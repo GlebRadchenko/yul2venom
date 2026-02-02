@@ -33,7 +33,7 @@ jobs:
       !contains(github.event.head_commit.message, '[no-ci]') &&
       !contains(github.event.head_commit.message, '[skip ci]')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v6
         with:
