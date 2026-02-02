@@ -540,6 +540,29 @@ class VenomIRBuilder:
             if stmt.post:
                 self._collect_assigned_vars(stmt.post, result_set)
 
+    def _count_statements(self, node):
+        """Count the number of statements in a Yul AST node (for inlining threshold)."""
+        if node is None:
+            return 0
+        node_type = type(node).__name__
+        if node_type == 'YulBlock':
+            count = 0
+            for stmt in node.statements:
+                count += self._count_statements(stmt)
+            return count
+        elif node_type == 'YulIf':
+            return 1 + self._count_statements(node.body)
+        elif node_type == 'YulSwitch':
+            count = 1
+            for case in node.cases:
+                count += self._count_statements(case.body)
+            return count
+        elif node_type == 'YulForLoop':
+            return 1 + self._count_statements(node.init) + self._count_statements(node.body) + self._count_statements(node.post)
+        else:
+            # Simple statements: assignment, declaration, expression, leave, break, continue
+            return 1
+
     def _collect_loop_assigned_vars(self, stmt, result_set):
         """Collect vars assigned INSIDE for-loops (body/post). Used to exclude from switch_var_mem."""
         stmt_type = type(stmt).__name__
@@ -652,9 +675,11 @@ class VenomIRBuilder:
                      # Explicitly allocate return variable since invoke is in NO_OUTPUT_INSTRUCTIONS
                      f_def = self.functions_ast.get(func_name)
                      if f_def and f_def.returns:
-                         ret = self.current_fn.get_next_variable()
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals, ret=ret)
-                         result_vals = [ret]
+                         # Create one variable for EACH return value (multi-return support)
+                         ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
+                         invoke_inst = IRInstruction("invoke", [IRLabel(func_name)] + arg_vals, outputs=ret_vars)
+                         self.current_bb.instructions.append(invoke_inst)
+                         result_vals = ret_vars
                      else:
                          self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
                          result_vals = []
@@ -694,9 +719,11 @@ class VenomIRBuilder:
                      # Explicitly allocate return variable since invoke is in NO_OUTPUT_INSTRUCTIONS
                      f_def = self.functions_ast.get(func_name)
                      if f_def and f_def.returns:
-                         ret = self.current_fn.get_next_variable()
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals, ret=ret)
-                         result_vals = [ret]
+                         # Create one variable for EACH return value (multi-return support)
+                         ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
+                         invoke_inst = IRInstruction("invoke", [IRLabel(func_name)] + arg_vals, outputs=ret_vars)
+                         self.current_bb.instructions.append(invoke_inst)
+                         result_vals = ret_vars
                      else:
                          self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
                          result_vals = []

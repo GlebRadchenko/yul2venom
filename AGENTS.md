@@ -66,13 +66,53 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json -O native
 ```
 
 ### Testing
+
+> **⚠️ CRITICAL: Always retranspile before testing!**
+> 
+> `forge test` loads bytecode from `output/*.bin` files. If you don't retranspile after code changes, you're testing stale binaries!
+
 ```bash
-python3.11 testing/test_framework.py --test-all   # Full pipeline
-python3.11 testing/test_framework.py --init-all   # Init bytecode only
-python3.11 testing/test_framework.py --test-init  # Init tests
-cd foundry && forge test                          # Run Forge tests
-cd foundry && forge test --match-test "name" -vvvv  # Verbose single test
+# CORRECT: Full pipeline (transpiles + tests) - ALWAYS USE THIS
+python3.11 testing/test_framework.py --test-all
+
+# Batch transpilation only (without tests)
+python3.11 testing/test_framework.py --transpile-all
+
+# If you must use forge directly, retranspile first:
+python3.11 testing/test_framework.py --transpile-all && cd foundry && forge test
+
+# Targeted testing
+cd foundry && forge test --match-path "test/bench/*"     # Bench tests only
+cd foundry && forge test --match-path "test/init/*"      # Init tests only
+cd foundry && forge test --match-test "test_getValue"    # Single test
+cd foundry && forge test --match-test "name" -vvvv       # Verbose
 ```
+
+### Regression Testing Workflow
+
+**When making changes to `venom_generator.py` or core transpiler code:**
+
+```bash
+# 1. Start from clean state (stash or commit current changes)
+git stash --include-untracked
+
+# 2. Verify baseline: All 339 tests should pass
+python3.11 testing/test_framework.py --test-all
+
+# 3. Apply changes ONE AT A TIME and test
+git stash pop  # or apply your changes incrementally
+
+# 4. Test after EACH change
+python3.11 testing/test_framework.py --test-all
+
+# 5. If tests fail, investigate immediately - don't stack changes
+```
+
+**Config/Test counts:**
+- `configs/` = 21 core configs
+- `configs/bench/` = 15 bench configs  
+- `configs/init/` = 10 init configs
+- **Total: 46 configs, 339 tests**
 
 ### Debugging
 ```bash

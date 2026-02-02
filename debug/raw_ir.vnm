@@ -1,811 +1,332 @@
 function __main_entry {
-  1___main_entry:
+  8___main_entry:
       mstore 64, 256
       %1 = calldatasize
       %2 = lt %1, 4
       %3 = iszero %2
-      jnz %3, @2_then, @3_end_if
+      jnz %3, @9_then, @10_end_if
 
-  2_then:
+  9_then:
       %4 = calldataload 0
       %5 = shr 224, %4
-      %6 = mod %5, 29
+      %6 = mod %5, 11
       %7 = shl 1, %6
-      %8 = add @51_selector_buckets, %7
+      %8 = add @30_selector_buckets, %7
       codecopy 30, %8, 2
       %9 = mload 0
-      djmp %9, @33_fallback, @34_bucket_1, @35_bucket_2, @36_bucket_3, @37_bucket_4, @38_bucket_5, @39_bucket_6, @33_fallback, @33_fallback, @40_bucket_9, @41_bucket_10, @33_fallback, @42_bucket_12, @43_bucket_13, @44_bucket_14, @45_bucket_15, @33_fallback, @33_fallback, @46_bucket_18, @47_bucket_19, @33_fallback, @48_bucket_21, @33_fallback, @33_fallback, @33_fallback, @33_fallback, @33_fallback, @49_bucket_27, @50_bucket_28
+      djmp %9, @23_bucket_0, @24_bucket_1, @25_bucket_2, @22_fallback, @26_bucket_4, @27_bucket_5, @22_fallback, @28_bucket_7, @22_fallback, @29_bucket_9, @22_fallback
 
-  49_bucket_27:
+  27_bucket_5:
       %10 = %5
-      %11 = xor 0x625faae, %10
-      jnz %11, @52_bucket_27_check, @5_case
+      %11 = xor 0x1badeacf, %10
+      jnz %11, @22_fallback, @12_case
 
-  52_bucket_27_check:
-      %12 = xor 0xc5f506ab, %10
-      jnz %12, @33_fallback, @24_case
+  28_bucket_7:
+      %12 = %5
+      %13 = xor 0x1f0cfba8, %12
+      jnz %13, @22_fallback, @13_case
 
-  45_bucket_15:
-      %13 = %5
-      %14 = xor 0x98d3228, %13
-      jnz %14, @53_bucket_15_check, @6_case
+  25_bucket_2:
+      %14 = %5
+      %15 = xor 0x61047ff4, %14
+      jnz %15, @22_fallback, @14_case
 
-  53_bucket_15_check:
-      %15 = xor 0xf8c2ccba, %13
-      jnz %15, @33_fallback, @31_case
-
-  50_bucket_28:
+  23_bucket_0:
       %16 = %5
-      %17 = xor 0x1509e91a, %16
-      jnz %17, @54_bucket_28_check, @7_case
+      %17 = xor 0x8c87bb0a, %16
+      jnz %17, @22_fallback, @15_case
 
-  54_bucket_28_check:
-      %18 = xor 0xc9940342, %16
-      jnz %18, @33_fallback, @25_case
+  29_bucket_9:
+      %18 = %5
+      %19 = xor 0x950ed8c3, %18
+      jnz %19, @31_bucket_9_check, @16_case
 
-  38_bucket_5:
-      %19 = %5
-      %20 = xor 0x250cf21e, %19
-      jnz %20, @55_bucket_5_check, @8_case
+  31_bucket_9_check:
+      %20 = xor 0xb37a0600, %18
+      jnz %20, @32_bucket_9_check, @18_case
 
-  55_bucket_5_check:
-      %21 = xor 0x4f4f220d, %19
-      jnz %21, @56_bucket_5_check, @12_case
+  32_bucket_9_check:
+      %21 = xor 0xf427e107, %18
+      jnz %21, @22_fallback, @21_case
 
-  56_bucket_5_check:
-      %22 = xor 0xf4aee8ab, %19
-      jnz %22, @33_fallback, @30_case
+  24_bucket_1:
+      %22 = %5
+      %23 = xor 0x9adf9051, %22
+      jnz %23, @22_fallback, @17_case
 
-  36_bucket_3:
-      %23 = %5
-      %24 = xor 0x31351785, %23
-      jnz %24, @57_bucket_3_check, @9_case
+  26_bucket_4:
+      %24 = %5
+      %25 = xor 0xbaf30646, %24
+      jnz %25, @33_bucket_4_check, @19_case
 
-  57_bucket_3_check:
-      %25 = xor 0xe5b5019a, %23
-      jnz %25, @33_fallback, @26_case
+  33_bucket_4_check:
+      %26 = xor 0xdd063338, %24
+      jnz %26, @22_fallback, @20_case
 
-  39_bucket_6:
-      %26 = %5
-      %27 = xor 0x35f1085f, %26
-      jnz %27, @33_fallback, @10_case
+  22_fallback:
+      %127 = 0
+      jmp @11_switch_end
 
-  46_bucket_18:
-      %28 = %5
-      %29 = xor 0x47398011, %28
-      jnz %29, @33_fallback, @11_case
+  12_case:
+      %27 = callvalue
+      %28 = iszero %27
+      assert %28
+      %29 = calldatasize
+      %30 = not 3
+      %31 = add %29, %30
+      %32 = slt %31, 0
+      %33 = iszero %32
+      assert %33
+      mstore 256, 10
+      %34 = add 256, 32
+      mstore %34, 20
+      %35 = add 256, 64
+      mstore %35, 30
+      return 256, 96
 
-  44_bucket_14:
-      %30 = %5
-      %31 = xor 0x52631aea, %30
-      jnz %31, @33_fallback, @13_case
+  13_case:
+      %36 = callvalue
+      %37 = iszero %36
+      assert %37
+      %38 = calldatasize
+      %39 = not 3
+      %40 = add %38, %39
+      %41 = slt %40, 0
+      %42 = iszero %41
+      assert %42
+      %43 = sload 1
+      %44 = mload 64
+      mstore %44, %43
+      return %44, 32
 
-  43_bucket_13:
-      %32 = %5
-      %33 = xor 0x59f1a071, %32
-      jnz %33, @58_bucket_13_check, @14_case
+  14_case:
+      %45 = callvalue
+      %46 = iszero %45
+      assert %46
+      %47 = calldatasize
+      %48 = not 3
+      %49 = add %47, %48
+      %50 = slt %49, 32
+      %51 = iszero %50
+      assert %51
+      %52 = calldataload 4
+      %53, %54 = invoke @fun_fibonacci, %52
+      %55 = mload 64
+      mstore %55, %53
+      %56 = add %55, 32
+      mstore %56, %54
+      return %55, 64
 
-  58_bucket_13_check:
-      %34 = xor 0xe6cb9013, %32
-      jnz %34, @59_bucket_13_check, @27_case
+  15_case:
+      %57 = callvalue
+      %58 = iszero %57
+      assert %58
+      %59 = calldatasize
+      %60 = not 3
+      %61 = add %59, %60
+      %62 = slt %61, 32
+      %63 = iszero %62
+      assert %63
+      %64 = calldataload 4
+      %65, %66 = invoke @fun_fibonacci, %64
+      %67 = mload 64
+      mstore %67, %65
+      return %67, 32
 
-  59_bucket_13_check:
-      %35 = xor 0xf189e25a, %32
-      jnz %35, @33_fallback, @29_case
+  16_case:
+      %68 = callvalue
+      %69 = iszero %68
+      assert %69
+      %70 = calldatasize
+      %71 = not 3
+      %72 = add %70, %71
+      %73 = slt %72, 0
+      %74 = iszero %73
+      assert %74
+      %75 = sload 0
+      %76 = sload 1
+      %77 = add %75, %76
+      %78 = gt %75, %77
+      jnz %78, @35_then, @36_end_if
 
-  34_bucket_1:
-      %36 = %5
-      %37 = xor 0x6763b692, %36
-      jnz %37, @33_fallback, @15_case
+  35_then:
+      %79 = shl 224, 0x4e487b71
+      mstore 0, %79
+      mstore 4, 17
+      revert 0, 36
 
-  35_bucket_2:
-      %38 = %5
-      %39 = xor 0x687db44c, %38
-      jnz %39, @60_bucket_2_check, @16_case
+  36_end_if:
+      %80 = add %77, 0
+      jmp @34_inline_cleanup_checked_add_uint256
 
-  60_bucket_2_check:
-      %40 = xor 0x9a02ea65, %38
-      jnz %40, @33_fallback, @20_case
+  34_inline_cleanup_checked_add_uint256:
+      %81 = sload 2
+      %82 = add %80, %81
+      %83 = gt %80, %82
+      jnz %83, @38_then, @39_end_if
 
-  37_bucket_4:
-      %41 = %5
-      %42 = xor 0x6b9241fc, %41
-      jnz %42, @33_fallback, @17_case
+  38_then:
+      %84 = shl 224, 0x4e487b71
+      mstore 0, %84
+      mstore 4, 17
+      revert 0, 36
 
-  41_bucket_10:
-      %43 = %5
-      %44 = xor 0x7b602edf, %43
-      jnz %44, @61_bucket_10_check, @18_case
+  39_end_if:
+      %85 = add %82, 0
+      jmp @37_inline_cleanup_checked_add_uint256
 
-  61_bucket_10_check:
-      %45 = xor 0xeb967ec2, %43
-      jnz %45, @33_fallback, @28_case
+  37_inline_cleanup_checked_add_uint256:
+      %86 = mload 64
+      mstore %86, %85
+      return %86, 32
 
-  47_bucket_19:
-      %46 = %5
-      %47 = xor 0x97b3805f, %46
-      jnz %47, @33_fallback, @19_case
+  17_case:
+      %87 = callvalue
+      %88 = iszero %87
+      assert %88
+      %89 = calldatasize
+      %90 = not 3
+      %91 = add %89, %90
+      %92 = slt %91, 0
+      %93 = iszero %92
+      assert %93
+      %94 = sload 2
+      %95 = mload 64
+      mstore %95, %94
+      return %95, 32
 
-  40_bucket_9:
-      %48 = %5
-      %49 = xor 0x9a295e73, %48
-      jnz %49, @33_fallback, @21_case
+  18_case:
+      %96 = callvalue
+      %97 = iszero %96
+      assert %97
+      %98 = calldatasize
+      %99 = not 3
+      %100 = add %98, %99
+      %101 = slt %100, 0
+      %102 = iszero %101
+      assert %102
+      %103 = mload 64
+      mstore %103, 43
+      %104 = add %103, 32
+      mstore %104, 101
+      return %103, 64
 
-  42_bucket_12:
-      %50 = %5
-      %51 = xor 0x9c250177, %50
-      jnz %51, @62_bucket_12_check, @22_case
-
-  62_bucket_12_check:
-      %52 = xor 0xf9788ec3, %50
-      jnz %52, @33_fallback, @32_case
-
-  48_bucket_21:
-      %53 = %5
-      %54 = xor 0xbef75fb2, %53
-      jnz %54, @33_fallback, @23_case
-
-  33_fallback:
-      jmp @4_switch_end
-
-  5_case:
-      %55 = callvalue
-      %56 = iszero %55
-      assert %56
-      %57 = calldatasize
-      %58 = not 3
-      %59 = add %57, %58
-      %60 = slt %59, 0
-      %61 = iszero %60
-      assert %61
-      %62 = shl 255, 1
-      mstore 256, %62
-      %63 = add 256, 32
-      %64 = shl 255, 1
-      %65 = sub %64, 1
-      mstore %63, %65
-      return 256, 64
-
-  6_case:
-      %66 = callvalue
-      %67 = iszero %66
-      assert %67
-      %68 = calldatasize
-      %69 = not 3
-      %70 = add %68, %69
-      %71 = slt %70, 0
-      %72 = iszero %71
-      assert %72
-      %73 = mload 64
-      %74 = shl 255, 1
-      %75 = sub %74, 1
-      mstore %73, %75
-      return %73, 32
-
-  7_case:
-      %76 = callvalue
-      %77 = iszero %76
-      assert %77
-      %78 = calldatasize
-      %79 = not 3
-      %80 = add %78, %79
-      %81 = slt %80, 0
-      %82 = iszero %81
-      assert %82
-      %83 = mload 64
-      mstore %83, 0
-      %84 = add %83, 32
-      mstore %84, 0xffffffff
-      return %83, 64
-
-  8_case:
-      %85 = callvalue
-      %86 = iszero %85
-      assert %86
-      %87 = calldatasize
-      %88 = not 3
-      %89 = add %87, %88
-      %90 = slt %89, 0
-      %91 = iszero %90
-      assert %91
-      %92 = mload 64
-      %93 = not 0x7fff
-      mstore %92, %93
-      %94 = add %92, 32
-      mstore %94, 0x7fff
-      return %92, 64
-
-  9_case:
-      %95 = callvalue
-      %96 = iszero %95
-      assert %96
-      %97 = calldatasize
-      %98 = not 3
-      %99 = add %97, %98
-      %100 = slt %99, 0
-      %101 = iszero %100
-      assert %101
-      %102 = mload 64
-      mstore %102, 0
-      %103 = add %102, 32
-      %104 = not 0
-      mstore %103, %104
-      return %102, 64
-
-  10_case:
+  19_case:
       %105 = callvalue
       %106 = iszero %105
       assert %106
       %107 = calldatasize
       %108 = not 3
       %109 = add %107, %108
-      %110 = slt %109, 32
+      %110 = slt %109, 0
       %111 = iszero %110
       assert %111
-      %112 = calldataload 4
-      %113 = and %112, 255
-      %114 = eq %112, %113
-      assert %114
-      %115 = and %112, 255
-      %116 = iszero %115
-      %117 = iszero %116
-      %120 = add %117, 0
-      jnz %117, @64_then, @65_end_if
-
-  64_then:
-      %118 = gt %115, 256
-      %119 = iszero %118
-      %121 = add %119, 0
-      jmp @65_end_if
-
-  65_end_if:
-      %122 = phi @10_case, %120, @64_then, %121
-      %123 = iszero %122
-      jnz %123, @66_then, @67_end_if
-
-  66_then:
-      %124 = mload 64
-      %125 = shl 229, 0x461bcd
-      mstore %124, %125
-      %126 = add %124, 4
-      mstore %126, 32
-      %127 = add %124, 36
-      mstore %127, 12
-      %128 = add %124, 68
-      mstore %128, 0x496e76616c696420626974730000000000000000000000000000000000000000
-      revert %124, 100
-
-  67_end_if:
-      %129 = eq %115, 256
-      jnz %129, @68_then, @69_end_if
-
-  68_then:
-      %130 = not 0
-      %136 = add %130, 0
-      jmp @63_inline_cleanup_fun_maxForBits
-
-  69_end_if:
-      %131 = shl %115, 1
-      %132 = not 0
-      %133 = add %131, %132
-      %134 = gt %133, %131
-      jnz %134, @70_then, @71_end_if
-
-  70_then:
-      %135 = shl 224, 0x4e487b71
-      mstore 0, %135
-      mstore 4, 17
-      revert 0, 36
-
-  71_end_if:
-      %137 = add %133, 0
-      jmp @63_inline_cleanup_fun_maxForBits
-
-  63_inline_cleanup_fun_maxForBits:
-      %138 = phi @68_then, %136, @71_end_if, %137
-      %139 = mload 64
-      mstore %139, %138
-      return %139, 32
-
-  11_case:
-      %140 = callvalue
-      %141 = iszero %140
-      assert %141
-      %142 = calldatasize
-      %143 = not 3
-      %144 = add %142, %143
-      %145 = slt %144, 0
-      %146 = iszero %145
-      assert %146
-      %147 = mload 64
-      mstore %147, 0
-      %148 = add %147, 32
-      mstore %148, 255
-      return %147, 64
-
-  12_case:
-      %149 = callvalue
-      %150 = iszero %149
-      assert %150
-      %151 = calldatasize
-      %152 = not 3
-      %153 = add %151, %152
-      %154 = slt %153, 0
-      %155 = iszero %154
-      assert %155
-      %156 = mload 64
-      mstore %156, 0
-      %157 = add %156, 32
-      mstore %157, 0xffffffffffffffff
-      return %156, 64
-
-  13_case:
-      %158 = callvalue
-      %159 = iszero %158
-      assert %159
-      %160 = calldatasize
-      %161 = not 3
-      %162 = add %160, %161
-      %163 = slt %162, 0
-      %164 = iszero %163
-      assert %164
-      %165 = mload 64
-      mstore %165, 0xffffffffffffffffffffffffffffffff
-      return %165, 32
-
-  14_case:
-      %166 = callvalue
-      %167 = iszero %166
-      assert %167
-      %168 = calldatasize
-      %169 = not 3
-      %170 = add %168, %169
-      %171 = slt %170, 0
-      %172 = iszero %171
-      assert %172
-      %173 = mload 64
-      mstore %173, 0
-      %174 = add %173, 32
-      mstore %174, 0xffffffffffffffffffffffffffffffff
-      return %173, 64
-
-  15_case:
-      %175 = callvalue
-      %176 = iszero %175
-      assert %176
-      %177 = calldatasize
-      %178 = not 3
-      %179 = add %177, %178
-      %180 = slt %179, 32
-      %181 = iszero %180
-      assert %181
-      %182 = calldataload 4
-      %183 = gt %182, 255
-      jnz %183, @73_then, @74_end_if
-
-  73_then:
-      %185 = 255
-      jmp @72_inline_cleanup_fun_clampToUint8
-
-  74_end_if:
-      %184 = and %182, 255
-      %186 = add %184, 0
-      jmp @72_inline_cleanup_fun_clampToUint8
-
-  72_inline_cleanup_fun_clampToUint8:
-      %187 = phi @73_then, %185, @74_end_if, %186
-      %188 = mload 64
-      %189 = and %187, 255
-      mstore %188, %189
-      return %188, 32
-
-  16_case:
-      %190 = callvalue
-      %191 = iszero %190
-      assert %191
-      %192 = calldatasize
-      %193 = not 3
-      %194 = add %192, %193
-      %195 = slt %194, 32
-      %196 = iszero %195
-      assert %196
-      %197 = calldataload 4
-      %198 = sgt %197, 0x7fffffffffffffffffffffffffffffff
-      jnz %198, @76_then, @77_end_if
-
-  76_then:
-      %203 = 0x7fffffffffffffffffffffffffffffff
-      jmp @75_inline_cleanup_fun_clampToInt128
-
-  77_end_if:
-      %199 = not 0x7fffffffffffffffffffffffffffffff
-      %200 = slt %197, %199
-      jnz %200, @78_then, @79_end_if
-
-  78_then:
-      %201 = not 0x7fffffffffffffffffffffffffffffff
-      %204 = add %201, 0
-      jmp @75_inline_cleanup_fun_clampToInt128
-
-  79_end_if:
-      %202 = signextend 15, %197
-      %205 = add %202, 0
-      jmp @75_inline_cleanup_fun_clampToInt128
-
-  75_inline_cleanup_fun_clampToInt128:
-      %206 = phi @76_then, %203, @78_then, %204, @79_end_if, %205
-      %207 = mload 64
-      %208 = signextend 15, %206
-      mstore %207, %208
-      return %207, 32
-
-  17_case:
-      %209 = callvalue
-      %210 = iszero %209
-      assert %210
-      %211 = calldatasize
-      %212 = not 3
-      %213 = add %211, %212
-      %214 = slt %213, 0
-      %215 = iszero %214
-      assert %215
-      %216 = mload 64
-      %217 = shl 224, 0x1ffc9a7
-      mstore %216, %217
-      return %216, 32
-
-  18_case:
-      %218 = callvalue
-      %219 = iszero %218
-      assert %219
-      %220 = calldatasize
-      %221 = not 3
-      %222 = add %220, %221
-      %223 = slt %222, 32
-      %224 = iszero %223
-      assert %224
-      %225 = mload 64
-      %226 = calldataload 4
-      %227 = shl 255, 1
-      %228 = eq %226, %227
-      mstore %225, %228
-      return %225, 32
-
-  19_case:
-      %229 = callvalue
-      %230 = iszero %229
-      assert %230
-      %231 = calldatasize
-      %232 = not 3
-      %233 = add %231, %232
-      %234 = slt %233, 0
-      %235 = iszero %234
-      assert %235
-      %236 = mload 64
-      mstore %236, 0
-      %237 = add %236, 32
-      mstore %237, 0xffff
-      return %236, 64
+      %112 = sload 0
+      %113 = mload 64
+      mstore %113, %112
+      return %113, 32
 
   20_case:
-      %238 = callvalue
-      %239 = iszero %238
-      assert %239
-      %240 = calldatasize
-      %241 = not 3
-      %242 = add %240, %241
-      %243 = slt %242, 64
-      %244 = iszero %243
-      assert %244
-      %245 = calldataload 4
-      %246 = calldataload 36
-      %247 = add %245, 0
-      %248 = add %246, 0
-      jmp @80_inline_cleanup_abi_decode_uint256t_uint256
-
-  80_inline_cleanup_abi_decode_uint256t_uint256:
-      %249 = mload 64
-      %250 = not %248
-      %251 = gt %247, %250
-      mstore %249, %251
-      return %249, 32
+      %114 = callvalue
+      %115 = iszero %114
+      assert %115
+      %116 = calldatasize
+      %117 = not 3
+      %118 = add %116, %117
+      %119 = slt %118, 0
+      %120 = iszero %119
+      assert %120
+      %121 = mload 64
+      mstore %121, 148
+      return %121, 32
 
   21_case:
-      %252 = callvalue
-      %253 = iszero %252
-      assert %253
-      %254 = calldatasize
-      %255 = not 3
-      %256 = add %254, %255
-      %257 = slt %256, 0
-      %258 = iszero %257
-      assert %258
-      %259 = mload 64
-      %260 = not 0
-      mstore %259, %260
-      %261 = add %259, 32
-      %262 = shl 255, 1
-      mstore %261, %262
-      %263 = add %259, 64
-      %264 = shl 255, 1
-      %265 = sub %264, 1
-      mstore %263, %265
-      %266 = add %259, 96
-      mstore %266, 0xffffffffffffffffffffffffffffffff
-      return %259, 128
+      %122 = callvalue
+      jnz %122, @40_then, @41_end_if
 
-  22_case:
-      %267 = callvalue
-      %268 = iszero %267
-      assert %268
-      %269 = calldatasize
-      %270 = not 3
-      %271 = add %269, %270
-      %272 = slt %271, 0
-      %273 = iszero %272
-      assert %273
-      %274 = mload 64
-      %275 = not 0x7fffffff
-      mstore %274, %275
-      %276 = add %274, 32
-      mstore %276, 0x7fffffff
-      return %274, 64
+  40_then:
+      revert 0, 0
 
-  23_case:
-      %277 = callvalue
-      %278 = iszero %277
-      assert %278
-      %279 = calldatasize
-      %280 = not 3
-      %281 = add %279, %280
-      %282 = slt %281, 32
-      %283 = iszero %282
-      assert %283
-      %284 = calldataload 4
-      %285 = not 0x7fffffffffffffff
-      %286 = slt %284, %285
-      %287 = iszero %286
-      %290 = add %287, 0
-      jnz %287, @81_then, @82_end_if
+  41_end_if:
+      %123 = calldatasize
+      %124 = not 3
+      %125 = add %123, %124
+      %126 = slt %125, 0
+      jnz %126, @42_then, @43_end_if
 
-  81_then:
-      %288 = sgt %284, 0x7fffffffffffffff
-      %289 = iszero %288
-      %291 = add %289, 0
-      jmp @82_end_if
+  42_then:
+      revert 0, 0
 
-  82_end_if:
-      %292 = phi @23_case, %290, @81_then, %291
-      %293 = mload 64
-      %294 = iszero %292
-      %295 = iszero %294
-      mstore %293, %295
-      return %293, 32
+  43_end_if:
+      sstore 2, 3
+      sstore 1, 2
+      sstore 0, 1
+      return 0, 0
 
-  24_case:
-      %296 = callvalue
-      %297 = iszero %296
-      assert %297
-      %298 = calldatasize
-      %299 = not 3
-      %300 = add %298, %299
-      %301 = slt %300, 0
-      %302 = iszero %301
-      assert %302
-      %303 = mload 64
-      %304 = shl 255, 1
-      mstore %303, %304
-      return %303, 32
+  11_switch_end:
+      %128 = phi @22_fallback, %127
+      jmp @10_end_if
 
-  25_case:
-      %305 = callvalue
-      %306 = iszero %305
-      assert %306
-      %307 = calldatasize
-      %308 = not 3
-      %309 = add %307, %308
-      %310 = slt %309, 64
-      %311 = iszero %310
-      assert %311
-      %312 = calldataload 4
-      %313 = calldataload 36
-      %314 = add %312, 0
-      %315 = add %313, 0
-      jmp @83_inline_cleanup_abi_decode_uint256t_uint256
-
-  83_inline_cleanup_abi_decode_uint256t_uint256:
-      %316 = mload 64
-      %317 = gt %315, %314
-      mstore %316, %317
-      return %316, 32
-
-  26_case:
-      %318 = callvalue
-      %319 = iszero %318
-      assert %319
-      %320 = calldatasize
-      %321 = not 3
-      %322 = add %320, %321
-      %323 = slt %322, 0
-      %324 = iszero %323
-      assert %324
-      %325 = mload 64
-      %326 = not 0
-      mstore %325, %326
-      return %325, 32
-
-  27_case:
-      %327 = callvalue
-      %328 = iszero %327
-      assert %328
-      %329 = calldatasize
-      %330 = not 3
-      %331 = add %329, %330
-      %332 = slt %331, 64
-      %333 = iszero %332
-      assert %333
-      %334 = calldataload 4
-      %335 = calldataload 36
-      %336 = add %334, 0
-      %337 = add %335, 0
-      jmp @84_inline_cleanup_abi_decode_uint256t_uint256
-
-  84_inline_cleanup_abi_decode_uint256t_uint256:
-      %338 = not %337
-      %339 = gt %336, %338
-      jnz %339, @85_then, @86_end_if
-
-  85_then:
-      %340 = mload 64
-      %341 = shl 229, 0x461bcd
-      mstore %340, %341
-      %342 = add %340, 4
-      mstore %342, 32
-      %343 = add %340, 36
-      mstore %343, 8
-      %344 = add %340, 68
-      mstore %344, 0x6f766572666c6f77000000000000000000000000000000000000000000000000
-      revert %340, 100
-
-  86_end_if:
-      %345 = add %336, %337
-      %346 = gt %336, %345
-      jnz %346, @87_then, @88_end_if
-
-  87_then:
-      %347 = shl 224, 0x4e487b71
-      mstore 0, %347
-      mstore 4, 17
-      revert 0, 36
-
-  88_end_if:
-      %348 = mload 64
-      mstore %348, %345
-      return %348, 32
-
-  28_case:
-      %349 = callvalue
-      %350 = iszero %349
-      assert %350
-      %351 = calldatasize
-      %352 = not 3
-      %353 = add %351, %352
-      %354 = slt %353, 0
-      %355 = iszero %354
-      assert %355
-      %356 = mload 64
-      %357 = not 0x7fffffffffffffff
-      mstore %356, %357
-      %358 = add %356, 32
-      mstore %358, 0x7fffffffffffffff
-      return %356, 64
-
-  29_case:
-      %359 = callvalue
-      %360 = iszero %359
-      assert %360
-      %361 = calldatasize
-      %362 = not 3
-      %363 = add %361, %362
-      %364 = slt %363, 0
-      %365 = iszero %364
-      assert %365
-      %366 = mload 64
-      %367 = not 127
-      mstore %366, %367
-      %368 = add %366, 32
-      mstore %368, 127
-      return %366, 64
-
-  30_case:
-      %369 = callvalue
-      %370 = iszero %369
-      assert %370
-      %371 = calldatasize
-      %372 = not 3
-      %373 = add %371, %372
-      %374 = slt %373, 0
-      %375 = iszero %374
-      assert %375
-      %376 = mload 64
-      %377 = not 0x7fffffffffffffffffffffffffffffff
-      mstore %376, %377
-      %378 = add %376, 32
-      mstore %378, 0x7fffffffffffffffffffffffffffffff
-      return %376, 64
-
-  31_case:
-      %379 = callvalue
-      %380 = iszero %379
-      assert %380
-      %381 = calldatasize
-      %382 = not 3
-      %383 = add %381, %382
-      %384 = slt %383, 32
-      %385 = iszero %384
-      assert %385
-      %386 = mload 64
-      %387 = calldataload 4
-      %388 = not 0
-      %389 = eq %387, %388
-      mstore %386, %389
-      return %386, 32
-
-  32_case:
-      %390 = callvalue
-      %391 = iszero %390
-      assert %391
-      %392 = calldatasize
-      %393 = not 3
-      %394 = add %392, %393
-      %395 = slt %394, 32
-      %396 = iszero %395
-      assert %396
-      %397 = mload 64
-      %398 = calldataload 4
-      %399 = gt %398, 0xffffffffffffffffffffffffffffffff
-      %400 = iszero %399
-      mstore %397, %400
-      return %397, 32
-
-  4_switch_end:
-      jmp @3_end_if
-
-  3_end_if:
+  10_end_if:
       revert 0, 0
 }
 
 
+function fun_fibonacci {
+  fun_fibonacci:
+      %1 = param
+      %2 = param
+      %3 = iszero %1
+      jnz %3, @1_then, @2_end_if
+
+  1_then:
+      ret %2, 0, 1
+
+  2_end_if:
+      %4 = not 0
+      %5 = add %1, %4
+      %6 = gt %5, %1
+      jnz %6, @3_then, @4_end_if
+
+  3_then:
+      %7 = shl 224, 0x4e487b71
+      mstore 0, %7
+      mstore 4, 17
+      revert 0, 36
+
+  4_end_if:
+      %8, %9 = invoke @fun_fibonacci, %5
+      %10 = add %8, %9
+      %11 = gt %8, %10
+      jnz %11, @6_then, @7_end_if
+
+  6_then:
+      %12 = shl 224, 0x4e487b71
+      mstore 0, %12
+      mstore 4, 17
+      revert 0, 36
+
+  7_end_if:
+      %13 = add %10, 0
+      jmp @5_inline_cleanup_checked_add_uint256
+
+  5_inline_cleanup_checked_add_uint256:
+      ret %2, %9, %13
+}
+
+
 data readonly {
-  dbsection 51_selector_buckets:
-    db @33_fallback
-    db @34_bucket_1
-    db @35_bucket_2
-    db @36_bucket_3
-    db @37_bucket_4
-    db @38_bucket_5
-    db @39_bucket_6
-    db @33_fallback
-    db @33_fallback
-    db @40_bucket_9
-    db @41_bucket_10
-    db @33_fallback
-    db @42_bucket_12
-    db @43_bucket_13
-    db @44_bucket_14
-    db @45_bucket_15
-    db @33_fallback
-    db @33_fallback
-    db @46_bucket_18
-    db @47_bucket_19
-    db @33_fallback
-    db @48_bucket_21
-    db @33_fallback
-    db @33_fallback
-    db @33_fallback
-    db @33_fallback
-    db @33_fallback
-    db @49_bucket_27
-    db @50_bucket_28
+  dbsection 30_selector_buckets:
+    db @23_bucket_0
+    db @24_bucket_1
+    db @25_bucket_2
+    db @22_fallback
+    db @26_bucket_4
+    db @27_bucket_5
+    db @22_fallback
+    db @28_bucket_7
+    db @22_fallback
+    db @29_bucket_9
+    db @22_fallback
 }
 

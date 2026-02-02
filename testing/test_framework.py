@@ -303,22 +303,34 @@ def prepare_all(verbose: bool = True) -> List[Tuple[str, bool, str]]:
     return results
 
 
-def transpile_all(runtime_only: bool = False, include_bench: bool = True) -> List[TranspileResult]:
-    """Transpile all contracts and return results."""
+def transpile_all(runtime_only: bool = False, include_bench: bool = True, include_init: bool = True) -> List[TranspileResult]:
+    """Transpile all contracts and return results.
+    
+    Args:
+        runtime_only: If True, use --runtime-only for bench contracts (vm.etch tests)
+        include_bench: If True, include bench contracts
+        include_init: If True, include init contracts (uses --with-init flag)
+    """
     results = []
     
-    # Collect all configs
+    # Collect core and bench configs
     configs = list(CONFIGS_DIR.glob('*.yul2venom.json'))
     if include_bench and CONFIGS_BENCH_DIR.exists():
         configs.extend(CONFIGS_BENCH_DIR.glob('*.yul2venom.json'))
     
-    print(f"Found {len(configs)} configs to transpile")
+    # Collect init configs separately (need special handling with --with-init)
+    init_configs = []
+    if include_init and CONFIGS_INIT_DIR.exists():
+        init_configs = list(CONFIGS_INIT_DIR.glob('*.yul2venom.json'))
+    
+    total_configs = len(configs) + len(init_configs)
+    print(f"Found {total_configs} configs to transpile ({len(configs)} core/bench, {len(init_configs)} init)")
     print("=" * 60)
     
     passed = 0
     failed = 0
-    skipped = 0
     
+    # Transpile core and bench configs
     for config in sorted(configs):
         name = config.stem.replace('.yul2venom', '')
         
@@ -336,6 +348,33 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True) -> Lis
         print(f"  {name:30s} ... ", end='', flush=True)
         
         result = transpile_contract(str(config), runtime_only=runtime_only)
+        results.append(result)
+        
+        if result.success:
+            passed += 1
+            print(f"✓ {result.bytecode_size} bytes ({result.duration_ms:.0f}ms)")
+        else:
+            failed += 1
+            print(f"✗ {result.error_message[:50]}")
+    
+    # Transpile init configs with --with-init flag
+    for config in sorted(init_configs):
+        name = config.stem.replace('.yul2venom', '')
+        
+        if not check_yul_exists(str(config)):
+            print(f"  {name:30s} ... ✗ Yul file not found")
+            failed += 1
+            results.append(TranspileResult(
+                config_path=str(config),
+                success=False,
+                error_message="Yul file not found"
+            ))
+            continue
+        
+        print(f"  {name:30s} ... ", end='', flush=True)
+        
+        # Init contracts use --with-init, not runtime_only
+        result = transpile_contract(str(config), with_init=True)
         results.append(result)
         
         if result.success:
@@ -589,9 +628,9 @@ def main():
             print(json.dumps([r.to_dict() for r in results], indent=2))
     
     elif args.test_all:
-        # Transpile all contracts first to ensure binaries are up-to-date
+        # Transpile ALL contracts (core + bench + init) to ensure binaries are up-to-date
         print("Transpiling all contracts before testing...")
-        transpile_all(runtime_only=False, include_bench=True)
+        transpile_all(runtime_only=False, include_bench=True, include_init=True)
         # Re-transpile bench with runtime-only for vm.etch tests
         print("Re-transpiling bench contracts with --runtime-only...")
         for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):

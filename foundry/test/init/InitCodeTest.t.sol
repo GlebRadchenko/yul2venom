@@ -15,7 +15,7 @@ contract InitCodeTestRunner is Test {
         // Load init bytecode from file (consistent with InitEdgeCasesTest)
         string memory path = vm.envOr(
             "INIT_BYTECODE_PATH",
-            string("../output/InitCodeTest.bin")
+            string("../output/InitCodeTest_opt.bin")
         );
         initBytecode = vm.readFileBinary(path);
         require(initBytecode.length > 0, "Init bytecode is empty");

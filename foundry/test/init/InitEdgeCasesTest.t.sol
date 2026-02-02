@@ -41,7 +41,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_noArg_deploy() public {
         string memory path = vm.envOr(
             "INIT_NOARG_PATH",
-            string("../output/InitCodeTest.bin")
+            string("../output/InitCodeTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
         address deployed = deployBytecode(code);
@@ -59,7 +59,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_valueArgs_deploy() public {
         string memory path = vm.envOr(
             "INIT_ARGS_PATH",
-            string("../output/InitConstructorArgsTest.bin")
+            string("../output/InitConstructorArgsTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -93,7 +93,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_payable_deploy() public {
         string memory path = vm.envOr(
             "INIT_PAYABLE_PATH",
-            string("../output/InitPayableTest.bin")
+            string("../output/InitPayableTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -122,7 +122,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_immutable_deploy() public {
         string memory path = vm.envOr(
             "INIT_IMMUTABLE_PATH",
-            string("../output/InitImmutableTest.bin")
+            string("../output/InitImmutableTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -157,7 +157,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_string_deploy() public {
         string memory path = vm.envOr(
             "INIT_STRING_PATH",
-            string("../output/InitStringTest.bin")
+            string("../output/InitStringTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -185,7 +185,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_array_deploy() public {
         string memory path = vm.envOr(
             "INIT_ARRAY_PATH",
-            string("../output/InitArrayTest.bin")
+            string("../output/InitArrayTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -224,7 +224,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_complex_deploy() public {
         string memory path = vm.envOr(
             "INIT_COMPLEX_PATH",
-            string("../output/InitComplexTest.bin")
+            string("../output/InitComplexTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -260,7 +260,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_complex_revert_invalidOwner() public {
         string memory path = vm.envOr(
             "INIT_COMPLEX_PATH",
-            string("../output/InitComplexTest.bin")
+            string("../output/InitComplexTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -281,7 +281,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_newChild_deploy() public {
         string memory path = vm.envOr(
             "INIT_NEWCHILD_PATH",
-            string("../output/InitNewChildTest.bin")
+            string("../output/InitNewChildTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -332,7 +332,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_inheritance_deploy() public {
         string memory path = vm.envOr(
             "INIT_INHERITANCE_PATH",
-            string("../output/InitInheritanceTest.bin")
+            string("../output/InitInheritanceTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
@@ -391,7 +391,7 @@ contract InitEdgeCasesTestRunner is Test {
     function test_multiImmutable_deploy() public {
         string memory path = vm.envOr(
             "INIT_MULTIIMMUTABLE_PATH",
-            string("../output/InitMultiImmutableTest.bin")
+            string("../output/InitMultiImmutableTest_opt.bin")
         );
         bytes memory code = vm.readFileBinary(path);
 
