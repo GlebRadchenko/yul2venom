@@ -12,9 +12,9 @@ contract MultiReturnTestRunner is Test {
     address public deployed;
 
     function setUp() public {
-        // Load transpiled bytecode
+        // Load transpiled runtime bytecode (must be runtime-only for vm.etch)
         bytes memory bytecode = vm.readFileBinary(
-            "../output/MultiReturnTest_opt.bin"
+            "../output/MultiReturnTest_opt_runtime.bin"
         );
         require(bytecode.length > 0, "Bytecode is empty");
 
