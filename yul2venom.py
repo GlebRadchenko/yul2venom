@@ -745,10 +745,10 @@ def cmd_transpile(args):
     # Step 1: Parse Yul (Top-Level)
     print(f"Parsing Yul: {yul_path}")
     try:
-        from yul2venom.yul_parser import YulParser
+        from yul2venom.parser.yul_parser import YulParser
     except ImportError:
         # Fallback for local run
-        from yul_parser import YulParser
+        from parser.yul_parser import YulParser
 
     parser = YulParser(open(yul_path).read())
     all_objects = parser.parse_toplevel_objects()
@@ -781,9 +781,9 @@ def cmd_transpile(args):
     def transpile_object(obj, data_map=None, vnm_output_path=None, immutables=None, offset_map=None):
         # 1. Build IR
         try:
-            from yul2venom.venom_generator import VenomIRBuilder
+            from yul2venom.generator.venom_generator import VenomIRBuilder
         except ImportError:
-            from venom_generator import VenomIRBuilder
+            from generator.venom_generator import VenomIRBuilder
             
         builder = VenomIRBuilder()
         ir_vnm = builder.build(obj, data_map=data_map, immutables=immutables, offset_map=offset_map)
