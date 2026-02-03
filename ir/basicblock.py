@@ -194,6 +194,26 @@ class IRBasicBlock:
              ret = self.parent.get_next_variable()
              outputs = [ret]
 
+        # DUPLICATE LITERAL MATERIALIZATION: If multiple operands have the same
+        # literal value, materialize duplicates as unique IRVariables. This prevents
+        # backend stack reorder from seeing identical operands it can't handle.
+        # Example: revert(0, 0) -> two IRLiteral(0) would fail assertion.
+        if len(processed_args) > 1:
+            seen_values = {}  # value -> first index
+            for i, arg in enumerate(processed_args):
+                if isinstance(arg, IRLiteral):
+                    if arg.value in seen_values:
+                        # Duplicate! Materialize to unique variable
+                        var = self.parent.get_next_variable()
+                        # Emit assign instruction BEFORE main instruction
+                        assign_inst = IRInstruction("assign", [arg], [var])
+                        assign_inst.parent = self
+                        self.instructions.append(assign_inst)
+                        # Replace duplicate with the new variable
+                        processed_args[i] = var
+                    else:
+                        seen_values[arg.value] = i
+
         inst = IRInstruction(opcode, processed_args, outputs, annotation)
         inst.parent = self
         self.instructions.append(inst)

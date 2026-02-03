@@ -10,7 +10,7 @@
 Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper backend → EVM
 ```
 
-**Status**: 339/339 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
+**Status**: 344/344 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
 
 ---
 
@@ -66,12 +66,55 @@ python3.11 yul2venom.py transpile configs/Contract.yul2venom.json -O native
 ```
 
 ### Testing
+
+> **⚠️ CRITICAL: Always retranspile before testing!**
+> 
+> `forge test` loads bytecode from `output/*.bin` files. If you don't retranspile after code changes, you're testing stale binaries!
+
 ```bash
-python3.11 testing/test_framework.py --test-all   # Full pipeline
-python3.11 testing/test_framework.py --init-all   # Init bytecode only
-python3.11 testing/test_framework.py --test-init  # Init tests
-cd foundry && forge test                          # Run Forge tests
-cd foundry && forge test --match-test "name" -vvvv  # Verbose single test
+# CORRECT: Full pipeline (transpiles + tests) - ALWAYS USE THIS
+python3.11 testing/test_framework.py --test-all
+
+# Batch transpilation only (without tests)
+python3.11 testing/test_framework.py --transpile-all
+
+# If you must use forge directly, retranspile first:
+python3.11 testing/test_framework.py --transpile-all && cd foundry && forge test
+
+# Targeted testing
+cd foundry && forge test --match-path "test/bench/*"     # Bench tests only
+cd foundry && forge test --match-path "test/init/*"      # Init tests only
+cd foundry && forge test --match-test "test_getValue"    # Single test
+cd foundry && forge test --match-test "name" -vvvv       # Verbose
+```
+
+### Regression Testing Workflow
+
+**When making changes to `venom_generator.py` or core transpiler code:**
+
+```bash
+# 1. Start from clean state (stash or commit current changes)
+git stash --include-untracked
+
+# 2. Verify baseline: All tests should pass (0 failed)
+python3.11 testing/test_framework.py --test-all
+
+# 3. Apply changes ONE AT A TIME and test
+git stash pop  # or apply your changes incrementally
+
+# 4. Test after EACH change
+python3.11 testing/test_framework.py --test-all
+
+# 5. If tests fail, investigate immediately - don't stack changes
+```
+
+**Config/Test discovery:**
+```bash
+# Get current counts dynamically
+ls configs/*.json | wc -l              # Core configs
+ls configs/bench/*.json | wc -l        # Bench configs  
+ls configs/init/*.json | wc -l         # Init configs
+forge test 2>&1 | tail -1              # Total test count
 ```
 
 ### Debugging

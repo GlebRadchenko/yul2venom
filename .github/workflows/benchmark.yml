@@ -74,7 +74,8 @@ jobs:
           python3.11 tools/benchmark.py \
             --output benchmark_report.md \
             --json benchmark_data.json \
-            --contracts "${{ inputs.contracts }}"
+            --contracts "${{ inputs.contracts }}" \
+            --gas
           echo "generated=true" >> $GITHUB_OUTPUT
 
       - name: Upload benchmark results

@@ -16,7 +16,13 @@ except ImportError:
     from parser.yul_parser import YulParser
     from generator.venom_generator import VenomIRBuilder
 
-sys.setrecursionlimit(5000)
+# Load config for parser.recursion_limit
+try:
+    from config import get_config
+    _config = get_config()
+    sys.setrecursionlimit(_config.parser.recursion_limit)
+except ImportError:
+    sys.setrecursionlimit(5000)  # Fallback default
 
 class Transpiler:
     def __init__(self, content):

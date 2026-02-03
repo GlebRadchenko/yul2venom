@@ -6,7 +6,7 @@ Comprehensive feature coverage catalog for the transpilation pipeline.
 
 ## ✅ Confirmed Working Features
 
-These features are tested and pass (**339 tests** across 38 test suites):
+These features are tested and pass (**344 tests** across 38 test suites):
 
 | Category | Features |
 |----------|----------|
@@ -95,7 +95,7 @@ python3.11 testing/test_framework.py --init-all
 | **Init Edge Cases** | 11 | ✅ |
 | **Core Contracts** | ~80 | ✅ |
 
-**Total**: 339 tests passing across 38 test suites
+**Total**: 344 tests passing across 38 test suites
 
 ---
 

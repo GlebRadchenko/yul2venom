@@ -37,3 +37,8 @@ force_rebuild: true
 
 # Verbose output
 verbose: false
+
+# Benchmarks to run
+benchmarks:
+  bytecode: true  # Always enabled - compare bytecode sizes
+  gas: false      # Set to true for gas comparison (slower)

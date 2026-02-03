@@ -1,37 +1,37 @@
 {
-    "version": "1.0",
-    "contract": "foundry/src/init/InitInheritanceTest.sol",
-    "yul": "output/InitInheritanceTest.yul",
-    "deployment": {
-        "deployer": "0x1234567890123456789012345678901234567890",
-        "nonce": 0
+  "version": "1.0",
+  "contract": "foundry/src/init/InitInheritanceTest.sol",
+  "yul": "output/InitInheritanceTest.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "constructor_args": {
+    "weth": {
+      "id": "4",
+      "type": "address",
+      "value": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
     },
-    "constructor_args": {
-        "weth": {
-            "id": "4",
-            "type": "address",
-            "value": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
-        },
-        "owner": {
-            "id": "19",
-            "type": "address",
-            "value": "0x000000000000000000000000000000000000BEEF"
-        },
-        "config": {
-            "id": "39",
-            "type": "uint256",
-            "value": "12345"
-        },
-        "sender0": {
-            "id": "63",
-            "type": "address",
-            "value": "0x0000000000000000000000000000000000001111"
-        },
-        "sender1": {
-            "id": "65",
-            "type": "address",
-            "value": "0x0000000000000000000000000000000000002222"
-        }
+    "owner": {
+      "id": "19",
+      "type": "address",
+      "value": "0x000000000000000000000000000000000000BEEF"
     },
-    "auto_predicted": {}
+    "config": {
+      "id": "39",
+      "type": "uint256",
+      "value": "12345"
+    },
+    "sender0": {
+      "id": "63",
+      "type": "address",
+      "value": "0x0000000000000000000000000000000000001111"
+    },
+    "sender1": {
+      "id": "65",
+      "type": "address",
+      "value": "0x0000000000000000000000000000000000002222"
+    }
+  },
+  "auto_predicted": {}
 }

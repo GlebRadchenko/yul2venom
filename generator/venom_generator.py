@@ -45,7 +45,22 @@ class VenomIRBuilder:
     
     Calling Convention: param/invoke/ret for inter-function calls
     """
-    def __init__(self):
+    def __init__(self, config=None):
+        # Import config loader if config not provided
+        if config is None:
+            try:
+                from config import get_config
+                config = get_config()
+            except ImportError:
+                config = None
+        self.config = config
+        
+        # Log config values being used
+        if self.config:
+            print(f"CONFIG: inlining.enabled={config.inlining.enabled}, "
+                  f"stmt_threshold={config.inlining.stmt_threshold}, "
+                  f"call_threshold={config.inlining.call_threshold}", file=sys.stderr)
+        
         self.ctx = IRContext()
         self.current_fn = None
         self.current_bb = None
@@ -61,14 +76,19 @@ class VenomIRBuilder:
         self.loop_stack = []        # Stack of (start_label, end_label, post_label) for loops
         self.inline_exit_stack = []  # Stack of function names for inlined function calls
         self.inline_exited = False   # Flag set when leave encountered in inlined context
-        self.recursive_functions = set()  # Functions in recursive cycles - use invoke/ret
-        self.inlinable_functions = set()  # Functions safe to inline (DAG only)
+        self.recursive_functions = set()  # Functions in recursive cycles - must use invoke/ret
+        self.inlinable_functions = set()  # Non-recursive functions (form a DAG, not a cycle) - can inline
+        self.emit_as_functions = set()    # Non-recursive but too large/frequent to inline - emit for invoke
         
         # VENOM-NATIVE: Scratch alloca ID counter for unique memory allocation tracking
         # Mirrors native Vyper's get_scratch_alloca_id() pattern
         self.scratch_alloca_id = 0
         # Track alloca base position for sequential allocation
-        self.alloca_mem_position = VENOM_MEMORY_START  # Start above Venom's spill frame
+        # Use config.memory if available, otherwise fall back to constants
+        if self.config:
+            self.alloca_mem_position = self.config.memory.venom_start
+        else:
+            self.alloca_mem_position = VENOM_MEMORY_START  # Fallback to constant
         
         # DEFERRED FMP PATTERN: Track pending FMP updates to emit after allocation use
         # This fixes the bug where mload(64) result is lost due to stack manipulation
@@ -149,7 +169,12 @@ class VenomIRBuilder:
         for fname in sorted(self.recursive_functions):
             self._build_function(self.functions_ast[fname])
 
-        # 4. Build Global/Main
+        # 5. Build non-recursive functions marked for emission (inlining heuristic)
+        # These are large/frequent functions that benefit from O(1) dispatch via invoke
+        for fname in sorted(self.emit_as_functions):
+            self._build_function(self.functions_ast[fname])
+
+        # 6. Build Global/Main
         self._build_main(yul_ast)
         
         return self.ctx
@@ -204,6 +229,67 @@ class VenomIRBuilder:
             if color[fname] == WHITE:
                 dfs(fname, [])
         self.inlinable_functions = set(self.functions_ast.keys()) - self.recursive_functions
+        
+        # INLINING HEURISTIC: Emit large/frequent functions instead of inlining everywhere
+        # This enables O(1) function dispatch via djmp jump tables
+        # Thresholds configurable via yul2venom.config.yaml
+        if self.config and self.config.inlining.enabled:
+            STMT_THRESHOLD = self.config.inlining.stmt_threshold
+            CALL_THRESHOLD = self.config.inlining.call_threshold
+        else:
+            STMT_THRESHOLD = 1    # Default: Functions with >1 statements 
+            CALL_THRESHOLD = 2    # Default: Called more than 2 times
+        
+        # Count ALL call sites for each function
+        call_site_counts = {fname: 0 for fname in self.functions_ast}
+        
+        def count_calls_in_node(node):
+            """Recursively count function calls in AST node."""
+            if node is None:
+                return
+            node_type = type(node).__name__
+            if node_type == 'YulCall':
+                if node.function in self.functions_ast:
+                    call_site_counts[node.function] += 1
+                for arg in node.args:
+                    count_calls_in_node(arg)
+            elif node_type == 'YulBlock':
+                for stmt in node.statements:
+                    count_calls_in_node(stmt)
+            elif node_type in ('YulVariableDeclaration', 'YulAssignment'):
+                count_calls_in_node(getattr(node, 'value', None))
+            elif node_type == 'YulIf':
+                count_calls_in_node(node.condition)
+                count_calls_in_node(node.body)
+            elif node_type == 'YulSwitch':
+                count_calls_in_node(node.condition)
+                for case in node.cases:
+                    count_calls_in_node(case.body)
+            elif node_type == 'YulForLoop':
+                for part in [node.init, node.condition, node.body, node.post]:
+                    count_calls_in_node(part)
+            elif node_type == 'YulExpressionStmt':
+                count_calls_in_node(node.expr)
+        
+        for fname, f_def in self.functions_ast.items():
+            if f_def.body:
+                count_calls_in_node(f_def.body)
+        
+        # Mark large/frequent functions for emission instead of inlining
+        for fname in list(self.inlinable_functions):
+            f_def = self.functions_ast.get(fname)
+            if f_def and f_def.body:
+                stmt_count = self._count_statements(f_def.body)
+                call_count = call_site_counts.get(fname, 0)
+                
+                if stmt_count > STMT_THRESHOLD and call_count > CALL_THRESHOLD:
+                    self.emit_as_functions.add(fname)
+                    self.inlinable_functions.discard(fname)
+                    if self.config and getattr(getattr(self.config, "debug", None), "verbose_inlining", False):
+                        print(f"INLINING: Emitting {fname} (stmts={stmt_count}, calls={call_count})", file=sys.stderr)
+        
+        if self.emit_as_functions and self.config and getattr(getattr(self.config, "debug", None), "verbose_inlining", False):
+            print(f"INLINING: {len(self.emit_as_functions)} functions marked for emission", file=sys.stderr)
         
         # OPTIMIZATION: Let the optimization pipeline analyze functions for inlining
         self.optimizer.analyze(self.functions_ast, self.recursive_functions)
@@ -406,8 +492,7 @@ class VenomIRBuilder:
                     else:
                         ret_vals.append(IRLiteral(0))
                 # Return values + PC (args already consumed by param instructions)
-                # NOTE: We put PC FIRST so that after parser reversal, PC ends up LAST
-                # which is what the backend expects (operands[-1] = PC)
+                # NOTE: We put PC FIRST - the backend handles this correctly
                 self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
@@ -470,35 +555,70 @@ class VenomIRBuilder:
         # Pop exit stack
         self.inline_exit_stack.pop()
         
-        # Add cleanup block
-        self.current_fn.append_basic_block(cleanup_bb)
-        self.current_bb = cleanup_bb
+        # Check if any path reached the cleanup block (via phi_data or implicit fallthrough)
+        has_predecessors = any(len(inputs) > 0 for inputs in phi_data.values()) if f_def.returns else (not self.current_bb.is_terminated)
         
-        # Generate PHI nodes for return values
-        result_vals = []
-        if f_def.returns:
-            for ret_name in f_def.returns:
-                inputs = phi_data[ret_name]
-                if not inputs:
-                    # Should not happen in reachable code, but default to 0
-                    result_vals.append(IRLiteral(0))
-                elif len(inputs) == 1:
-                    # Single pth - no PHI needed
-                    # Just materialize the value if needed
-                    val = self._materialize_literal(inputs[0]['val'], inputs[0]['block'])
-                    result_vals.append(val)
-                    self.var_map[ret_name] = val
-                else:
-                    # Multiple paths - emit PHI
-                    phi_args = []
-                    for item in inputs:
-                        phi_args.append(item['label'])
-                        val_reg = self._materialize_literal(item['val'], item['block'])
-                        phi_args.append(val_reg)
-                    
-                    phi_res = self.current_bb.append_instruction("phi", *phi_args)
-                    result_vals.append(phi_res)
-                    self.var_map[ret_name] = phi_res
+        # If no return variables, check if we added an implicit fallthrough jump to cleanup
+        # The fallthrough jump happens when block is not terminated before cleanup creation
+        if not f_def.returns:
+            # No returns - check if implicit fallthrough was added (current_bb should have jmp to cleanup_lbl)
+            has_predecessors = False
+            for bb in self.current_fn.get_basic_blocks():
+                if bb.is_terminated:
+                    last_inst = bb.instructions[-1] if bb.instructions else None
+                    if last_inst and last_inst.opcode == "jmp":
+                        if last_inst.operands and last_inst.operands[0] == cleanup_lbl:
+                            has_predecessors = True
+                            break
+        else:
+            # With returns - check phi_data
+            has_predecessors = any(len(inputs) > 0 for inputs in phi_data.values())
+        
+        # Only add cleanup block if it's reachable
+        if has_predecessors:
+            self.current_fn.append_basic_block(cleanup_bb)
+            self.current_bb = cleanup_bb
+        
+            # Generate PHI nodes for return values
+            result_vals = []
+            if f_def.returns:
+                for ret_name in f_def.returns:
+                    inputs = phi_data[ret_name]
+                    if not inputs:
+                        # Should not happen in reachable code, but default to 0
+                        result_vals.append(IRLiteral(0))
+                    elif len(inputs) == 1:
+                        # Single path - no PHI needed
+                        # Materialize value in CLEANUP block (current_bb), not source block
+                        # This ensures the variable is defined in the block where it's used
+                        val = inputs[0]['val']
+                        if isinstance(val, IRLiteral):
+                            # Literals just get assigned in the cleanup block
+                            new_var = self.current_fn.get_next_variable()
+                            self.current_bb.append_instruction("assign", val, ret=new_var)
+                            result_vals.append(new_var)
+                            self.var_map[ret_name] = new_var
+                        else:
+                            # Variables from source block - just use directly 
+                            # (they're still in scope since single path means linear flow)
+                            result_vals.append(val)
+                            self.var_map[ret_name] = val
+                    else:
+                        # Multiple paths - emit PHI
+                        phi_args = []
+                        for item in inputs:
+                            phi_args.append(item['label'])
+                            val_reg = self._materialize_literal(item['val'], item['block'])
+                            phi_args.append(val_reg)
+                        
+                        phi_res = self.current_bb.append_instruction("phi", *phi_args)
+                        result_vals.append(phi_res)
+                        self.var_map[ret_name] = phi_res
+        else:
+            # No paths reach cleanup - function always terminates (revert/stop/return)
+            # Don't append the cleanup block - it would be dead code
+            # Return empty results (function never returns normally)
+            result_vals = [IRLiteral(0) for _ in (f_def.returns or [])]
         
         # Restore variable scope (but keep any new variables created)
         # Only restore the parameters we shadowed
@@ -539,6 +659,92 @@ class VenomIRBuilder:
                 self._collect_assigned_vars(stmt.body, result_set)
             if stmt.post:
                 self._collect_assigned_vars(stmt.post, result_set)
+
+    def _collect_used_vars(self, node, result_set, scope_vars):
+        """Recursively collect variable names that are USED (read) in a Yul AST node.
+        
+        Only collects variables that exist in scope_vars (to filter out function names
+        and literals that aren't actual variables).
+        
+        Args:
+            node: Yul AST node to traverse
+            result_set: Set to add used variable names to
+            scope_vars: Set of variable names currently in scope (from var_map keys)
+        """
+        if node is None:
+            return
+            
+        node_type = type(node).__name__
+        
+        if node_type == "YulLiteral":
+            # Check if this is a variable reference (not a numeric literal)
+            val = node.value
+            if val in scope_vars:
+                result_set.add(val)
+        elif node_type == "YulCall":
+            # Function name is not a variable reference, but args may contain vars
+            for arg in node.args:
+                self._collect_used_vars(arg, result_set, scope_vars)
+        elif node_type == "YulBlock":
+            for s in node.statements:
+                self._collect_used_vars(s, result_set, scope_vars)
+        elif node_type == "YulVariableDeclaration":
+            # The RHS expression may use variables
+            if node.value:
+                self._collect_used_vars(node.value, result_set, scope_vars)
+        elif node_type == "YulAssignment":
+            # RHS expression may use variables
+            if node.value:
+                self._collect_used_vars(node.value, result_set, scope_vars)
+        elif node_type == "YulIf":
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            self._collect_used_vars(node.body, result_set, scope_vars)
+        elif node_type == "YulSwitch":
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            for c in node.cases:
+                self._collect_used_vars(c.body, result_set, scope_vars)
+        elif node_type == "YulForLoop":
+            if node.init:
+                self._collect_used_vars(node.init, result_set, scope_vars)
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            if node.body:
+                self._collect_used_vars(node.body, result_set, scope_vars)
+            if node.post:
+                self._collect_used_vars(node.post, result_set, scope_vars)
+        elif node_type == "YulExpressionStmt":
+            self._collect_used_vars(node.expr, result_set, scope_vars)
+
+    def _count_statements(self, node):
+        """Count statements in a Yul AST node for inlining complexity analysis.
+        
+        Used by inlining heuristics to decide whether a function is too complex
+        to inline everywhere, based on an approximate statement count.
+        
+        Counting rules:
+        - YulBlock: sum of all contained statements
+        - YulIf/YulSwitch/YulForLoop: 1 + sum of body statements
+        - Simple statements (assignment, declaration, expression, leave, break, continue): 1
+        """
+        if node is None:
+            return 0
+        node_type = type(node).__name__
+        if node_type == 'YulBlock':
+            count = 0
+            for stmt in node.statements:
+                count += self._count_statements(stmt)
+            return count
+        elif node_type == 'YulIf':
+            return 1 + self._count_statements(node.body)
+        elif node_type == 'YulSwitch':
+            count = 1
+            for case in node.cases:
+                count += self._count_statements(case.body)
+            return count
+        elif node_type == 'YulForLoop':
+            return 1 + self._count_statements(node.init) + self._count_statements(node.body) + self._count_statements(node.post)
+        else:
+            # Simple statements: assignment, declaration, expression, leave, break, continue
+            return 1
 
     def _collect_loop_assigned_vars(self, stmt, result_set):
         """Collect vars assigned INSIDE for-loops (body/post). Used to exclude from switch_var_mem."""
@@ -652,11 +858,14 @@ class VenomIRBuilder:
                      # Explicitly allocate return variable since invoke is in NO_OUTPUT_INSTRUCTIONS
                      f_def = self.functions_ast.get(func_name)
                      if f_def and f_def.returns:
-                         ret = self.current_fn.get_next_variable()
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals, ret=ret)
-                         result_vals = [ret]
+                         # Create one variable for EACH return value (multi-return support)
+                         ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
+                         invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
+                         invoke_inst.parent = self.current_bb
+                         self.current_bb.instructions.append(invoke_inst)
+                         result_vals = ret_vars
                      else:
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
+                         self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func_name)), *arg_vals)
                          result_vals = []
                  
                  # Map results to declared variables
@@ -694,11 +903,14 @@ class VenomIRBuilder:
                      # Explicitly allocate return variable since invoke is in NO_OUTPUT_INSTRUCTIONS
                      f_def = self.functions_ast.get(func_name)
                      if f_def and f_def.returns:
-                         ret = self.current_fn.get_next_variable()
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals, ret=ret)
-                         result_vals = [ret]
+                         # Create one variable for EACH return value (multi-return support)
+                         ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
+                         invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
+                         invoke_inst.parent = self.current_bb
+                         self.current_bb.instructions.append(invoke_inst)
+                         result_vals = ret_vars
                      else:
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
+                         self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func_name)), *arg_vals)
                          result_vals = []
                  # Map results to assigned variables (pure register model)
                  for i, v in enumerate(stmt.vars):
@@ -729,12 +941,14 @@ class VenomIRBuilder:
                                    (ptr_arg.value == "64" or ptr_arg.value == "0x40"))
                     is_memguard = isinstance(val_arg, YulCall) and val_arg.function == "memoryguard"
                     if is_fmp_slot and is_memguard:
-                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to VENOM_MEMORY_START
+                        # BRIDGE YUL FMP TO VENOM: Initialize FMP to venom_start
                         # Yul code uses mload(64)/mstore(64) for dynamic memory allocation.
-                        # Venom's MemoryAllocator uses 0x00-VENOM_MEMORY_START for static allocation.
-                        # We initialize FMP to VENOM_MEMORY_START so Yul's dynamic allocation starts
+                        # Venom's MemoryAllocator uses 0x00-venom_start for static allocation.
+                        # We initialize FMP to venom_start so Yul's dynamic allocation starts
                         # above Venom's region, avoiding memory conflicts.
-                        self.current_bb.append_instruction("mstore", IRLiteral(YUL_FMP_SLOT), IRLiteral(VENOM_MEMORY_START))
+                        fmp_slot = self.config.memory.fmp_slot if self.config else YUL_FMP_SLOT
+                        venom_start = self.config.memory.venom_start if self.config else VENOM_MEMORY_START
+                        self.current_bb.append_instruction("mstore", IRLiteral(fmp_slot), IRLiteral(venom_start))
                         return
             self._visit_expr(stmt.expr)
 
@@ -959,18 +1173,25 @@ class VenomIRBuilder:
                     self.current_fn.append_basic_block(bucket_bb)
                     self.current_bb = bucket_bb
                     
+                    # CRITICAL FIX: Recompute selector locally instead of referencing 
+                    # cond_val from parent block. This avoids SSA cross-block dependency
+                    # issues where the variable isn't live through the DJMP.
+                    # Pattern: shr(224, calldataload(0)) to extract 4-byte selector
+                    cd_zero = IRLiteral(0)
+                    cd_load = self.current_bb.append_instruction1("calldataload", cd_zero)
+                    shift_amt = IRLiteral(224)
+                    local_sel = self.current_bb.append_instruction1("shr", shift_amt, cd_load)
+                    
                     if len(selectors) == 1:
                         # Single selector in bucket - check and jump to fallback on mismatch
                         # Pattern: xor %local, expected; jnz xor, fallback, handler
                         # This allows receive() (calldatasize=0) to properly reach fallback
                         val, lbl, case = selectors[0]
-                        local_sel = self.current_bb.append_instruction1("assign", cond_val)
                         xor_result = self.current_bb.append_instruction1("xor", val, local_sel)
                         # jnz: if xor!=0 (mismatch) -> fallback, if xor==0 (match) -> handler
                         self.current_bb.append_instruction("jnz", xor_result, fallback_lbl, lbl)
                     else:
-                        # Multiple selectors in bucket - assign then linear search
-                        local_sel = self.current_bb.append_instruction1("assign", cond_val)
+                        # Multiple selectors in bucket - linear search using local_sel computed above
                         
                         for i, (val, lbl, case) in enumerate(selectors):
                             # Native pattern: xor for comparison
@@ -1083,6 +1304,13 @@ class VenomIRBuilder:
             for v in vars_needing_phi:
                 inputs = phi_inputs[v]
                 if not inputs: continue
+                
+                # Single-input phi is redundant - just use the value directly
+                if len(inputs) == 1:
+                    val = inputs[0]['val']
+                    self.var_map[v] = val
+                    continue
+                
                 # Flatten args for Phi instruction: label, val, label, val...
                 phi_args = []
                 for item in inputs:
@@ -1110,14 +1338,29 @@ class VenomIRBuilder:
             ptr_loop_entry = self.current_bb
             entry_var_map = self.var_map.copy()
 
-            # 2. Identify Loop-Carried Variables
+            # 2. Identify Loop-Carried Variables AND Loop-Invariant Variables
+            # We need phis for:
+            # a) Variables assigned inside the loop (their value changes each iteration)
+            # b) Variables used inside the loop but defined BEFORE (loop-invariants from outer scope)
+            #    These need phis so the SSA validator sees them as defined on ALL paths to loop header
+            #    (including the back-edge from loop_post)
+            
             loop_assigned_vars = set()
             self._collect_assigned_vars(stmt.body, loop_assigned_vars)
             self._collect_assigned_vars(stmt.post, loop_assigned_vars)
             
-            # Filter vars
-            vars_needing_phi = {v for v in loop_assigned_vars if v in self.var_map}
-            sorted_vars = sorted(list(vars_needing_phi)) # Deterministic order
+            # Collect variables USED inside the loop (body, condition, post)
+            loop_used_vars = set()
+            scope_vars = set(self.var_map.keys())  # Current scope variables
+            self._collect_used_vars(stmt.condition, loop_used_vars, scope_vars)
+            self._collect_used_vars(stmt.body, loop_used_vars, scope_vars)
+            self._collect_used_vars(stmt.post, loop_used_vars, scope_vars)
+            
+            # Variables needing phi = assigned vars + used vars from outer scope (not assigned inside)
+            # Filter to only include vars that exist in var_map
+            loop_invariant_used = loop_used_vars - loop_assigned_vars  # Used but not assigned = loop-invariant
+            all_vars_needing_phi = (loop_assigned_vars | loop_invariant_used) & set(self.var_map.keys())
+            sorted_vars = sorted(list(all_vars_needing_phi))  # Deterministic order
             
             # Prepare Blocks
             loop_start_bb = IRBasicBlock(self.ctx.get_next_label("blk_loop_start"), self.current_fn)
@@ -1308,7 +1551,7 @@ class VenomIRBuilder:
                         ret_vals.append(self.var_map[n])
                     else:
                         ret_vals.append(IRLiteral(0))
-                # NOTE: PC first so parser reversal puts it last (backend expects operands[-1]=PC)
+                # PC first - backend handles this correctly
                 self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
@@ -1397,10 +1640,10 @@ class VenomIRBuilder:
                 f_def = self.functions_ast[func]
                 if f_def.returns:
                     ret = self.current_fn.get_next_variable()
-                    self.current_bb.append_instruction("invoke", IRLabel(func), *arg_vals, ret=ret)
+                    self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func)), *arg_vals, ret=ret)
                     return ret
                 else:
-                    self.current_bb.append_instruction("invoke", IRLabel(func), *arg_vals)
+                    self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func)), *arg_vals)
                     return IRLiteral(0)
             
             return self._handle_intrinsic(func, arg_vals)
@@ -1648,7 +1891,7 @@ class VenomIRBuilder:
 
 
         if func == "invalid":
-             return self.current_bb.append_instruction("stop")
+             return self.current_bb.append_instruction("invalid")
         
         # OPERAND ORDERING:
         # Extensive testing confirmed that Yul argument order matches EVM stack order (Top -> Bottom).

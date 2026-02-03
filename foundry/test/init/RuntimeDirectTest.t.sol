@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 contract RuntimeDirectTest is Test {
     function test_runtime_only() public {
         bytes memory runtime = vm.readFileBinary(
-            "../output/InitConstructorArgsTest_runtime.bin"
+            "../output/InitConstructorArgsTest_opt_runtime.bin"
         );
         console.log("Runtime size:", runtime.length);
 
