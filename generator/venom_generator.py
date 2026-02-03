@@ -285,9 +285,10 @@ class VenomIRBuilder:
                 if stmt_count > STMT_THRESHOLD and call_count > CALL_THRESHOLD:
                     self.emit_as_functions.add(fname)
                     self.inlinable_functions.discard(fname)
-                    print(f"INLINING: Emitting {fname} (stmts={stmt_count}, calls={call_count})", file=sys.stderr)
+                    if self.config and getattr(getattr(self.config, "debug", None), "verbose_inlining", False):
+                        print(f"INLINING: Emitting {fname} (stmts={stmt_count}, calls={call_count})", file=sys.stderr)
         
-        if self.emit_as_functions:
+        if self.emit_as_functions and self.config and getattr(getattr(self.config, "debug", None), "verbose_inlining", False):
             print(f"INLINING: {len(self.emit_as_functions)} functions marked for emission", file=sys.stderr)
         
         # OPTIMIZATION: Let the optimization pipeline analyze functions for inlining
@@ -717,7 +718,7 @@ class VenomIRBuilder:
         """Count statements in a Yul AST node for inlining complexity analysis.
         
         Used by inlining heuristics to decide whether a function is too complex
-        to inline everywhere. Currently unused but retained for future optimization.
+        to inline everywhere, based on an approximate statement count.
         
         Counting rules:
         - YulBlock: sum of all contained statements
@@ -860,6 +861,7 @@ class VenomIRBuilder:
                          # Create one variable for EACH return value (multi-return support)
                          ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
                          invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
+                         invoke_inst.parent = self.current_bb
                          self.current_bb.instructions.append(invoke_inst)
                          result_vals = ret_vars
                      else:
@@ -904,6 +906,7 @@ class VenomIRBuilder:
                          # Create one variable for EACH return value (multi-return support)
                          ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
                          invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
+                         invoke_inst.parent = self.current_bb
                          self.current_bb.instructions.append(invoke_inst)
                          result_vals = ret_vars
                      else:

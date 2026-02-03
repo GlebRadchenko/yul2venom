@@ -13,7 +13,7 @@ contract LoopSwitchReproTest is Test {
     function setUp() public {
         // Load transpiled runtime bytecode
         bytes memory bytecode = vm.readFileBinary(
-            "output/LoopSwitchRepro_opt.bin"
+            "output/LoopSwitchRepro_opt_runtime.bin"
         );
 
         // Deploy directly using etch (puts bytecode at fixed address)

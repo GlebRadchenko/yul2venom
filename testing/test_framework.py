@@ -37,12 +37,14 @@ YUL2VENOM_DIR = SCRIPT_DIR.parent
 CONFIGS_DIR = YUL2VENOM_DIR / "configs"
 CONFIGS_BENCH_DIR = YUL2VENOM_DIR / "configs" / "bench"
 CONFIGS_INIT_DIR = YUL2VENOM_DIR / "configs" / "init"
+CONFIGS_REPRO_DIR = YUL2VENOM_DIR / "configs" / "repro"
 OUTPUT_DIR = YUL2VENOM_DIR / "output"
 DEBUG_DIR = YUL2VENOM_DIR / "debug"
 FOUNDRY_DIR = YUL2VENOM_DIR / "foundry"
 FOUNDRY_SRC = FOUNDRY_DIR / "src"
 FOUNDRY_SRC_BENCH = FOUNDRY_DIR / "src" / "bench"
 FOUNDRY_SRC_INIT = FOUNDRY_DIR / "src" / "init"
+FOUNDRY_SRC_REPRO = FOUNDRY_DIR / "src" / "repro"
 
 # Timeouts
 PREPARE_TIMEOUT = 60
@@ -144,6 +146,15 @@ def get_config_contract_mapping() -> Dict[str, Tuple[Path, Path]]:
         for config in CONFIGS_INIT_DIR.glob("*.yul2venom.json"):
             name = config.stem.replace('.yul2venom', '')
             sol_path = FOUNDRY_SRC_INIT / f"{name}.sol"
+            yul_path = OUTPUT_DIR / f"{name}.yul"
+            if sol_path.exists():
+                mapping[str(config)] = (sol_path, yul_path)
+    
+    # Repro configs (configs/repro/*.yul2venom.json -> foundry/src/repro/*.sol)
+    if CONFIGS_REPRO_DIR.exists():
+        for config in CONFIGS_REPRO_DIR.glob("*.yul2venom.json"):
+            name = config.stem.replace('.yul2venom', '')
+            sol_path = FOUNDRY_SRC_REPRO / f"{name}.sol"
             yul_path = OUTPUT_DIR / f"{name}.yul"
             if sol_path.exists():
                 mapping[str(config)] = (sol_path, yul_path)
@@ -315,10 +326,13 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
     """
     results = []
     
-    # Collect core and bench configs
+    # Collect core of configs
     configs = list(CONFIGS_DIR.glob('*.yul2venom.json'))
     if include_bench and CONFIGS_BENCH_DIR.exists():
         configs.extend(CONFIGS_BENCH_DIR.glob('*.yul2venom.json'))
+    # Always include repro configs (they use runtime-only like bench)
+    if CONFIGS_REPRO_DIR.exists():
+        configs.extend(CONFIGS_REPRO_DIR.glob('*.yul2venom.json'))
     
     # Collect init configs separately (need special handling with --with-init)
     init_configs = []
@@ -638,6 +652,11 @@ def main():
         for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
             if check_yul_exists(str(config)):
                 transpile_contract(str(config), runtime_only=True)
+        # Also re-transpile repro contracts with runtime-only (they use vm.etch too)
+        if CONFIGS_REPRO_DIR.exists():
+            for config in CONFIGS_REPRO_DIR.glob('*.yul2venom.json'):
+                if check_yul_exists(str(config)):
+                    transpile_contract(str(config), runtime_only=True)
         
         success, output, passed, failed = run_forge_tests()
         sys.exit(0 if success else 1)
