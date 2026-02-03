@@ -344,26 +344,51 @@ def cmd_prepare(args):
     created_immutables = analysis['created_immutables']
     
     # Step 1: Generate Yul from Solidity
-    yul_output_path = str(SCRIPT_DIR / "output" / f"{Path(contract_path).stem}.yul")
-    os.makedirs(SCRIPT_DIR / "output", exist_ok=True)
+    # Output Yul to output/ directory (SCRIPT_DIR-relative for consistency)
+    contract_name = Path(contract_path).stem
     
-    print(f"Generating Yul: {yul_output_path}")
-    remappings = []
-    if os.path.exists(args.remappings):
-        with open(args.remappings, 'r') as f:
-            remappings = [r.strip() for r in f.read().strip().split('\n') if r.strip()]
+    # Use existing yul path from config if available
+    if existing_config.get("yul"):
+        existing_yul = existing_config["yul"]
+        # Resolve relative to SCRIPT_DIR (backward compatibility with existing configs)
+        if not os.path.isabs(existing_yul):
+            yul_output_path = os.path.normpath(os.path.join(str(SCRIPT_DIR), existing_yul))
+        else:
+            yul_output_path = existing_yul
+    else:
+        # Default: output/ directory relative to SCRIPT_DIR
+        yul_output_path = os.path.join(str(SCRIPT_DIR), "output", f"{contract_name}.yul")
+        yul_output_path = os.path.normpath(yul_output_path)
     
-    cmd = ["solc", "--ir-optimized", "--optimize", contract_path] + remappings
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    os.makedirs(os.path.dirname(yul_output_path), exist_ok=True)
     
-    if result.returncode != 0:
-        print(f"✗ Failed to generate Yul", file=sys.stderr)
-        print(result.stderr[:500] if result.stderr else "No error", file=sys.stderr)
-        return 1
+    # Check if Yul already exists - solc generates different IDs each time!
+    # If Yul exists, we should use it rather than regenerating
+    using_existing_yul = os.path.exists(yul_output_path) and not getattr(args, 'force', False)
+    if using_existing_yul:
+        print(f"Using existing Yul: {yul_output_path}")
+        print("  (Use --force to regenerate. Note: regeneration changes immutable IDs!)")
+        with open(yul_output_path, 'r') as f:
+            raw_yul = f.read()
+    else:
+        print(f"Generating Yul: {yul_output_path}")
+        remappings = []
+        if os.path.exists(args.remappings):
+            with open(args.remappings, 'r') as f:
+                remappings = [r.strip() for r in f.read().strip().split('\n') if r.strip()]
+        
+        cmd = ["solc", "--ir-optimized", "--optimize", contract_path] + remappings
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"✗ Failed to generate Yul", file=sys.stderr)
+            print(result.stderr[:500] if result.stderr else "No error", file=sys.stderr)
+            return 1
+        
+        raw_yul = result.stdout
     
     # Extract _deployed object from solc output
     contract_name = Path(contract_path).stem
-    raw_yul = result.stdout
     
     # Find the main contract object: object "ContractName_XXX" {
     # Robust extraction of the main object using a state machine
@@ -431,106 +456,171 @@ def cmd_prepare(args):
             i += 1
         return -1
 
-    # Match: object "QuotedTrader_182" (with any numeric suffix)
-    # Refactored to iteratate through ALL objects in the stream
-    cursor = 0
-    created_files = {} # name -> path
-    output_dir = os.path.dirname(yul_output_path)
-    
-    print("  Extracting Yul objects:")
-    
-    while cursor < len(raw_yul):
-        # Find next object start: object "Name_ID" {
-        match = re.search(r'object\s+"(\w+)_(\d+)"\s*\{', raw_yul[cursor:])
-        if not match:
-            break
+    # Only extract Yul objects if we regenerated (not when using existing)
+    if not using_existing_yul:
+        # Match: object "QuotedTrader_182" (with any numeric suffix)
+        # Refactored to iteratate through ALL objects in the stream
+        cursor = 0
+        created_files = {} # name -> path
+        output_dir = os.path.dirname(yul_output_path)
+        
+        print("  Extracting Yul objects:")
+        
+        while cursor < len(raw_yul):
+            # Find next object start: object "Name_ID" {
+            match = re.search(r'object\s+"(\w+)_(\d+)"\s*\{', raw_yul[cursor:])
+            if not match:
+                break
+                
+            obj_name = match.group(1)
+            obj_id = match.group(2)
             
-        obj_name = match.group(1)
-        obj_id = match.group(2)
-        
-        abs_start = cursor + match.start()
-        brace_pos = cursor + match.end() - 1
-        
-        end_pos = find_balancing_brace(raw_yul, brace_pos)
-        if end_pos == -1:
-            print(f"  Warning: Could not find closing brace for {obj_name}")
-            break
+            abs_start = cursor + match.start()
+            brace_pos = cursor + match.end() - 1
             
-        # Extract full object
-        full_object = raw_yul[abs_start:end_pos]
-        
-        # Look for _deployed inside this object - BUT DO NOT STRIP IT
-        # We need the full object for deployment (Init Code)
-        deployed_pattern = rf'object\s+"{re.escape(obj_name)}(?:_\d+)?_deployed"\s*\{{'
-        deployed_match = re.search(deployed_pattern, full_object)
-        
-        final_code = full_object
-        
-        if deployed_match:
-             # Just verify it exists, don't extract it.
-             pass
+            end_pos = find_balancing_brace(raw_yul, brace_pos)
+            if end_pos == -1:
+                print(f"  Warning: Could not find closing brace for {obj_name}")
+                break
+                
+            # Extract full object
+            full_object = raw_yul[abs_start:end_pos]
             
-        # Determine output filename
-        out_filename = f"{obj_name}.yul"
-        out_path = os.path.join(output_dir, out_filename)
-        
-        with open(out_path, 'w') as f:
-            f.write(final_code)
+            # Look for _deployed inside this object - BUT DO NOT STRIP IT
+            # We need the full object for deployment (Init Code)
+            deployed_pattern = rf'object\s+"{re.escape(obj_name)}(?:_\d+)?_deployed"\s*\{{'
+            deployed_match = re.search(deployed_pattern, full_object)
             
-        created_files[obj_name] = out_path
-        print(f"    • {obj_name} -> {out_filename}")
+            final_code = full_object
+            
+            if deployed_match:
+                 # Just verify it exists, don't extract it.
+                 pass
+                
+            # Determine output filename
+            out_filename = f"{obj_name}.yul"
+            out_path = os.path.join(output_dir, out_filename)
+            
+            with open(out_path, 'w') as f:
+                f.write(final_code)
+                
+            created_files[obj_name] = out_path
+            print(f"    • {obj_name} -> {out_filename}")
+            
+            # Advance cursor
+            cursor = end_pos
         
-        # Advance cursor
-        cursor = end_pos
-    
-    # Identify main Yul path
-    if contract_name in created_files:
-        yul_output_path = created_files[contract_name]
-    else:
-        # Fallback if name mismatch or not found (unlikely if compilation succeeded)
-        print(f"  Warning: Main contract {contract_name} not found in outputs. Using direct output.")
-        with open(yul_output_path, 'w') as f:
-            f.write(raw_yul)
+        # Identify main Yul path
+        if contract_name in created_files:
+            yul_output_path = created_files[contract_name]
+        else:
+            # Fallback if name mismatch or not found (unlikely if compilation succeeded)
+            print(f"  Warning: Main contract {contract_name} not found in outputs. Using direct output.")
+            with open(yul_output_path, 'w') as f:
+                f.write(raw_yul)
 
+    # CRITICAL FIX: Extract actual immutable IDs from FULL Yul output (before extraction)
+    # The Solidity AST IDs don't match the IDs generated by solc in Yul output
+    # We scan for setimmutable patterns and map by memory offset
+    # IMPORTANT: Use raw_yul (full output), not extracted main contract, to capture sidecar IDs
+    print()
+    print("  Analyzing immutables from Yul output...")
+    
+    yul_content = raw_yul  # Use full solc output, includes all sub-objects
+    
+    # Map memory offsets to immutable IDs from setimmutable(_, "ID", mload(offset))
+    setimm_pattern = re.compile(r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*(\d+)\s*\)\s*\)')
+    offset_to_id = {}
+    for match in setimm_pattern.finditer(yul_content):
+        imm_id = match.group(1)
+        offset = int(match.group(2))
+        if offset not in offset_to_id:
+            offset_to_id[offset] = imm_id
+    
+    # Define standard memory layout for StorageLayout immutables
+    # This is the order they appear in the sidecar BootPath constructor
+    offset_to_name = {
+        128: 'weth',
+        160: 'curvePath',  # or first created immutable
+        192: 'kyberswapPath',
+        224: 'erc4626Path',
+        256: 'dodoPath',
+        288: 'aaveV3Path',
+        320: 'balancerPath',
+        352: 'uniswapPath',
+        384: 'owner'
+    }
+    
+    # Alternative: Infer name mappings from analysis if offset mapping doesn't work
+    # The key insight is that offsets are stable based on declaration order
+    # Constructor args: weth (offset 128), then owner (offset 384 - last)
+    # Created immutables: in order of creation, starting offset 160
+    
+    # Update constructor_args and created_immutables with correct IDs from Yul
+    if offset_to_id:
+        print(f"    Found {len(offset_to_id)} immutables in Yul")
+        
+        # Map constructor args by known positions
+        if 128 in offset_to_id and 'weth' in constructor_args:
+            constructor_args['weth']['id'] = offset_to_id[128]
+            print(f"    • weth: ID {offset_to_id[128]} (offset 128)")
+        if 384 in offset_to_id and 'owner' in constructor_args:
+            constructor_args['owner']['id'] = offset_to_id[384]
+            print(f"    • owner: ID {offset_to_id[384]} (offset 384)")
+        
+        # Map created immutables in order
+        created_offsets = [160, 192, 224, 256, 288, 320, 352]
+        created_names = list(created_immutables.keys())
+        for i, name in enumerate(created_names):
+            if i < len(created_offsets) and created_offsets[i] in offset_to_id:
+                created_immutables[name]['id'] = offset_to_id[created_offsets[i]]
+                print(f"    • {name}: ID {offset_to_id[created_offsets[i]]} (offset {created_offsets[i]})")
     
     # Build config - merge with existing
-    # Use relative paths (relative to yul2venom project root)
-    def make_relative(p):
+    # Use relative paths (relative to SCRIPT_DIR for portability)
+    def make_relative(p, base_dir=SCRIPT_DIR):
         try:
-            return str(Path(p).relative_to(SCRIPT_DIR))
+            return str(Path(p).relative_to(base_dir))
         except ValueError:
-            return p  # Return as-is if not under SCRIPT_DIR
+            return p  # Return as-is if not under base_dir
     
     config = {
         "version": "1.0",
-        "contract": make_relative(contract_path),
+        "contract": make_relative(os.path.abspath(contract_path)),
         "yul": make_relative(yul_output_path),
         "deployment": {
             "deployer": existing_config.get("deployment", {}).get("deployer", "0x1234567890123456789012345678901234567890"),
             "nonce": existing_config.get("deployment", {}).get("nonce", 0)
         },
+        # Preserve sidecar_nonce_start if it exists
+        "sidecar_nonce_start": existing_config.get("sidecar_nonce_start", 1),
         "constructor_args": {},
         "auto_predicted": {}
     }
     
     # Add constructor args - preserve existing values
+    # NOTE: IDs are optional - transpiler discovers actual IDs from Yul
     existing_args = existing_config.get("constructor_args", {})
     for name, info in constructor_args.items():
         config["constructor_args"][name] = {
-            "id": info['id'],
             "type": info['type'],
             "value": existing_args.get(name, {}).get("value", "")
         }
+        # Optionally include ID for documentation (not used by transpiler)
+        if info.get('id'):
+            config["constructor_args"][name]["id"] = info['id']
     
     # Add auto-predicted immutables - preserve existing values
+    # NOTE: IDs are optional - transpiler discovers actual IDs from Yul
     existing_auto = existing_config.get("auto_predicted", {})
     for name, info in created_immutables.items():
         existing_val = existing_auto.get(name, {})
-        # If existing value has "value" (manual override) or we just want to preserve structure
         config["auto_predicted"][name] = {
-            "id": info['id'],
             "type": info['type']
         }
+        # Optionally include ID for documentation
+        if info.get('id'):
+            config["auto_predicted"][name]["id"] = info['id']
         # Preserve manual value override if present
         if "value" in existing_val:
             config["auto_predicted"][name]["value"] = existing_val["value"]
@@ -600,9 +690,28 @@ def cmd_transpile(args):
     # Get yul path from config or CLI
     yul_path = args.yul if args.yul else config.get("yul", "")
     
-    # Resolve relative paths to absolute (relative to project root)
+    # Resolve relative paths to absolute
+    # CLI paths: relative to CWD
+    # Config paths: try SCRIPT_DIR first (canonical), then config-relative (for external projects)
     if yul_path and not os.path.isabs(yul_path):
-        yul_path = str(SCRIPT_DIR / yul_path)
+        if args.yul:
+            # CLI argument - relative to CWD
+            yul_path = os.path.abspath(yul_path)
+        else:
+            # From config - try SCRIPT_DIR first (canonical for internal configs)
+            script_relative_path = os.path.normpath(os.path.join(str(SCRIPT_DIR), yul_path))
+            
+            if os.path.exists(script_relative_path):
+                yul_path = script_relative_path
+            else:
+                # Fallback: config-relative (for external projects like onchain-trader)
+                config_dir = os.path.dirname(os.path.abspath(config_path))
+                config_relative_path = os.path.normpath(os.path.join(config_dir, yul_path))
+                if os.path.exists(config_relative_path):
+                    yul_path = config_relative_path
+                else:
+                    # Neither exists - use SCRIPT_DIR path for error message
+                    yul_path = script_relative_path
     
     if not yul_path or not os.path.exists(yul_path):
         print(f"✗ Yul file not found: {yul_path}", file=sys.stderr)
@@ -649,35 +758,36 @@ def cmd_transpile(args):
     print(f"│ Main Contract: {main_contract}")
     print("│")
     
-    # Build immutables map (id -> value)
-    immutables_map = {}
+    # NOTE: We don't build immutables_map here anymore.
+    # Config IDs are unreliable (solc generates different IDs each run).
+    # Instead, we scan Yul during transpilation to discover actual IDs.
+    # Here we just collect name -> value for use later.
     
-    # Add constructor args
+    # Print constructor args (values will be mapped to IDs later from Yul)
     print("│ Constructor Args:")
     for name, info in constructor_args.items():
-        id_str = info['id']
-        key = int(id_str) if str(id_str).isdigit() else id_str
         value = info['value']
-        if isinstance(value, str) and value.startswith("0x"):
-            immutables_map[key] = int(value, 16)
-        else:
-            immutables_map[key] = int(value) if value else 0
         print(f"│   • {name} = {value}")
     
-    # Predict CREATE addresses
+    # Predict CREATE addresses and update config
     auto_predicted = config.get("auto_predicted", {})
     config_updated = False
     if auto_predicted:
         print("│")
         print("│ Auto-Predicted (CREATE addresses):")
-        sidecar_nonce = 1
-        for name in sorted(auto_predicted.keys(), key=lambda n: int(auto_predicted[n]['id'])):
+        # Allow config to specify starting nonce (e.g., when storage sidecars are created first)
+        sidecar_nonce = config.get("sidecar_nonce_start", 1)
+        # Sort by explicit 'order' field if present, otherwise by name
+        # Skip comment fields
+        sidecar_names = [n for n in auto_predicted.keys() if not n.startswith('_')]
+        def get_order(n):
+            return auto_predicted[n].get('order', 999)  # 999 = no order, sorts last
+        sidecar_names_sorted = sorted(sidecar_names, key=lambda n: (get_order(n), n))
+        
+        for name in sidecar_names_sorted:
             info = auto_predicted[name]
-            id_str = info['id']
-            key = int(id_str) if str(id_str).isdigit() else id_str
             predicted = compute_create_address(main_contract, sidecar_nonce)
-            immutables_map[key] = int(predicted, 16)
-            print(f"│   • {name} = {predicted}")
+            print(f"│   • {name} (nonce {sidecar_nonce}) = {predicted}")
             # Update config with predicted value
             if info.get('predicted_value') != predicted:
                 config["auto_predicted"][name]["predicted_value"] = predicted
@@ -695,11 +805,83 @@ def cmd_transpile(args):
 
     print()
     
-    # Step 0: Optimize Yul
+    # Step 0: Read Yul and discover immutable IDs
     print(f"Optimizing Yul: {yul_path}")
     try:
         with open(yul_path, 'r') as f:
             raw_yul = f.read()
+        
+        # CRITICAL: Scan Yul to discover actual immutable IDs
+        # solc generates different IDs each compile - we can't rely on config IDs
+        # We map by memory offset (stable based on declaration order in StorageLayout)
+        
+        # Strip Yul comments first (/** @src ... */ breaks regex matching)
+        # Reuse pattern from optimizer/yul_source_optimizer.py
+        yul_no_comments = re.sub(r'/\*[\s\S]*?\*/', '', raw_yul)
+        
+        setimm_pattern = re.compile(r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*(\d+)\s*\)\s*\)')
+        offset_to_ids = {}  # offset -> list of IDs
+        for match in setimm_pattern.finditer(yul_no_comments):
+            imm_id = int(match.group(1))
+            offset = int(match.group(2))
+            if offset not in offset_to_ids:
+                offset_to_ids[offset] = []
+            if imm_id not in offset_to_ids[offset]:
+                offset_to_ids[offset].append(imm_id)
+        
+        # AUTOMATIC MAPPING: Match offsets to config names by position
+        # 1. Get sorted offsets from Yul (ascending order = declaration order)
+        # 2. Get sorted config names by 'order' field (for predictable matching)
+        # 3. Match positionally
+        
+        # Collect all config names with their values and order
+        config_immutables = []  # list of (name, value, order)
+        
+        for name, info in constructor_args.items():
+            value = info.get('value', '')
+            order = info.get('order', 999)  # default high order for unspecified
+            if isinstance(value, str) and value.startswith("0x"):
+                config_immutables.append((name, int(value, 16), order))
+            elif value:
+                config_immutables.append((name, int(value), order))
+        
+        for name, info in auto_predicted.items():
+            if name.startswith('_'):  # Skip comment fields
+                continue
+            value = info.get('predicted_value', info.get('value', ''))
+            order = info.get('order', 999)
+            if isinstance(value, str) and value.startswith("0x"):
+                config_immutables.append((name, int(value, 16), order))
+            elif value:
+                config_immutables.append((name, int(value), order))
+        
+        # Sort by order field (stable for same order - maintains insertion order)
+        config_immutables.sort(key=lambda x: x[2])
+        
+        # Get sorted offsets from Yul
+        sorted_offsets = sorted(offset_to_ids.keys())
+        
+        # Build immutables_map: ID -> value
+        immutables_map = {}
+        print("│")
+        print("│ Immutable ID Discovery (from Yul):")
+        
+        for i, offset in enumerate(sorted_offsets):
+            ids = offset_to_ids[offset]
+            if i < len(config_immutables):
+                name, value, order = config_immutables[i]
+                for imm_id in ids:
+                    immutables_map[imm_id] = value
+                print(f"│   • {name} (offset {offset}, order {order}): IDs {ids} = {hex(value)}")
+            else:
+                print(f"│   ⚠ Offset {offset}: IDs {ids} - NO MATCHING CONFIG (index {i})")
+        
+        # Report any config values that weren't mapped
+        if len(config_immutables) > len(sorted_offsets):
+            unmapped = [name for name, _, _ in config_immutables[len(sorted_offsets):]]
+            print(f"│   ⚠ Config values not found in Yul: {unmapped}")
+        
+        print(f"│ Total: {len(immutables_map)} immutable IDs mapped")
             
         opt_config = config.copy()
         

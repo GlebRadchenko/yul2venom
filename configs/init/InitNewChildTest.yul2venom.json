@@ -6,16 +6,17 @@
     "deployer": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
     "nonce": 0
   },
+  "sidecar_nonce_start": 1,
   "constructor_args": {},
   "auto_predicted": {
     "childA": {
-      "id": "67",
       "type": "address",
+      "id": "67",
       "predicted_value": "0xa5668d1a670c8e192b4ef3f2d47232baf287e2cf"
     },
     "childB": {
-      "id": "69",
       "type": "address",
+      "id": "69",
       "predicted_value": "0x6804a3ff6bcf551facf1a66369a5f8802b3c9c58"
     }
   }

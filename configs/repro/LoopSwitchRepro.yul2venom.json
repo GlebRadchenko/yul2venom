@@ -1,9 +1,12 @@
 {
-    "version": "1.0",
-    "contract": "foundry/src/repro/LoopSwitchRepro.sol",
-    "yul": "output/LoopSwitchRepro.yul",
-    "deployment": {
-        "deployer": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
-        "nonce": 0
-    }
+  "version": "1.0",
+  "contract": "foundry/src/repro/LoopSwitchRepro.sol",
+  "yul": "output/LoopSwitchRepro.yul",
+  "deployment": {
+    "deployer": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
+    "nonce": 0
+  },
+  "sidecar_nonce_start": 1,
+  "constructor_args": {},
+  "auto_predicted": {}
 }

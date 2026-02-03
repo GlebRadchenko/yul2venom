@@ -22,7 +22,7 @@ contract ExtendedFeatureTest is Test {
 
     function setUp() public {
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/MissingFeatures_opt_runtime.bin"
+            "../output/MissingFeatures_opt_runtime.bin"
         );
         address addr = address(0xABC);
         vm.etch(addr, bytecode);

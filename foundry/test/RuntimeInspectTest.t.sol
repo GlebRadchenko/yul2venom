@@ -16,7 +16,7 @@ contract RuntimeInspectTest is Test {
     function test_inspectRuntime() public {
         // Load transpiled bytecode
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/LoopCheckCalldata_opt.bin"
+            "../output/LoopCheckCalldata_opt.bin"
         );
         address deployed;
         assembly {

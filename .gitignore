@@ -29,6 +29,13 @@ output/*.yul
 output/*solc*/
 output/bench/
 
+# Stale output directories in config subdirs (should use output/ instead)
+configs/*/output/
+
+# VNM intermediate files
+debug/*.vnm
+*.vnm
+
 # Foundry
 foundry/out/
 foundry/cache/

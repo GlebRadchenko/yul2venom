@@ -28,7 +28,7 @@ contract OpcodeTest is Test {
     function setUp() public {
         address addr = address(0xCAFE);
         try
-            vm.readFileBinary("yul2venom/output/OpcodeBasics_opt_runtime.bin")
+            vm.readFileBinary("../output/OpcodeBasics_opt_runtime.bin")
         returns (bytes memory code) {
             vm.etch(addr, code);
             opcodeTarget = IOpcodeBasics(addr);
@@ -103,7 +103,7 @@ contract OpcodeDebugTest is Test {
     function test_debug_mstore_return() public {
         address addr = address(0xDEAD);
         try
-            vm.readFileBinary("yul2venom/output/Debug_opt_runtime.bin")
+            vm.readFileBinary("../output/Debug_opt_runtime.bin")
         returns (bytes memory code) {
             vm.etch(addr, code);
         } catch {
@@ -123,7 +123,7 @@ contract OpcodeDebugTest is Test {
     function test_opcode_basics_raw() public {
         bytes memory code;
         try
-            vm.readFileBinary("yul2venom/output/OpcodeBasics_opt_runtime.bin")
+            vm.readFileBinary("../output/OpcodeBasics_opt_runtime.bin")
         returns (bytes memory c) {
             code = c;
         } catch {

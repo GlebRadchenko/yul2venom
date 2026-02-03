@@ -6,51 +6,52 @@
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0
   },
+  "sidecar_nonce_start": 1,
   "constructor_args": {
     "addr1": {
-      "id": "4",
       "type": "address",
-      "value": "0x0000000000000000000000000000000000001111"
+      "value": "0x0000000000000000000000000000000000001111",
+      "id": "4"
     },
     "addr2": {
-      "id": "6",
       "type": "address",
-      "value": "0x0000000000000000000000000000000000002222"
+      "value": "0x0000000000000000000000000000000000002222",
+      "id": "6"
     },
     "addr3": {
-      "id": "8",
       "type": "address",
-      "value": "0x0000000000000000000000000000000000003333"
+      "value": "0x0000000000000000000000000000000000003333",
+      "id": "8"
     },
     "uint1": {
-      "id": "10",
       "type": "uint256",
-      "value": "100"
+      "value": "100",
+      "id": "10"
     },
     "uint2": {
-      "id": "12",
       "type": "uint256",
-      "value": "200"
+      "value": "200",
+      "id": "12"
     },
     "uint128val": {
-      "id": "14",
       "type": "uint128",
-      "value": "12345678"
+      "value": "12345678",
+      "id": "14"
     },
     "flag1": {
-      "id": "16",
       "type": "bool",
-      "value": "1"
+      "value": "1",
+      "id": "16"
     },
     "flag2": {
-      "id": "18",
       "type": "bool",
-      "value": "0"
+      "value": "0",
+      "id": "18"
     },
     "hash": {
-      "id": "20",
       "type": "bytes32",
-      "value": "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
+      "value": "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+      "id": "20"
     }
   },
   "auto_predicted": {}

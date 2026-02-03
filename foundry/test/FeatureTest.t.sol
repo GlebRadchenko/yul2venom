@@ -11,7 +11,7 @@ contract DeploymentFeatureTest is Test {
     // Test: NoSelector (fallback returns 15)
     function test_NoSelector_Fallback() public {
         bytes memory runtimeCode = vm.readFileBinary(
-            "yul2venom/output/NoSelector_opt_runtime.bin"
+            "../output/NoSelector_opt_runtime.bin"
         );
         address target = address(0xCAFE);
         vm.etch(target, runtimeCode);
@@ -41,7 +41,7 @@ contract DeploymentFeatureTest is Test {
     // Test: NoSelectorDeploy (deploy from init code)
     function test_NoSelectorDeploy() public {
         bytes memory initcode = vm.readFileBinary(
-            "yul2venom/output/NoSelector_opt.bin"
+            "../output/NoSelector_opt.bin"
         );
         require(initcode.length > 0, "Init code empty");
 
@@ -63,7 +63,7 @@ contract DeploymentFeatureTest is Test {
     // Test: RuntimeOnly (vm.etch pattern)
     function test_RuntimeOnly_MinimalCall() public {
         bytes memory runtimeCode = vm.readFileBinary(
-            "yul2venom/output/MinimalCall_opt_runtime.bin"
+            "../output/MinimalCall_opt_runtime.bin"
         );
         address target = address(0xDEAD);
         vm.etch(target, runtimeCode);
@@ -79,7 +79,7 @@ contract DeploymentFeatureTest is Test {
     // Test: TinyCall
     function test_TinyCall_Selector() public {
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/TinyCall_opt_runtime.bin"
+            "../output/TinyCall_opt_runtime.bin"
         );
         address target = address(0xBEEF);
         vm.etch(target, bytecode);
@@ -95,7 +95,7 @@ contract DeploymentFeatureTest is Test {
     // Test: VoidCall
     function test_VoidCall_NoReturn() public {
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/VoidCall_opt_runtime.bin"
+            "../output/VoidCall_opt_runtime.bin"
         );
         address target = address(0xDEAD);
         vm.etch(target, bytecode);
@@ -127,7 +127,7 @@ contract ComplexFeatureTest is Test {
     function setUp() public {
         bytes memory args = abi.encode(IMMUTABLE_VAL);
         venomContract = deployComplex(
-            "yul2venom/output/ComplexFeaturesTest_opt.bin",
+            "../output/ComplexFeaturesTest_opt.bin",
             args
         );
     }
@@ -224,7 +224,7 @@ contract MegaFeatureTest is Test {
 
     function setUp() public {
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/MegaTest_opt.bin"
+            "../output/MegaTest_opt.bin"
         );
         address deployed;
         assembly {

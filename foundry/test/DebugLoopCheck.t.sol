@@ -19,7 +19,7 @@ contract DebugLoopCheckTest is Test {
     function setUp() public {
         address target = address(0x10092);
         bytes memory code = vm.readFileBinary(
-            "yul2venom/output/LoopCheckCalldata_opt_runtime.bin"
+            "../output/LoopCheckCalldata_opt_runtime.bin"
         );
         vm.etch(target, code);
         loopCheck = ILoopCheckCalldata(target);

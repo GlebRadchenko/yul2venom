@@ -6,21 +6,22 @@
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0
   },
+  "sidecar_nonce_start": 1,
   "constructor_args": {
     "DEPLOY_TIME": {
-      "id": "15",
       "type": "uint256",
-      "value": "1700000000"
+      "value": "1700000000",
+      "id": "15"
     },
     "DEPLOYER": {
-      "id": "17",
       "type": "address",
-      "value": "0x1234567890123456789012345678901234567890"
+      "value": "0x1234567890123456789012345678901234567890",
+      "id": "17"
     },
     "DEPLOY_HASH": {
-      "id": "19",
       "type": "bytes32",
-      "value": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      "value": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "id": "19"
     }
   },
   "auto_predicted": {}
