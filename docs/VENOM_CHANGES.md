@@ -8,9 +8,9 @@ This document catalogs all modifications made to the Vyper submodule (`vyper/`) 
 |------|--------------|----------|-------------|
 | `vyper/venom/analysis/liveness.py` | +7 | Bug Fix | ⚠️ Critical |
 | `vyper/venom/effects.py` | +10 | Feature Extension | ⚠️ Critical |
-| `vyper/venom/venom_to_assembly.py` | +109/-5 | Multi-purpose | ⚠️ Critical |
+| `vyper/venom/venom_to_assembly.py` | +150/-5 | Multi-purpose | ⚠️ Critical |
 
-**Total: 3 files changed, 121 insertions(+), 5 deletions(-)**
+**Total: 3 files changed, ~162 insertions(+), 5 deletions(-)**
 
 ---
 
@@ -129,40 +129,33 @@ _ONE_TO_ONE_INSTRUCTIONS = frozenset([
 
 **Why needed:** Yul source produces these opcodes directly; without this mapping, the compiler would fail with "unknown opcode".
 
-#### 3.2 Duplicate Literal Handling (+40 lines)
+#### 3.2 ~~Duplicate Literal Handling~~ ✅ MIGRATED TO TRANSPILER
 
-**Problem:** Vyper's stack reordering algorithm assumes all operands are unique. Yul patterns like `revert(0, 0)` produce duplicate literal operands.
+**Status:** ✅ **MIGRATED** — This backend patch has been moved to the transpiler layer.
 
-**Manifestation:** Without this fix, the assertion `len(stack_ops) == len(set(stack_ops))` would fail.
+**Original Problem:** Vyper's stack reordering algorithm assumes all operands are unique. Yul patterns like `revert(0, 0)` produce duplicate literal operands.
 
-**Fix:** Detect duplicate literals, deduplicate for reordering, then push duplicates back at correct positions:
+**Transpiler Fix Location:** `ir/basicblock.py` → `append_instruction()` method
+
+**How It Works:** The transpiler now detects duplicate literal values in instruction operands and materializes them as unique `IRVariable`s via `assign` instructions before emitting the main instruction. This guarantees the backend never sees duplicate operands.
 
 ```python
-# Check for duplicate literals
-seen_literals = {}
-duplicate_literal_indices = []
-
-for i, op in enumerate(stack_ops):
-    if isinstance(op, IRLiteral):
-        if op.value in seen_literals:
-            duplicate_literal_indices.append(i)
-        else:
-            seen_literals[op.value] = i
-
-if duplicate_literal_indices:
-    # Handle duplicates specially
-    deduped_ops = [op for i, op in enumerate(stack_ops) 
-                   if i not in duplicate_literal_indices]
-    cost = self._stack_reorder(assembly, stack, deduped_ops, spilled, dry_run)
-    
-    for dup_idx in duplicate_literal_indices:
-        op = stack_ops[dup_idx]
-        if not dry_run:
-            assembly.extend(PUSH(wrap256(op.value)))
-            stack.push(op)
-        # Swap to correct position if needed
-        ...
+# ir/basicblock.py - append_instruction()
+if len(processed_args) > 1:
+    seen_values = {}
+    for i, arg in enumerate(processed_args):
+        if isinstance(arg, IRLiteral):
+            if arg.value in seen_values:
+                # Materialize duplicate as unique variable
+                var = self.parent.get_next_variable()
+                assign_inst = IRInstruction("assign", [arg], [var])
+                self.instructions.append(assign_inst)
+                processed_args[i] = var
+            else:
+                seen_values[arg.value] = i
 ```
+
+**Lines Removed from Backend:** ~28 lines (venom_to_assembly.py lines 232-259)
 
 #### 3.3 Assign Instruction Stack Model Fix (+39 lines)
 
@@ -212,6 +205,44 @@ if next_inst.opcode == "assign":
 
 Minor comment improvement documenting that the return PC is the last operand by convention.
 
+#### 3.6 Iterative Stack Reorder for Large Stacks (+41 lines)
+
+**Problem:** When stack depth exceeds 16, `_reduce_depth_via_spill` spills variables to bring targets within SWAP16 range. However, spilling one operand can displace already-positioned operands.
+
+**Manifestation:** `STACK_ASSERT_FAIL` with stack heights of 26+ elements. First operand positioned correctly, then spilling for second operand displaces first.
+
+**Root Cause:** Single-pass for-loop that positions operands sequentially without re-verifying after spills:
+
+```python
+# OLD (buggy)
+for i, op in enumerate(stack_ops):
+    # Position op at final_stack_depth
+    # Spilling here can displace previously positioned ops
+```
+
+**Fix Applied:** Iterative while-loop with stability check:
+
+```python
+while iteration < max_iterations:
+    # Check if ALL operands are in correct positions
+    all_correct = True
+    for i, op in enumerate(stack_ops):
+        expected = -(len(stack_ops) - i - 1)
+        if stack.get_depth(op) != expected:
+            all_correct = False
+            break
+    
+    if all_correct:
+        break
+    
+    iteration += 1
+    # Single pass to reposition displaced operands
+    for i, op in enumerate(stack_ops):
+        # ... swap logic ...
+```
+
+**Why Backend Patch:** This is a fundamental stack model issue when spilling mutates depths. While transpiler improvements could reduce stack pressure, the backend must handle edge cases gracefully.
+
 ---
 
 ## Reversion Analysis
@@ -228,6 +259,7 @@ Minor comment improvement documenting that the return PC is the last operand by 
 | Duplicate literals | Assertion failure on `revert(0,0)` |
 | Assign stack fix | Stack desync causing incorrect values |
 | Assign optimistic skip | Incorrect stack state after assign |
+| Iterative stack reorder | Assertion failure on deep stacks (26+) |
 
 ### Upstream Contribution Candidates
 
@@ -247,14 +279,16 @@ The other changes are Yul-specific extensions and would need discussion with the
 | 2026-01-XX | Initial liveness phi fix | `57a25a75` |
 | 2026-01-XX | Assign stack model fix | `9a97be82` |
 | 2026-01-XX | Log effects + byte opcode | `9d017838` |
+| 2026-02-03 | Iterative stack reorder for deep stacks | — |
 
 ---
 
 ## Testing Verification
 
-All 339 Forge tests pass with these changes:
+All 344 Forge tests pass with these changes:
 - 36 runtime bytecode tests
 - 10 init bytecode tests
-- Full benchmark suite
+- Full benchmark suite (8 contracts)
+- QuotedTrader industrial contract (34KB)
 
 Removing any of these patches causes test failures.

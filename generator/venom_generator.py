@@ -554,45 +554,70 @@ class VenomIRBuilder:
         # Pop exit stack
         self.inline_exit_stack.pop()
         
-        # Add cleanup block
-        self.current_fn.append_basic_block(cleanup_bb)
-        self.current_bb = cleanup_bb
+        # Check if any path reached the cleanup block (via phi_data or implicit fallthrough)
+        has_predecessors = any(len(inputs) > 0 for inputs in phi_data.values()) if f_def.returns else (not self.current_bb.is_terminated)
         
-        # Generate PHI nodes for return values
-        result_vals = []
-        if f_def.returns:
-            for ret_name in f_def.returns:
-                inputs = phi_data[ret_name]
-                if not inputs:
-                    # Should not happen in reachable code, but default to 0
-                    result_vals.append(IRLiteral(0))
-                elif len(inputs) == 1:
-                    # Single path - no PHI needed
-                    # Materialize value in CLEANUP block (current_bb), not source block
-                    # This ensures the variable is defined in the block where it's used
-                    val = inputs[0]['val']
-                    if isinstance(val, IRLiteral):
-                        # Literals just get assigned in the cleanup block
-                        new_var = self.current_fn.get_next_variable()
-                        self.current_bb.append_instruction("assign", val, outputs=[new_var])
-                        result_vals.append(new_var)
-                        self.var_map[ret_name] = new_var
+        # If no return variables, check if we added an implicit fallthrough jump to cleanup
+        # The fallthrough jump happens when block is not terminated before cleanup creation
+        if not f_def.returns:
+            # No returns - check if implicit fallthrough was added (current_bb should have jmp to cleanup_lbl)
+            has_predecessors = False
+            for bb in self.current_fn.get_basic_blocks():
+                if bb.is_terminated:
+                    last_inst = bb.instructions[-1] if bb.instructions else None
+                    if last_inst and last_inst.opcode == "jmp":
+                        if last_inst.operands and last_inst.operands[0] == cleanup_lbl:
+                            has_predecessors = True
+                            break
+        else:
+            # With returns - check phi_data
+            has_predecessors = any(len(inputs) > 0 for inputs in phi_data.values())
+        
+        # Only add cleanup block if it's reachable
+        if has_predecessors:
+            self.current_fn.append_basic_block(cleanup_bb)
+            self.current_bb = cleanup_bb
+        
+            # Generate PHI nodes for return values
+            result_vals = []
+            if f_def.returns:
+                for ret_name in f_def.returns:
+                    inputs = phi_data[ret_name]
+                    if not inputs:
+                        # Should not happen in reachable code, but default to 0
+                        result_vals.append(IRLiteral(0))
+                    elif len(inputs) == 1:
+                        # Single path - no PHI needed
+                        # Materialize value in CLEANUP block (current_bb), not source block
+                        # This ensures the variable is defined in the block where it's used
+                        val = inputs[0]['val']
+                        if isinstance(val, IRLiteral):
+                            # Literals just get assigned in the cleanup block
+                            new_var = self.current_fn.get_next_variable()
+                            self.current_bb.append_instruction("assign", val, ret=new_var)
+                            result_vals.append(new_var)
+                            self.var_map[ret_name] = new_var
+                        else:
+                            # Variables from source block - just use directly 
+                            # (they're still in scope since single path means linear flow)
+                            result_vals.append(val)
+                            self.var_map[ret_name] = val
                     else:
-                        # Variables from source block - just use directly 
-                        # (they're still in scope since single path means linear flow)
-                        result_vals.append(val)
-                        self.var_map[ret_name] = val
-                else:
-                    # Multiple paths - emit PHI
-                    phi_args = []
-                    for item in inputs:
-                        phi_args.append(item['label'])
-                        val_reg = self._materialize_literal(item['val'], item['block'])
-                        phi_args.append(val_reg)
-                    
-                    phi_res = self.current_bb.append_instruction("phi", *phi_args)
-                    result_vals.append(phi_res)
-                    self.var_map[ret_name] = phi_res
+                        # Multiple paths - emit PHI
+                        phi_args = []
+                        for item in inputs:
+                            phi_args.append(item['label'])
+                            val_reg = self._materialize_literal(item['val'], item['block'])
+                            phi_args.append(val_reg)
+                        
+                        phi_res = self.current_bb.append_instruction("phi", *phi_args)
+                        result_vals.append(phi_res)
+                        self.var_map[ret_name] = phi_res
+        else:
+            # No paths reach cleanup - function always terminates (revert/stop/return)
+            # Don't append the cleanup block - it would be dead code
+            # Return empty results (function never returns normally)
+            result_vals = [IRLiteral(0) for _ in (f_def.returns or [])]
         
         # Restore variable scope (but keep any new variables created)
         # Only restore the parameters we shadowed
@@ -633,6 +658,60 @@ class VenomIRBuilder:
                 self._collect_assigned_vars(stmt.body, result_set)
             if stmt.post:
                 self._collect_assigned_vars(stmt.post, result_set)
+
+    def _collect_used_vars(self, node, result_set, scope_vars):
+        """Recursively collect variable names that are USED (read) in a Yul AST node.
+        
+        Only collects variables that exist in scope_vars (to filter out function names
+        and literals that aren't actual variables).
+        
+        Args:
+            node: Yul AST node to traverse
+            result_set: Set to add used variable names to
+            scope_vars: Set of variable names currently in scope (from var_map keys)
+        """
+        if node is None:
+            return
+            
+        node_type = type(node).__name__
+        
+        if node_type == "YulLiteral":
+            # Check if this is a variable reference (not a numeric literal)
+            val = node.value
+            if val in scope_vars:
+                result_set.add(val)
+        elif node_type == "YulCall":
+            # Function name is not a variable reference, but args may contain vars
+            for arg in node.args:
+                self._collect_used_vars(arg, result_set, scope_vars)
+        elif node_type == "YulBlock":
+            for s in node.statements:
+                self._collect_used_vars(s, result_set, scope_vars)
+        elif node_type == "YulVariableDeclaration":
+            # The RHS expression may use variables
+            if node.value:
+                self._collect_used_vars(node.value, result_set, scope_vars)
+        elif node_type == "YulAssignment":
+            # RHS expression may use variables
+            if node.value:
+                self._collect_used_vars(node.value, result_set, scope_vars)
+        elif node_type == "YulIf":
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            self._collect_used_vars(node.body, result_set, scope_vars)
+        elif node_type == "YulSwitch":
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            for c in node.cases:
+                self._collect_used_vars(c.body, result_set, scope_vars)
+        elif node_type == "YulForLoop":
+            if node.init:
+                self._collect_used_vars(node.init, result_set, scope_vars)
+            self._collect_used_vars(node.condition, result_set, scope_vars)
+            if node.body:
+                self._collect_used_vars(node.body, result_set, scope_vars)
+            if node.post:
+                self._collect_used_vars(node.post, result_set, scope_vars)
+        elif node_type == "YulExpressionStmt":
+            self._collect_used_vars(node.expr, result_set, scope_vars)
 
     def _count_statements(self, node):
         """Count statements in a Yul AST node for inlining complexity analysis.
@@ -780,11 +859,11 @@ class VenomIRBuilder:
                      if f_def and f_def.returns:
                          # Create one variable for EACH return value (multi-return support)
                          ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
-                         invoke_inst = IRInstruction("invoke", [IRLabel(func_name)] + arg_vals, outputs=ret_vars)
+                         invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
                          self.current_bb.instructions.append(invoke_inst)
                          result_vals = ret_vars
                      else:
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
+                         self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func_name)), *arg_vals)
                          result_vals = []
                  
                  # Map results to declared variables
@@ -824,11 +903,11 @@ class VenomIRBuilder:
                      if f_def and f_def.returns:
                          # Create one variable for EACH return value (multi-return support)
                          ret_vars = [self.current_fn.get_next_variable() for _ in f_def.returns]
-                         invoke_inst = IRInstruction("invoke", [IRLabel(func_name)] + arg_vals, outputs=ret_vars)
+                         invoke_inst = IRInstruction("invoke", [IRLabel(self.sanitize(func_name))] + arg_vals, outputs=ret_vars)
                          self.current_bb.instructions.append(invoke_inst)
                          result_vals = ret_vars
                      else:
-                         self.current_bb.append_instruction("invoke", IRLabel(func_name), *arg_vals)
+                         self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func_name)), *arg_vals)
                          result_vals = []
                  # Map results to assigned variables (pure register model)
                  for i, v in enumerate(stmt.vars):
@@ -1091,18 +1170,25 @@ class VenomIRBuilder:
                     self.current_fn.append_basic_block(bucket_bb)
                     self.current_bb = bucket_bb
                     
+                    # CRITICAL FIX: Recompute selector locally instead of referencing 
+                    # cond_val from parent block. This avoids SSA cross-block dependency
+                    # issues where the variable isn't live through the DJMP.
+                    # Pattern: shr(224, calldataload(0)) to extract 4-byte selector
+                    cd_zero = IRLiteral(0)
+                    cd_load = self.current_bb.append_instruction1("calldataload", cd_zero)
+                    shift_amt = IRLiteral(224)
+                    local_sel = self.current_bb.append_instruction1("shr", shift_amt, cd_load)
+                    
                     if len(selectors) == 1:
                         # Single selector in bucket - check and jump to fallback on mismatch
                         # Pattern: xor %local, expected; jnz xor, fallback, handler
                         # This allows receive() (calldatasize=0) to properly reach fallback
                         val, lbl, case = selectors[0]
-                        local_sel = self.current_bb.append_instruction1("add", cond_val, IRLiteral(0))
                         xor_result = self.current_bb.append_instruction1("xor", val, local_sel)
                         # jnz: if xor!=0 (mismatch) -> fallback, if xor==0 (match) -> handler
                         self.current_bb.append_instruction("jnz", xor_result, fallback_lbl, lbl)
                     else:
-                        # Multiple selectors in bucket - assign then linear search
-                        local_sel = self.current_bb.append_instruction1("add", cond_val, IRLiteral(0))
+                        # Multiple selectors in bucket - linear search using local_sel computed above
                         
                         for i, (val, lbl, case) in enumerate(selectors):
                             # Native pattern: xor for comparison
@@ -1249,14 +1335,29 @@ class VenomIRBuilder:
             ptr_loop_entry = self.current_bb
             entry_var_map = self.var_map.copy()
 
-            # 2. Identify Loop-Carried Variables
+            # 2. Identify Loop-Carried Variables AND Loop-Invariant Variables
+            # We need phis for:
+            # a) Variables assigned inside the loop (their value changes each iteration)
+            # b) Variables used inside the loop but defined BEFORE (loop-invariants from outer scope)
+            #    These need phis so the SSA validator sees them as defined on ALL paths to loop header
+            #    (including the back-edge from loop_post)
+            
             loop_assigned_vars = set()
             self._collect_assigned_vars(stmt.body, loop_assigned_vars)
             self._collect_assigned_vars(stmt.post, loop_assigned_vars)
             
-            # Filter vars
-            vars_needing_phi = {v for v in loop_assigned_vars if v in self.var_map}
-            sorted_vars = sorted(list(vars_needing_phi)) # Deterministic order
+            # Collect variables USED inside the loop (body, condition, post)
+            loop_used_vars = set()
+            scope_vars = set(self.var_map.keys())  # Current scope variables
+            self._collect_used_vars(stmt.condition, loop_used_vars, scope_vars)
+            self._collect_used_vars(stmt.body, loop_used_vars, scope_vars)
+            self._collect_used_vars(stmt.post, loop_used_vars, scope_vars)
+            
+            # Variables needing phi = assigned vars + used vars from outer scope (not assigned inside)
+            # Filter to only include vars that exist in var_map
+            loop_invariant_used = loop_used_vars - loop_assigned_vars  # Used but not assigned = loop-invariant
+            all_vars_needing_phi = (loop_assigned_vars | loop_invariant_used) & set(self.var_map.keys())
+            sorted_vars = sorted(list(all_vars_needing_phi))  # Deterministic order
             
             # Prepare Blocks
             loop_start_bb = IRBasicBlock(self.ctx.get_next_label("blk_loop_start"), self.current_fn)
@@ -1536,10 +1637,10 @@ class VenomIRBuilder:
                 f_def = self.functions_ast[func]
                 if f_def.returns:
                     ret = self.current_fn.get_next_variable()
-                    self.current_bb.append_instruction("invoke", IRLabel(func), *arg_vals, ret=ret)
+                    self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func)), *arg_vals, ret=ret)
                     return ret
                 else:
-                    self.current_bb.append_instruction("invoke", IRLabel(func), *arg_vals)
+                    self.current_bb.append_instruction("invoke", IRLabel(self.sanitize(func)), *arg_vals)
                     return IRLiteral(0)
             
             return self._handle_intrinsic(func, arg_vals)
