@@ -620,21 +620,14 @@ class VenomIRBuilder:
             # Return empty results (function never returns normally)
             result_vals = [IRLiteral(0) for _ in (f_def.returns or [])]
         
-        # Restore variable scope (but keep any new variables created)
-        # Only restore the parameters we shadowed
-        for arg_name in f_def.args:
-            if arg_name in saved_var_map:
-                self.var_map[arg_name] = saved_var_map[arg_name]
-            else:
-                self.var_map.pop(arg_name, None)
-        
-        # Restore return variables (not pop!) to preserve outer function's values
-        if f_def.returns:
-            for ret_name in f_def.returns:
-                if ret_name in saved_var_map:
-                    self.var_map[ret_name] = saved_var_map[ret_name]
-                else:
-                    self.var_map.pop(ret_name, None)
+        # Restore variable scope - restore ALL variables that existed before inlining.
+        # This is critical to prevent local variables in the inlined function
+        # (e.g., "memPtr_1" from allocate_memory) from permanently shadowing
+        # outer scope variables with the same name.
+        # The result returned from the inlined call will be assigned to the caller's
+        # target variable separately, so we need the outer scope to be clean.
+        for var_name, var_val in saved_var_map.items():
+            self.var_map[var_name] = var_val
         
         return result_vals
 
