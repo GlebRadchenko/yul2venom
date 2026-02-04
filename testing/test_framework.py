@@ -472,10 +472,10 @@ def transpile_for_testing() -> List[TranspileResult]:
     This is the canonical way to prepare all contracts for Forge tests.
     Each category gets the correct bytecode type:
     
-    - core/   -> default (generates both _opt.bin and _opt_runtime.bin)
-    - bench/  -> runtime only (_opt_runtime.bin for vm.etch)  
-    - repro/  -> runtime only (_opt_runtime.bin for vm.etch)
-    - init/   -> init + runtime (_opt.bin with full init code for CREATE)
+    - init/  -> --with-init (full init code for CREATE deployment)
+    - all others -> default (generates both _opt.bin and _opt_runtime.bin)
+    
+    Tests need BOTH files: _opt.bin (for CREATE) and _opt_runtime.bin (for vm.etch)
     
     Returns list of all transpilation results.
     """
@@ -538,19 +538,15 @@ def transpile_for_testing() -> List[TranspileResult]:
         
         print(f"  [{category:5s}] {name:30s} ... ", end='', flush=True)
         
-        # Transpilation strategy per category:
+        # Transpilation strategy:
         # - init/  -> --with-init (full init code for CREATE deployment)
-        # - core/  -> default (generates both _opt.bin and _opt_runtime.bin)
-        # - bench/ -> --runtime-only (only need _opt_runtime.bin for vm.etch)
-        # - repro/ -> --runtime-only (only need _opt_runtime.bin for vm.etch)
+        # - all others -> default (generates both _opt.bin and _opt_runtime.bin)
+        # Tests need both files: _opt.bin (for CREATE) and _opt_runtime.bin (for vm.etch)
         if bytecode_type == BytecodeType.WITH_INIT:
             result = transpile_contract(str(config), with_init=True)
             type_label = "init"
-        elif category in ('bench', 'repro'):
-            result = transpile_contract(str(config), runtime_only=True)
-            type_label = "rt"
         else:
-            # Core: default mode generates both _opt.bin and _opt_runtime.bin
+            # Default mode generates both _opt.bin and _opt_runtime.bin
             result = transpile_contract(str(config))
             type_label = "both"
         
