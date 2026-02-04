@@ -981,27 +981,36 @@ def cmd_transpile(args):
             
         opt_config = config.copy()
         
-        # Configure YulSourceOptimizer based on CLI flags
+        # Configure YulSourceOptimizer based on CLI flags or config file
         # Levels: safe, standard, aggressive, maximum
+        # Priority: CLI args > config file > disabled
         yul_opt_level = getattr(args, 'yul_opt_level', None)
         
-        if yul_opt_level or getattr(args, 'yul_opt', False) or getattr(args, 'strip_checks', False):
-            # Determine optimization level
-            if yul_opt_level:
-                level = OptimizationLevel(yul_opt_level)
-            elif getattr(args, 'strip_checks', False):
-                level = OptimizationLevel.AGGRESSIVE
-            elif getattr(args, 'yul_opt', False):
-                level = OptimizationLevel.STANDARD
-            else:
-                level = OptimizationLevel.SAFE
-            
+        # Get the global transpiler config (from yul2venom.config.yaml)
+        from config import get_config
+        transpiler_cfg = get_config()
+        
+        # Determine optimization level from CLI or config
+        if yul_opt_level:
+            # CLI flag takes priority
+            level = OptimizationLevel(yul_opt_level)
+        elif getattr(args, 'strip_checks', False):
+            level = OptimizationLevel.AGGRESSIVE
+        elif getattr(args, 'yul_opt', False):
+            level = OptimizationLevel.STANDARD
+        elif transpiler_cfg.yul_optimizer.level and transpiler_cfg.yul_optimizer.level != 'none':
+            # Use config file setting
+            level = OptimizationLevel(transpiler_cfg.yul_optimizer.level)
+        else:
+            level = None  # Disabled
+        
+        if level:
             print(f"Running Yul source optimizer (level: {level.value})...", file=sys.stderr)
             opt = YulSourceOptimizer(level=level, config=config)
             optimized_yul = opt.optimize(raw_yul)
             opt.print_report()
         else:
-            # Skip Yul optimizer (default for compatibility)
+            # Skip Yul optimizer
             optimized_yul = raw_yul
         
         # PATCH: Move Free Memory Pointer Storage... REMOVED

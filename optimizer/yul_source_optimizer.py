@@ -236,10 +236,19 @@ class YulSourceOptimizer:
             OptimizationLevel.STANDARD
         )
         
-        # Strip calldatasize minimum check
+        # Strip calldatasize minimum check (iszero version)
         self._add_rule(
             "Strip Calldata Size Min",
             r'if\s+iszero\(lt\(calldatasize\(\),\s*\d+\)\)',
+            '',
+            OptimizationLevel.STANDARD
+        )
+        
+        # Strip calldatasize >= 4 check: slt(add(calldatasize(), not(3)), 0)
+        # This pattern checks calldatasize >= 4 (minimum for selector)
+        self._add_rule(
+            "Strip Calldatasize Zero Check",
+            r'if\s+slt\(add\(calldatasize\(\),\s*not\(3\)\),\s*0\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.STANDARD
         )
@@ -295,8 +304,7 @@ class YulSourceOptimizer:
             OptimizationLevel.AGGRESSIVE
         )
         
-        # Strip finalize_allocation overflow check (or(gt(x,0xfff...),lt(x,y)))
-        # This catches the pattern: if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic }
+        # Strip FinalizeAlloc Overflow check
         self._add_rule(
             "Strip FinalizeAlloc Overflow",
             r'if\s+or\(gt\([^,]+,\s*0x[f]+\),\s*lt\([^,]+,\s*[^)]+\)\)\s*\{[^}]+\}',
@@ -308,6 +316,47 @@ class YulSourceOptimizer:
         self._add_rule(
             "Strip Memory Panic 0x41",
             r'if\s+or\([^)]+\)\s*\{\s*mstore\([^)]+\)\s*mstore\([^)]+,\s*0x41\)\s*revert\([^)]+\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        
+        # Strip inline panic selector sequence (very common: mstore selector, mstore code, revert)
+        # Pattern: mstore(0, shl(224, 0x4e487b71)) mstore(4, 0xXX) revert(0, 36)
+        self._add_rule(
+            "Strip Panic Selector",
+            r'mstore\(0,\s*shl\(224,\s*0x4e487b71\)\)\s*\n?\s*mstore\(4,\s*0x[0-9a-f]+\)\s*\n?\s*revert\(0,\s*36\)',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        
+        # Strip address validation: iszero(eq(x, and(x, ADDRESS_MASK)))
+        self._add_rule(
+            "Strip Address Validation",
+            r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*sub\(shl\(160,\s*1\),\s*1\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        
+        # Strip require_helper calls (error message wrappers)
+        self._add_rule(
+            "Strip Require Helper",
+            r'require_helper_\w+\([^)]+\)',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        
+        # Strip type validation for smaller integer types (uint8, uint16, bytes4, etc)
+        # Pattern: iszero(eq(x, and(x, shl(N, MASK)))) where MASK validates type range
+        self._add_rule(
+            "Strip Type Validation Bytes4",
+            r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*shl\(224,\s*0xffffffff\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        
+        self._add_rule(
+            "Strip Type Validation Bytes1",
+            r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*shl\(248,\s*255\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
