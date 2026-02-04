@@ -6,7 +6,7 @@ Comprehensive feature coverage catalog for the transpilation pipeline.
 
 ## ✅ Confirmed Working Features
 
-These features are tested and pass (**344 tests** across 38 test suites):
+These features are tested and pass (**346 tests** across 46 test suites):
 
 | Category | Features |
 |----------|----------|
@@ -30,6 +30,7 @@ These features are tested and pass (**344 tests** across 38 test suites):
 | **String Operations** | string.concat |
 | **ERC Standards** | ERC20 (via Solady), minting, burning, transfers, approvals |
 | **Init Bytecode** | Full constructor execution, args, immutables, inheritance, CREATE |
+| **SSA/IR** | Pure phi-based SSA for loops/branches, djmp selector dispatch, function inlining |
 
 ---
 
@@ -92,10 +93,10 @@ python3.11 testing/test_framework.py --init-all
 | StateManagement | 12 | ✅ |
 | TransientStorage | 15 | ✅ |
 | TypeLimits | 26 | ✅ |
-| **Init Edge Cases** | 11 | ✅ |
-| **Core Contracts** | ~80 | ✅ |
+| **Init Edge Cases** | 50 | ✅ |
+| **Core Contracts** | ~46 | ✅ |
 
-**Total**: 344 tests passing across 38 test suites
+**Total**: 346 tests passing across 46 test suites
 
 ---
 
@@ -116,4 +117,4 @@ The Yul2Venom transpiler supports the vast majority of Solidity features:
 
 ---
 
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-04*

@@ -634,8 +634,9 @@ def cmd_prepare(args):
             "deployer": existing_config.get("deployment", {}).get("deployer", "0x1234567890123456789012345678901234567890"),
             "nonce": existing_config.get("deployment", {}).get("nonce", 0)
         },
-        # Preserve sidecar_nonce_start if it exists
-        "sidecar_nonce_start": existing_config.get("sidecar_nonce_start", 1),
+        # sidecar_nonce_start is ALWAYS 1 for contracts deployed from constructor
+        # (a newly created contract starts at nonce 1 for its first CREATE)
+        "sidecar_nonce_start": 1,
         "constructor_args": {},
         "auto_predicted": {}
     }

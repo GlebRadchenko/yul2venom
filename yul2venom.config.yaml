@@ -42,7 +42,7 @@ yul_optimizer:
   # - standard: Remove non-payable checks, basic ABI decoder checks
   # - aggressive: Remove runtime checks (extcodesize, returndatasize)
   # - maximum: Remove overflow/bounds checks (DANGEROUS - use with caution)
-  level: aggressive
+  level: aggressive  # Testing fix for parser compatibility
   
   # Maximum number of optimization passes before stopping
   # Optimizer runs until no changes or this limit is reached
@@ -65,6 +65,14 @@ optimization:
   # - native: Vyper's O2 pipeline via run_passes_on
   # - debug: Legacy debug pipeline
   level: yul-o2
+  
+  # DJMP threshold: minimum case count to use O(1) jump table dispatch.
+  # Trade-off analysis:
+  #   - DJMP overhead: codecopy + mload + djmp ≈ 20 gas setup + 8 gas/jump
+  #   - JNZ chain: ~9 gas per comparison (eq + jnz)
+  # Break-even point is ~3-4 cases. Default 4 is conservative.
+  # Lower = more aggressive O(1) dispatch, Higher = more linear search.
+  djmp_threshold: 4
 
 # =============================================================================
 # MEMORY LAYOUT (utils/constants.py)
@@ -138,6 +146,18 @@ backend:
   
   # Enable experimental/unstable features
   experimental: false
+
+# =============================================================================
+# SAFETY
+# =============================================================================
+# Control transpiler safety checks and error handling behavior.
+
+safety:
+  # If true, dataoffset/datasize/loadimmutable failures raise exceptions
+  # instead of returning 0 with a warning.
+  # Enable this in CI/production to catch missing object/immutable references.
+  # Default: false (backward compatible - warnings only)
+  strict_intrinsics: false
 
 # =============================================================================
 # PROJECT PATHS

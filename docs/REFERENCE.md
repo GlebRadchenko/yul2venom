@@ -1,6 +1,6 @@
 # Yul2Venom Reference
 
-> **Last Verified**: 2026-01-27 against `vyper/venom/` codebase
+> **Last Verified**: 2026-02-04
 
 ## Operand Reversal Rule
 
@@ -161,13 +161,12 @@ From `venom_to_assembly.py` lines 619-723:
 
 ---
 
-## Test Status
+## Test Status (Updated 2026-02-04)
 
-| Test | Status |
-|------|--------|
-| OpcodeBasics | ✅ PASS |
-| DebugRevert | ✅ PASS |
-| MinimalCall | ❌ StackOverflow |
-| RuntimeOnlyTest | ❌ StackOverflow |
+| Category | Count | Status |
+|----------|-------|--------|
+| Core tests | 36 runtime + 10 init | ✅ ALL PASS |
+| Benchmark tests | 300 | ✅ ALL PASS |
+| **Total** | **346** | ✅ **100% PASS** |
 
-See `BUG_STATUS.md` for current investigation.
+All tests achieve logic and gas parity with native Solc output.

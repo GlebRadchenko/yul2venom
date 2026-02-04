@@ -539,8 +539,31 @@ class YulSourceOptimizer:
         return content
     
     def _cleanup_dead_functions(self, content: str) -> str:
-        """Remove function definitions with malformed signatures."""
-        content = re.sub(r'function\s+\{\s*[^}]+\}', '', content, flags=re.MULTILINE)
+        """Remove function definitions with malformed signatures.
+        
+        Matches 'function { ... }' (no name/params) - these are artifacts
+        from aggressive inlining that strips function names.
+        Uses _find_matching_brace for proper nested brace handling.
+        """
+        # Pattern to find 'function' followed by whitespace then '{' (malformed)
+        pattern = re.compile(r'function\s+\{')
+        
+        offset = 0
+        for match in pattern.finditer(content):
+            # Adjust position for previous removals
+            start = match.start() - offset
+            brace_pos = content.find('{', start)
+            if brace_pos == -1:
+                continue
+                
+            # Use proper brace matching
+            close_pos = self._find_matching_brace(content, brace_pos)
+            if close_pos != -1:
+                # Remove the malformed function definition 
+                removed_len = close_pos + 1 - start
+                content = content[:start] + content[close_pos + 1:]
+                offset += removed_len
+                
         return content
     
     def optimize(self, content: str) -> str:

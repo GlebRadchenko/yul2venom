@@ -1,6 +1,6 @@
 # Main CI Workflow
 # Triggers: push to main/master, pull requests, manual dispatch
-# Pipeline: lint → transpile-test → benchmark (PR only) → report (PR only)
+# Pipeline: lint → transpile-test (346 tests) → benchmark (PR only) → report (PR only)
 
 name: CI
 

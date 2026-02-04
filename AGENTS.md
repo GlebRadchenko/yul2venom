@@ -10,7 +10,28 @@
 Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper backend → EVM
 ```
 
-**Status**: 344/344 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
+**Status**: 346/346 tests passing ✅ | Full init bytecode support | 15 benchmark contracts
+
+---
+
+## ⚡ Quick Context Restore (TL;DR)
+
+**What this project does:**
+- Transpiles Solidity's Yul IR to Vyper's Venom IR
+- Uses Vyper's backend to generate EVM bytecode
+- Enables Vyper optimizations for Solidity contracts
+
+**Key rule:** Fix transpiler bugs in `generator/venom_generator.py`, NOT the Vyper backend.
+
+**Key gotcha:** The Venom parser REVERSES operands. `add a, b` in text becomes `[b, a]` internally.
+
+**Test command:** `python3.11 testing/test_framework.py --test-all`
+
+**Debug files:** `debug/raw_ir.vnm` (pre-opt), `debug/opt_ir.vnm` (post-opt)
+
+**SSA model:** Uses pure phi-based SSA for loops and branches. NO memory-backed variables.
+
+**Core file:** `generator/venom_generator.py` (109KB) - all transpilation logic lives here.
 
 ---
 
@@ -19,8 +40,8 @@ Solidity → solc --ir-optimized → Yul → Yul2Venom → Venom IR → Vyper ba
 | Package | Role | Modify When |
 |---------|------|-------------|
 | `yul2venom.py` (57KB) | CLI entry: `prepare`, `transpile` | Adding CLI features |
-| `generator/venom_generator.py` (92KB) | **Core transpiler** (Yul AST → Venom IR) | Transpilation bugs |
-| `generator/optimizations.py` (32KB) | Venom-level optimizations | Adding patterns |
+| `generator/venom_generator.py` (109KB) | **Core transpiler** (Yul AST → Venom IR) | Transpilation bugs |
+| `generator/optimizations.py` (35KB) | Venom-level peephole optimizations | Adding patterns |
 | `optimizer/yul_source_optimizer.py` (21KB) | Pre-transpilation Yul optimization | Yul patterns |
 | `parser/yul_parser.py` (14KB) | Yul → Python AST (lark-based) | Parser issues |
 | `parser/yul_extractor.py` | Deployed object extraction | Extraction bugs |
@@ -161,14 +182,27 @@ loop_body:    ... if condition { continue } ...
 loop_post:    phi nodes to merge body-end + continue paths
 → back to loop_start
 ```
-The `loop_stack` tracks continue sources as 5-tuple: `(start, end, post, continue_sources[], phi_results)`
+The `loop_stack` tracks sources as 6-tuple: `(start, end, post, continue_sources[], phi_results, break_sources[])`
 
 ### 4. NO_OUTPUT_INSTRUCTIONS
 
 `ir/basicblock.py` defines instructions without output:
 `jmp`, `jnz`, `ret`, `revert`, `stop`, `return`, `selfdestruct`, `log*`, `mstore*`, `sstore`, `invoke`
 
-### 5. Yul Optimizer Levels
+### 5. Peephole Optimizations (Generator)
+
+The generator applies several peephole optimizations during transpilation:
+
+| Pattern | Optimization | Gas Savings |
+|---------|-------------|-------------|
+| `iszero(eq(a,b))` | → `xor(a,b)` | ~3 gas |
+| `iszero(iszero(x))` | → `x` (boolean context) | 6 gas |
+| `add(x, 0)` | → `x` | 3 gas |
+| `mul(x, 1)` | → `x` | 5 gas |
+| `exp(x, 0)` | → `1` | ~50 gas |
+| `exp(x, 1)` | → `x` | ~50 gas |
+
+### 6. Yul Optimizer Levels
 
 | Level | Effect |
 |-------|--------|
@@ -208,9 +242,10 @@ yul2venom/
 ├── tools/                 # benchmark.py, evm_tracer.py
 ├── testing/               # test_framework.py, debug utils
 ├── configs/               # Contract configs
-│   ├── *.yul2venom.json   # Core (21 configs)
+│   ├── *.yul2venom.json   # Core (18 configs)
 │   ├── bench/             # Benchmark (15 configs)
-│   └── init/              # Init bytecode (10 configs)
+│   ├── init/              # Init bytecode (10 configs)
+│   └── repro/             # Reproduction test configs
 ├── foundry/               # Solidity contracts and tests
 │   ├── src/bench/         # 15 benchmark contracts
 │   ├── src/init/          # 10 init test contracts

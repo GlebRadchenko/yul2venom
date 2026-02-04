@@ -3,6 +3,7 @@
 #
 # Used by: ci.yml (PR only), nightly.yml
 # Requires: transpiled-bytecode artifact from transpile-test workflow
+# Compares: Yul2Venom output vs Solc default, via-ir modes
 
 name: Benchmark
 
@@ -65,14 +66,8 @@ jobs:
           else
             echo "⚠ Artifacts not found - running full pipeline"
             python3.11 testing/test_framework.py --prepare-all
-            # Use transpile_for_testing logic (same as --test-all but skip tests)
-            # This ensures correct bytecode types for each category
-            python3.11 -c "
-import sys
-sys.path.insert(0, 'testing')
-from test_framework import transpile_for_testing
-transpile_for_testing()
-"
+            python3.11 testing/test_framework.py --transpile-all
+            python3.11 testing/test_framework.py --init-all
           fi
 
       - name: Run Benchmarks

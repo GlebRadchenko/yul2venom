@@ -233,38 +233,27 @@ Multiple phi nodes at merge points:
 
 ---
 
-## Comparison: Native Vyper vs Yul2Venom
+## Comparison: Native Vyper vs Yul2Venom (Updated 2026-02-04)
 
-| Feature | Native Vyper | Yul2Venom |
-|---------|-------------|-------------|
-| Function organization | Single `__main_entry` | Separate `function external_fun_X` |
-| Selector dispatch | `djmp` with buckets | Linear `eq`/`jnz` chain |
-| Internal calls | Inlined | `invoke @func` |
-| Loop handling | Phi nodes in condition block | Memory-backed (0x300+) |
-| If-statement SSA | Phi nodes at merge | Memory-backed (0x400+) |
-| Immutables | `istore`/`offset @code_end` | Not fully supported |
-| Assertions | `assert` | `jnz` + `revert` |
+| Feature | Native Vyper | Yul2Venom | Status |
+|---------|-------------|-------------|--------|
+| Function organization | Single `__main_entry` | Separate functions | ⚠️ Different |
+| Selector dispatch | `djmp` with buckets | `djmp` with buckets | ✅ **IMPLEMENTED** |
+| Internal calls | Inlined | Inlined (DAG), invoke (recursive) | ✅ **IMPLEMENTED** |
+| Loop handling | Phi nodes in condition block | Phi nodes in condition block | ✅ **IMPLEMENTED** |
+| If-statement SSA | Phi nodes at merge | Phi nodes at merge | ✅ **IMPLEMENTED** |
+| Immutables | `istore`/`offset @code_end` | `codecopy` pattern | ✅ Working |
+| Assertions | `assert` | `jnz` + `revert` | ⚠️ Different pattern |
 
 ---
 
-## Recommendations for Yul2Venom
+## Remaining Optimizations (Low Priority)
 
-### High Priority
+These optimizations are documented in native Vyper but not yet implemented:
 
-1. **Use `assert` instruction** instead of manual `jnz`/`revert` patterns
-2. **Emit inlined internal functions** rather than `invoke` - matches native pattern
-3. **Implement `sha3_64`** for mapping access (more efficient than raw `sha3`)
-
-### Medium Priority
-
-4. Consider `djmp` for selector dispatch (better performance for many functions)
-5. Explore true phi nodes vs memory-backing for SSA (Vyper's `mem2var` pass handles this)
-
-### Low Priority (Native Compatibility)
-
-6. Merge all externals into single `__main_entry` function
-6. Merge all externals into single `__main_entry` function
-7. Add `data readonly` sections for constants
+1. **xor-based inequality** - Native uses `xor` for `!=` checks (~3 gas savings)
+2. **Constants as variables** - Native pre-assigns all literals (handled by backend passes)
+3. **Single function model** - Merge all externals into `__main_entry` (not needed)
 
 ### 12. Struct Array Handling (Native)
 

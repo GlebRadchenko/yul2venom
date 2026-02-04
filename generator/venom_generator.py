@@ -1,4 +1,5 @@
 import sys
+import hashlib
 
 try:
     from yul2venom.ir.context import IRContext
@@ -32,6 +33,9 @@ except ImportError:
 
 # Pre-compile translation table
 TRANS_TABLE = str.maketrans({'.': '_', ':': '_', '=': 'eq', '$': '_'})
+
+# Pre-computed constant for 2^256 - 1 (max uint256)
+MAX_UINT256 = 2**256 - 1
 
 class VenomIRBuilder:
     """
@@ -99,10 +103,6 @@ class VenomIRBuilder:
         # OPTIMIZATION PIPELINE: Modular optimization system
         self.optimizer = OptimizationPipeline()
         
-        # SHA3_64 OPTIMIZATION: Track recent mstore operations for pattern detection
-        # Pattern: mstore(0x00, key) + mstore(0x20, slot) + keccak256(0x00, 64) -> sha3_64 slot, key
-        self.recent_mstores = []  # List of (offset_operand, value_operand) tuples
-        
         # INIT CODE SUPPORT: Literal offsets for dataoffset() in init code
         # Maps object_name -> literal_offset (e.g. "Contract_deployed" -> 202)
         # When set, dataoffset returns literal instead of codesize - datasize
@@ -116,6 +116,17 @@ class VenomIRBuilder:
 
     def sanitize(self, name):
         return name.translate(TRANS_TABLE)
+
+    def _strict_intrinsic_error(self, msg: str):
+        """Handle intrinsic lookup failures based on config.safety.strict_intrinsics.
+        
+        In strict mode: Raises an exception to fail the transpilation.
+        In normal mode: Prints a warning to stderr.
+        """
+        if self.config and hasattr(self.config, 'safety') and self.config.safety.strict_intrinsics:
+            raise RuntimeError(f"STRICT MODE: {msg}")
+        else:
+            print(f"WARNING: {msg}", file=sys.stderr)
 
     def _flush_pending_fmp(self):
         """
@@ -408,7 +419,7 @@ class VenomIRBuilder:
                     val = int(hash_str[:8], 16)
                     # Emit Log - DISABLED for staticcall compliance
                     # self.current_bb.append_instruction("log1", IRLiteral(0), IRLiteral(0), IRLiteral(val))
-            except:
+            except ValueError:
                 pass
         
         # For halting functions, the stack still has args but we won't use PC param
@@ -417,9 +428,13 @@ class VenomIRBuilder:
         # Handle Arguments (param instruction)
         # Runtime Stack expected: [argN, ..., arg1, pc] (Top is pc)
         # StackModel fills from Bottom to Top.
-        # So we iterate f_def.args in REVERSE.
+        #
+        # IMPORTANT: Param order differs between halting and non-halting functions:
+        # - Halting: REVERSE order (deepest arg first) because PC is not captured
+        # - Non-halting: FORWARD order because PC is captured last (on top)
+        # This works because liveness analysis tracks stack positions correctly.
         
-        # Capture Arguments in reverse order
+        # Capture Arguments
         self.current_arg_vars = []
         
         if is_halting:
@@ -607,8 +622,10 @@ class VenomIRBuilder:
                             result_vals.append(new_var)
                             self.var_map[ret_name] = new_var
                         else:
-                            # Variables from source block - just use directly 
-                            # (they're still in scope since single path means linear flow)
+                            # Variables from source block - use directly without materialization.
+                            # SSA SAFETY: This is valid because single-path means linear CFG with
+                            # no branching, so variable dominance is preserved. The Venom backend
+                            # handles cross-block variable references via DUP at use sites.
                             result_vals.append(val)
                             self.var_map[ret_name] = val
                     else:
@@ -790,14 +807,14 @@ class VenomIRBuilder:
                 inst = IRInstruction("add", [val, IRLiteral(0)], [new_var])
                 block.insert_instruction(inst, len(block.instructions) - 1)
             else:
-                block.append_instruction("add", val, IRLiteral(0), outputs=[new_var])
+                block.append_instruction("add", val, IRLiteral(0), ret=new_var)
         else:
             # Literals: use assign (gets eliminated by AssignElimPass)
             if block.is_terminated:
                 inst = IRInstruction("assign", [val], [new_var])
                 block.insert_instruction(inst, len(block.instructions) - 1)
             else:
-                block.append_instruction("assign", val, outputs=[new_var])
+                block.append_instruction("assign", val, ret=new_var)
             
         return new_var
 
@@ -880,6 +897,9 @@ class VenomIRBuilder:
             # Simple value: let x := 5 or let x := expr
             if stmt.value:
                 val = self._visit_expr(stmt.value)
+                # Defensive: void intrinsics (mstore, log, etc.) return None
+                if val is None:
+                    val = IRLiteral(0)
             else:
                 val = IRLiteral(0)
             
@@ -1070,6 +1090,15 @@ class VenomIRBuilder:
             entry_var_map = self.var_map.copy()
             entry_bb = self.current_bb
             
+            # Materialize entry values BEFORE dispatch to ensure they're in scope
+            # for all case blocks (fixes nested switch SSA issues)
+            entry_materialized = {}
+            for v in vars_needing_phi:
+                if v in entry_var_map:
+                    val = entry_var_map[v]
+                    # Create a copy in entry_bb that will be available to all successors
+                    entry_materialized[v] = self._materialize_literal(val, entry_bb)
+            
             end_lbl = self.ctx.get_next_label("switch_end")
             end_bb = IRBasicBlock(end_lbl, self.current_fn)
             
@@ -1097,7 +1126,11 @@ class VenomIRBuilder:
             # DJMP O(1) DISPATCH with 2-layer collision handling
             # Layer 1: djmp to bucket handler based on selector mod n_buckets
             # Layer 2: within bucket, linear search for exact selector match
-            use_djmp = len(case_blocks) >= 4
+            # Threshold is configurable (default 4) - see config.optimization.djmp_threshold
+            djmp_threshold = 4  # Default
+            if self.config and hasattr(self.config, 'optimization'):
+                djmp_threshold = getattr(self.config.optimization, 'djmp_threshold', 4)
+            use_djmp = len(case_blocks) >= djmp_threshold
             
             if use_djmp:
                 # 2-LAYER DISPATCH: bucket jump + per-bucket collision resolution
@@ -1148,15 +1181,18 @@ class VenomIRBuilder:
                 code_offset = self.current_bb.append_instruction1("add", table_label, offset)
                 
                 # Copy from code section to memory (native Venom order: dest, src, size)
+                # Place 2-byte label at offset 30-31 so mload(0) puts it in low bits
                 memory_slot = IRLiteral(30)
                 copy_size = IRLiteral(2)
                 self.current_bb.append_instruction("codecopy", memory_slot, code_offset, copy_size)
                 
                 # Load destination address
-                # mload reads 32 bytes from the address, so for a 2-byte value at offset 30,
-                # we load from offset 0 (the 2 bytes at 30-31 will be in the lowest bits)
+                # mload reads 32 bytes from offset 0, our 2-byte label at 30-31 ends up in bits 0-15
+                # BULLETPROOF: Mask to 16 bits to ignore any garbage in memory 0-29
+                # This prevents memory collision if switch is used after other memory operations
                 load_offset = IRLiteral(0)
-                dest_addr = self.current_bb.append_instruction1("mload", load_offset)
+                raw_dest = self.current_bb.append_instruction1("mload", load_offset)
+                dest_addr = self.current_bb.append_instruction1("and", IRLiteral(0xFFFF), raw_dest)
                 
                 # Emit djmp to bucket handlers
                 self.current_bb.append_instruction("djmp", dest_addr, *djmp_labels)
@@ -1258,12 +1294,17 @@ class VenomIRBuilder:
             def process_exit(bb):
                 if not bb.is_terminated:
                     bb.append_instruction("jmp", end_lbl)
-                    # Collect phi values for this path
+                    # Collect phi values for this path - ALWAYS collect for ALL vars_needing_phi
+                    # to ensure proper SSA with phi nodes covering all predecessors
                     for v in vars_needing_phi:
-                        # Only add if the variable exists in the current var_map (was defined/assigned)
+                        # Use current value if modified, else use MATERIALIZED entry value
+                        # (not raw entry_var_map which may be out of scope in nested switches)
                         if v in self.var_map:
-                            # Capture block object for later materialization
-                            phi_inputs[v].append({'val': self.var_map[v], 'label': bb.label, 'block': bb})
+                            val = self.var_map[v]
+                        else:
+                            val = entry_materialized.get(v)
+                        if val is not None:
+                            phi_inputs[v].append({'val': val, 'label': bb.label, 'block': bb})
             
             # Visit Case Bodies
             for val, lbl, case in case_blocks:
@@ -1304,10 +1345,15 @@ class VenomIRBuilder:
                 inputs = phi_inputs[v]
                 if not inputs: continue
                 
-                # Single-input phi is redundant - just use the value directly
+                # Single-input phi is redundant - but we still need to materialize
+                # the value in the predecessor block to make it available in end_bb
                 if len(inputs) == 1:
-                    val = inputs[0]['val']
-                    self.var_map[v] = val
+                    item = inputs[0]
+                    val = item['val']
+                    pred_bb = item['block']
+                    # Materialize in predecessor so value is forwarded to end_bb via jmp
+                    val_reg = self._materialize_literal(val, pred_bb)
+                    self.var_map[v] = val_reg
                     continue
                 
                 # Flatten args for Phi instruction: label, val, label, val...
@@ -1413,9 +1459,10 @@ class VenomIRBuilder:
             self.current_fn.append_basic_block(loop_body_bb)
             self.current_bb = loop_body_bb
             
-            # Track continue statements to collect values for post-block phis
-            continue_sources = []  # List of (label, var_map_copy) for each continue
-            self.loop_stack.append((loop_start_bb.label, loop_end_bb.label, loop_post_bb.label, continue_sources, phi_results))
+            # Track continue and break statements to collect values for phi merging
+            continue_sources = []  # List of (label, var_map_copy, bb) for each continue
+            break_sources = []     # List of (label, var_map_copy, bb) for each break
+            self.loop_stack.append((loop_start_bb.label, loop_end_bb.label, loop_post_bb.label, continue_sources, phi_results, break_sources))
             
             self._visit_stmt(stmt.body) # Visit normally (updates var_map references)
             
@@ -1493,29 +1540,58 @@ class VenomIRBuilder:
             self.current_fn.append_basic_block(loop_end_bb)
             self.current_bb = loop_end_bb
             
-            # Scope Exit:
-            # Variables modified in loop retain their values from the "Exit" condition.
-            # Which values?
-            # 1. Start Block -> End (False condition).
-            # The values in Start block are the Phi results!
-            # Since Start dominates End, we MUST use the Phi results as the variable values
-            # for any code following the loop. The 'current' var_map reflects the state at 
-            # the end of 'post' or 'body', which is incorrect for the 'end' block.
+            # Scope Exit with phi merging for break paths:
+            # Normal exit (condition false) comes from loop_start with phi_results values.
+            # Break exits come from various points in the body with their own values.
+            # We need to merge all these paths via phis at loop_end.
             
-            for var_name in sorted_vars:
-                self.var_map[var_name] = phi_results[var_name]
+            if break_sources:
+                # Multiple paths to loop_end: condition-false exit + break paths
+                # Create phis to merge values from all paths
+                
+                # Normal exit source: condition was false, values are phi_results from loop_start
+                # The actual source block is loop_start_bb (where jnz jumps to end)
+                normal_exit_map = {v: phi_results[v] for v in sorted_vars}
+                
+                for var_name in sorted_vars:
+                    # Collect all sources for this variable
+                    all_sources = []
+                    
+                    # Add normal exit (from loop_start condition check)
+                    normal_val = normal_exit_map[var_name]
+                    normal_val_reg = self._materialize_literal(normal_val, loop_start_bb)
+                    all_sources.append((loop_start_bb.label, normal_val_reg))
+                    
+                    # Add each break source
+                    for brk_label, brk_map, brk_bb in break_sources:
+                        brk_val = brk_map.get(var_name, phi_results[var_name])
+                        brk_val_reg = self._materialize_literal(brk_val, brk_bb)
+                        all_sources.append((brk_label, brk_val_reg))
+                    
+                    # Build phi operands
+                    phi_operands = []
+                    for src_label, src_val in all_sources:
+                        phi_operands.extend([src_label, src_val])
+                    
+                    phi_res = self.current_bb.append_instruction("phi", *phi_operands)
+                    self.var_map[var_name] = phi_res
+            else:
+                # No breaks, single source: values from loop_start (phi_results)
+                for var_name in sorted_vars:
+                    self.var_map[var_name] = phi_results[var_name]
             
         elif stmt_type == 'YulBreak':
-
             if self.loop_stack:
-                _, end_label, _, _, _ = self.loop_stack[-1]
+                _, end_label, _, _, _, break_sources = self.loop_stack[-1]
+                # Record current var_map state for this break path (like continue does)
+                break_sources.append((self.current_bb.label, self.var_map.copy(), self.current_bb))
                 self.current_bb.append_instruction("jmp", end_label)
             else:
                 print("WARNING: break outside loop", file=sys.stderr)
             
         elif stmt_type == 'YulContinue':
             if self.loop_stack:
-                _, _, post_label, continue_sources, phi_results = self.loop_stack[-1]
+                _, _, post_label, continue_sources, phi_results, _ = self.loop_stack[-1]
                 # Record current var_map state for this continue path
                 continue_sources.append((self.current_bb.label, self.var_map.copy(), self.current_bb))
                 self.current_bb.append_instruction("jmp", post_label)
@@ -1668,8 +1744,9 @@ class VenomIRBuilder:
         # Convert iterator to list so we can use it multiple times
         assign_targets = list(assign_targets)
         
-        # Arguments for Venom invoke (FORWARD: Assembler pushes in order, Stack grows Bottom->Top)
-        reversed_args = list(arg_vals)
+        # Arguments for invoke - passed in forward order (NOT reversed)
+        # Backend builds stack with arg1 deepest, argN on top
+        invoke_args = list(arg_vals)
         
         # Handle return values (Strictly enforce function signature)
         f_def = self.functions_ast.get(func)
@@ -1701,7 +1778,7 @@ class VenomIRBuilder:
         if len(ret_vars) > 0:
             # Invoke with returns
             # Construct instruction manually
-            operands = [IRLabel(s_func)] + reversed_args
+            operands = [IRLabel(s_func)] + invoke_args
             invoke_inst = IRInstruction("invoke", operands, outputs=ret_vars)
             invoke_inst.parent = self.current_bb
             invoke_inst.annotation = f"call {s_func}"
@@ -1710,7 +1787,7 @@ class VenomIRBuilder:
             self.current_bb.instructions.append(invoke_inst)
         else:
             # No return values - void call
-            self.current_bb.append_instruction("invoke", IRLabel(s_func), *reversed_args)
+            self.current_bb.append_instruction("invoke", IRLabel(s_func), *invoke_args)
 
     def _handle_call_abi_expr(self, func, arg_vals):
         """
@@ -1718,17 +1795,16 @@ class VenomIRBuilder:
         Returns the result variable.
         """
         s_func = self.sanitize(func)
-        # VENOM FIX: Do NOT reverse args. invoke operands are [Arg1, Arg2].
-        # Backend builds stack [Arg1, Arg2] (Arg2 Top).
-        # Function expects [Arg1, Arg2] (Arg2 Top).
-        reversed_args = list(arg_vals)
+        # Arguments for invoke - passed in forward order (NOT reversed)
+        # Backend builds stack with arg1 deepest, argN on top
+        invoke_args = list(arg_vals)
         
         # Create result variable
         ret_var = self.current_fn.get_next_variable()
         ret_var.annotation = f"ret_{s_func}"
         
         # Invoke (assume 1 return for expression context)
-        self.current_bb.append_instruction("invoke", IRLabel(s_func), *reversed_args, ret=ret_var)
+        self.current_bb.append_instruction("invoke", IRLabel(s_func), *invoke_args, ret=ret_var)
         
         return ret_var
 
@@ -1761,7 +1837,7 @@ class VenomIRBuilder:
                      size_literal = IRLiteral(size)
                      return self.current_bb.append_instruction1("sub", code_size_var, size_literal)
                  else:
-                     print(f"WARNING: dataoffset({obj_name}) failed. Keys: data_map={list(self.data_map.keys())}, offset_map={list(self.offset_map.keys())}", file=sys.stderr)
+                     self._strict_intrinsic_error(f"dataoffset({obj_name}) failed. Keys: data_map={list(self.data_map.keys())}, offset_map={list(self.offset_map.keys())}")
             
             return IRLiteral(0)
         
@@ -1774,7 +1850,7 @@ class VenomIRBuilder:
                      size = len(self.data_map[obj_name])
                      return IRLiteral(size)
                  else:
-                     print(f"WARNING: datasize({obj_name}) failed. Keys: {list(self.data_map.keys())}", file=sys.stderr)
+                     self._strict_intrinsic_error(f"datasize({obj_name}) failed. Keys: {list(self.data_map.keys())}")
             
             return IRLiteral(0)
         
@@ -1818,7 +1894,7 @@ class VenomIRBuilder:
                 return IRLiteral(val)
             
             # If not found or invalid arg, fallback
-            print(f"WARNING: loadimmutable failed for key: {key}. Available: {list(self.ctx.immutables.keys())}", file=sys.stderr)
+            self._strict_intrinsic_error(f"loadimmutable failed for key: {key}. Available: {list(self.ctx.immutables.keys())}")
             return IRLiteral(0)
 
         if func == "linkersymbol":
@@ -1847,7 +1923,6 @@ class VenomIRBuilder:
                 
                 # Generate a deterministic placeholder address from library path
                 # Use keccak-like hash of the path to create unique placeholder
-                import hashlib
                 h = hashlib.sha256(lib_path.encode()).hexdigest()[:40]
                 placeholder = int("0x" + h, 16) & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
                 
@@ -1886,14 +1961,6 @@ class VenomIRBuilder:
         #
         # We use addresses starting at 0x1000 to avoid Venom's stack spill region (0x80-0x1000).
         #
-        
-        if func == "mload":
-             # NO OVERRIDE: Allow reading FMP from memory (0x40).
-             # We rely on memoryguard returning 0x1000 to set the safe initial FMP.
-             pass
-
-        
-
 
         if func == "invalid":
              return self.current_bb.append_instruction("invalid")
@@ -1917,21 +1984,7 @@ class VenomIRBuilder:
             self.current_bb.append_instruction(func, *args)
             return IRLiteral(0)
         
-        # MSTORE TRACKING for sha3_64 optimization
-        # Track recent mstores to detect keccak256(mstore(0, key), mstore(32, slot)) -> sha3_64
         if func == "mstore":
-            # Track this mstore for potential sha3_64 pattern
-            if len(args) >= 2:
-                offset, value = args[0], args[1]
-                # Only track mstores to scratch space (0x00-0x3F) used for mapping slots
-                if isinstance(offset, IRLiteral) and offset.value in (0, 32):
-                    self.recent_mstores.append((offset, value))
-                    # Keep only the last 4 mstores to bound memory usage
-                    if len(self.recent_mstores) > 4:
-                        self.recent_mstores.pop(0)
-                else:
-                    # Non-scratch mstore clears the tracking (pattern broken)
-                    self.recent_mstores.clear()
             self.current_bb.append_instruction("mstore", *args)
             return IRLiteral(0)
         
@@ -2002,8 +2055,8 @@ class VenomIRBuilder:
             b_is_zero = isinstance(b, IRLiteral) and b.value == 0
             a_is_one = isinstance(a, IRLiteral) and a.value == 1
             b_is_one = isinstance(b, IRLiteral) and b.value == 1
-            a_is_neg1 = isinstance(a, IRLiteral) and a.value == (2**256 - 1)
-            b_is_neg1 = isinstance(b, IRLiteral) and b.value == (2**256 - 1)
+            a_is_neg1 = isinstance(a, IRLiteral) and a.value == MAX_UINT256
+            b_is_neg1 = isinstance(b, IRLiteral) and b.value == MAX_UINT256
             
             # add(x, 0) = x, add(0, x) = x
             if op == "add":
@@ -2074,7 +2127,7 @@ class VenomIRBuilder:
                     return b
                 # or(x, -1) = -1
                 if a_is_neg1 or b_is_neg1:
-                    return IRLiteral(2**256 - 1)
+                    return IRLiteral(MAX_UINT256)
             
             # xor(x, 0) = x, xor(0, x) = x
             if op == "xor":
@@ -2085,10 +2138,6 @@ class VenomIRBuilder:
                 # xor(x, x) = 0
                 if isinstance(a, IRVariable) and isinstance(b, IRVariable) and a.name == b.name:
                     return IRLiteral(0)
-            
-            # div(x, 1) = x
-            if op == "div" and b_is_one:
-                return a
             
             # shr(0, x) = x (shift by 0)
             if op == "shr" and a_is_zero:

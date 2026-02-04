@@ -300,7 +300,7 @@ After transpilation:
 
 ## Test Status
 
-**344 tests passing ✅** (38 test suites)
+**346 tests passing ✅** (46 test suites)
 
 - 21 core contracts
 - 15 benchmark contracts  

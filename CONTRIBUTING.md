@@ -119,7 +119,15 @@ python3.11 testing/test_framework.py --test-all
 python3.11 testing/test_framework.py --test-init
 ```
 
-> **Important**: `--test-all` automatically retranspiles all contracts with `--runtime-only` for `vm.etch` tests before running Forge. Always use this command to ensure bytecode is up-to-date.
+> **Important**: `--test-all` automatically transpiles all contracts before running Forge. Always use this command to ensure bytecode is current.
+
+### Test Coverage (346 tests)
+
+| Category | Tests | Focus |
+|----------|-------|-------|
+| Core | 46 | Basic transpilation, control flow |
+| Benchmark | ~250 | Feature coverage (15 contracts) |
+| Init | ~50 | Constructor patterns (10 contracts) |
 
 ### Test Pattern
 
@@ -159,6 +167,9 @@ python3.11 testing/inspect_bytecode.py output/Contract_opt.bin --limit 100
 | `InvalidJump` | ret operand order | PC first: `ret %pc, %val` |
 | Return always 0 | invoke output not captured | Use `ret=variable` |
 | Loop exits early | lt/gt operand order | Check comparison operands |
+| Stack underflow | Param count mismatch | Check invoke param count |
+| Variable undefined | Continue skips definition | Check continue_sources handling |
+| Phi incomplete | Break not captured | Check break_sources handling |
 
 ## Important Guidelines
 

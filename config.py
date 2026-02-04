@@ -63,6 +63,13 @@ class YulOptimizerConfig:
 class OptimizationConfig:
     """Configuration for Venom IR optimization passes."""
     level: str = "yul-o2"  # none, O0, O2, O3, Os, native, debug, yul-o2
+    # DJMP threshold: minimum case count to use O(1) jump table dispatch.
+    # Trade-off analysis:
+    #   - DJMP overhead: codecopy + mload + djmp ≈ 20 gas setup + 8 gas/jump
+    #   - JNZ chain: ~9 gas per comparison (eq + jnz)
+    # Break-even point is ~3-4 cases. Default 4 is conservative.
+    # Lower = more aggressive O(1) dispatch, Higher = more linear search.
+    djmp_threshold: int = 4
 
 
 @dataclass
@@ -105,6 +112,17 @@ class BackendConfig:
 
 
 @dataclass
+class SafetyConfig:
+    """Configuration for transpiler safety checks.
+    
+    strict_intrinsics: If True, dataoffset/datasize/loadimmutable failures
+                       raise exceptions instead of returning 0 with a warning.
+                       Default is False for backward compatibility.
+    """
+    strict_intrinsics: bool = False
+
+
+@dataclass
 class PathsConfig:
     """Configuration for project paths (defaults from utils/constants.py)."""
     configs: str = DEFAULT_CONFIG_DIR
@@ -123,6 +141,7 @@ class TranspilerConfig:
     parser: ParserConfig = field(default_factory=ParserConfig)
     backend: BackendConfig = field(default_factory=BackendConfig)
     paths: PathsConfig = field(default_factory=PathsConfig)
+    safety: SafetyConfig = field(default_factory=SafetyConfig)
     
     @classmethod
     def from_dict(cls, data: dict) -> "TranspilerConfig":
@@ -148,6 +167,7 @@ class TranspilerConfig:
             d = data["optimization"]
             config.optimization = OptimizationConfig(
                 level=d.get("level", config.optimization.level),
+                djmp_threshold=d.get("djmp_threshold", config.optimization.djmp_threshold),
             )
         
         if "memory" in data:
@@ -196,6 +216,12 @@ class TranspilerConfig:
                 sol_dir=d.get("sol_dir", config.paths.sol_dir),
             )
         
+        if "safety" in data:
+            d = data["safety"]
+            config.safety = SafetyConfig(
+                strict_intrinsics=d.get("strict_intrinsics", config.safety.strict_intrinsics),
+            )
+        
         return config
 
 
@@ -212,7 +238,15 @@ DEFAULT_CONFIG_PATHS = [
 
 
 def find_config_file(start_dir: Optional[Path] = None) -> Optional[Path]:
-    """Search for config file in current and parent directories."""
+    """Search for config file in package dir, then current and parent directories."""
+    # Priority 1: Check yul2venom package directory (where this config.py lives)
+    package_dir = Path(__file__).parent
+    for name in DEFAULT_CONFIG_PATHS:
+        config_path = package_dir / name
+        if config_path.exists():
+            return config_path
+    
+    # Priority 2: Search from CWD upwards (for project-specific overrides)
     if start_dir is None:
         start_dir = Path.cwd()
     
