@@ -618,6 +618,27 @@ def cmd_prepare(args):
                 created_immutables[name]['order'] = order
                 print(f"    • {name}: ID {imm_id} (offset {offset}, order {order})")
     
+    # LIBRARY DETECTION: Scan for linkersymbol calls in Yul
+    # Pattern: linkersymbol("path/to/Contract.sol:LibraryName")
+    print()
+    print("  Analyzing external libraries from Yul output...")
+    
+    linker_pattern = re.compile(r'linkersymbol\s*\(\s*"([^"]+)"\s*\)')
+    library_refs = set()
+    
+    for match in linker_pattern.finditer(yul_content):
+        lib_path = match.group(1)
+        library_refs.add(lib_path)
+    
+    if library_refs:
+        print(f"    Found {len(library_refs)} external library reference(s):")
+        for lib in sorted(library_refs):
+            # Extract library name from path (e.g., "contracts/Lib.sol:MyLib" -> "MyLib")
+            lib_name = lib.split(':')[-1] if ':' in lib else lib.split('/')[-1]
+            print(f"    • {lib_name} ({lib})")
+    else:
+        print("    No external libraries detected")
+    
     # Build config - merge with existing
     # Use relative paths (relative to SCRIPT_DIR for portability)
     def make_relative(p, base_dir=SCRIPT_DIR):
@@ -638,7 +659,8 @@ def cmd_prepare(args):
         # (a newly created contract starts at nonce 1 for its first CREATE)
         "sidecar_nonce_start": 1,
         "constructor_args": {},
-        "auto_predicted": {}
+        "auto_predicted": {},
+        "library_addresses": {}
     }
     
     # Add constructor args - preserve existing values
@@ -674,6 +696,19 @@ def cmd_prepare(args):
         if "value" in existing_val:
             config["auto_predicted"][name]["value"] = existing_val["value"]
     
+    # Add library addresses - preserve existing values
+    # Libraries must be provided by user (cannot be auto-predicted)
+    existing_libs = existing_config.get("library_addresses", {})
+    for lib_path in library_refs:
+        # Extract short name for display
+        lib_name = lib_path.split(':')[-1] if ':' in lib_path else lib_path.split('/')[-1]
+        existing_val = existing_libs.get(lib_path, {})
+        config["library_addresses"][lib_path] = {
+            "name": lib_name,
+            "type": "address",
+            "value": existing_val.get("value", "")
+        }
+    
     # Write config
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
@@ -688,13 +723,21 @@ def cmd_prepare(args):
     print("│")
     
     if constructor_args:
-        print("│ ⚠ REQUIRED - Fill these values in config:")
+        print("│ ⚠ REQUIRED - Fill these constructor args:")
         for name, info in constructor_args.items():
             existing_val = existing_args.get(name, {}).get("value", "")
             status = "✓" if existing_val else "•"
             print(f"│   {status} {name}: {info['type']}" + (f" = {existing_val}" if existing_val else ""))
+        print("│")
     
-    print("│")
+    if library_refs:
+        print("│ ⚠ REQUIRED - Fill these library addresses:")
+        for lib_path in sorted(library_refs):
+            lib_name = lib_path.split(':')[-1] if ':' in lib_path else lib_path.split('/')[-1]
+            existing_val = existing_libs.get(lib_path, {}).get("value", "")
+            status = "✓" if existing_val else "•"
+            print(f"│   {status} {lib_name}" + (f" = {existing_val}" if existing_val else ""))
+        print("│")
     
     if created_immutables:
         print("│ ✓ AUTO-PREDICTED (computed from deployer+nonce):")
@@ -795,6 +838,27 @@ def cmd_transpile(args):
             print(f"  • {name}", file=sys.stderr)
         print(f"  Edit {config_path} and fill in values", file=sys.stderr)
         return 1
+    
+    # Validate library addresses (skip if empty - not all contracts use libraries)
+    library_addresses_config = config.get("library_addresses", {})
+    missing_libs = []
+    for lib_path, info in library_addresses_config.items():
+        if not info.get("value"):
+            lib_name = info.get("name", lib_path.split(':')[-1] if ':' in lib_path else lib_path)
+            missing_libs.append(lib_name)
+    
+    if missing_libs:
+        print("✗ Error: Missing library address values:", file=sys.stderr)
+        for name in missing_libs:
+            print(f"  • {name}", file=sys.stderr)
+        print(f"  Edit {config_path} and fill in library addresses", file=sys.stderr)
+        return 1
+    
+    # Build library_addresses map for context
+    library_addresses = {}
+    for lib_path, info in library_addresses_config.items():
+        if info.get("value"):
+            library_addresses[lib_path] = info["value"]
     
     # Predict addresses
     print("┌─────────────────────────────────────────────────────────")
@@ -1074,7 +1138,7 @@ def cmd_transpile(args):
             from generator.venom_generator import VenomIRBuilder
             
         builder = VenomIRBuilder()
-        ir_vnm = builder.build(obj, data_map=data_map, immutables=immutables, offset_map=offset_map)
+        ir_vnm = builder.build(obj, data_map=data_map, immutables=immutables, offset_map=offset_map, library_addresses=library_addresses)
         # Serialize to text and parse back into Vyper Venom Context
         # This bridges yul2venom.ir -> vyper.venom types
         
@@ -1099,6 +1163,11 @@ def cmd_transpile(args):
             # VENOM PATCH: Inject immutables from config
             ctx.immutables = immutables_map
             print(f"DEBUG: Injected {len(immutables_map)} immutables into context")
+            
+            # Inject library addresses if present
+            if library_addresses:
+                ctx.library_addresses = library_addresses
+                print(f"DEBUG: Injected {len(library_addresses)} library addresses into context")
 
 
         except Exception as e:

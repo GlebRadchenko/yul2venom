@@ -156,9 +156,10 @@ class VenomIRBuilder:
         # Solc generated "external_fun_" functions use EVM return() and are tail-called
         return f_def.name == "__main_entry" or f_def.name.startswith("external_fun_")
 
-    def build(self, yul_ast, data_map=None, immutables=None, offset_map=None):
+    def build(self, yul_ast, data_map=None, immutables=None, offset_map=None, library_addresses=None):
         self.data_map = data_map or {}
         self.ctx.immutables = immutables or {}
+        self.ctx.library_addresses = library_addresses or {}
         self.offset_map = offset_map or {}  # INIT CODE: literal offsets for dataoffset()
         
         # 1. Collect functions (Recursive)
