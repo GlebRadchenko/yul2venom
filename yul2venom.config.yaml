@@ -20,14 +20,14 @@
 
 inlining:
   # Functions with MORE than this many statements may be emitted instead of inlined
-  # Default: 1 (aggressive - emit almost everything with >1 statement)
-  stmt_threshold: 1
+  # 0 = emit all for bug debugging
+  stmt_threshold: 0
   
   # Functions called MORE than this many times may be emitted instead of inlined
-  # Default: 2 (emit if called 3+ times)
-  call_threshold: 2
+  # 0 = emit all for bug debugging
+  call_threshold: 0
   
-  # Set to false to inline everything (except recursive functions which always use invoke)
+  # Must be true for thresholds to be used
   enabled: true
 
 # =============================================================================

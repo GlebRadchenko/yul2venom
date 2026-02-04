@@ -119,6 +119,39 @@ def compute_create_address(deployer: str, nonce: int) -> str:
     return '0x' + addr_bytes.hex()
 
 
+def discover_sidecar_immutables(yul_code: str, name_to_value: dict) -> dict:
+    """Discover sidecar's immutable IDs and build ID→value mapping.
+    
+    Sidecars have DIFFERENT IDs than parent for SAME semantic names (weth, owner).
+    This function:
+    1. Extracts immutable names from @src comments in setimmutable patterns
+    2. Maps each sidecar ID to corresponding value via semantic name lookup
+    
+    Args:
+        yul_code: The sidecar's Yul source code
+        name_to_value: Dict mapping semantic names (weth, owner, etc.) to values
+        
+    Returns:
+        Dict mapping sidecar's immutable IDs to their values
+    """
+    # Pattern: setimmutable(_X, "ID", mload(/** @src ... "varname = ..." */ OFFSET))
+    setimm_with_src_pattern = re.compile(
+        r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*/\*\*\s*@src[^"]*"(\w+)\s*=\s*[^"]*"\s*\*/\s*\d+\s*\)\s*\)'
+    )
+    
+    sidecar_immutables = {}
+    
+    for match in setimm_with_src_pattern.finditer(yul_code):
+        imm_id = int(match.group(1))
+        var_name = match.group(2)  # Extract variable name from "varname = ..."
+        
+        if var_name in name_to_value:
+            sidecar_immutables[imm_id] = name_to_value[var_name]
+    
+    return sidecar_immutables
+
+
+
 def generate_init_stub(runtime_size: int) -> bytes:
     """
     Generate minimal init bytecode that deploys the runtime code.
@@ -528,53 +561,62 @@ def cmd_prepare(args):
     
     yul_content = raw_yul  # Use full solc output, includes all sub-objects
     
-    # Map memory offsets to immutable IDs from setimmutable(_, "ID", mload(offset))
-    setimm_pattern = re.compile(r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*(\d+)\s*\)\s*\)')
+    # Extract immutable names from @src comments in setimmutable patterns
+    # Pattern: setimmutable(_X, "ID", mload(/** @src ... "varname = ..." */ OFFSET))
+    setimm_with_src_pattern = re.compile(
+        r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*/\*\*\s*@src[^"]*"(\w+)\s*=\s*[^"]*"\s*\*/\s*(\d+)\s*\)\s*\)'
+    )
+    
+    # Also handle case without @src comment (optimized Yul)
+    setimm_no_src_pattern = re.compile(
+        r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*(\d+)\s*\)\s*\)'
+    )
+    
+    # Build offset_to_id and offset_to_name from Yul with @src comments
     offset_to_id = {}
-    for match in setimm_pattern.finditer(yul_content):
+    offset_to_name = {}
+    
+    for match in setimm_with_src_pattern.finditer(yul_content):
         imm_id = match.group(1)
-        offset = int(match.group(2))
+        var_name = match.group(2)  # Extract variable name from "varname = ..."
+        offset = int(match.group(3))
         if offset not in offset_to_id:
             offset_to_id[offset] = imm_id
+            offset_to_name[offset] = var_name
     
-    # Define standard memory layout for StorageLayout immutables
-    # This is the order they appear in the sidecar BootPath constructor
-    offset_to_name = {
-        128: 'weth',
-        160: 'curvePath',  # or first created immutable
-        192: 'kyberswapPath',
-        224: 'erc4626Path',
-        256: 'dodoPath',
-        288: 'aaveV3Path',
-        320: 'balancerPath',
-        352: 'uniswapPath',
-        384: 'owner'
-    }
+    # Fallback: if no @src comments (optimized Yul), use simple pattern
+    if not offset_to_id:
+        for match in setimm_no_src_pattern.finditer(yul_content):
+            imm_id = match.group(1)
+            offset = int(match.group(2))
+            if offset not in offset_to_id:
+                offset_to_id[offset] = imm_id
     
-    # Alternative: Infer name mappings from analysis if offset mapping doesn't work
-    # The key insight is that offsets are stable based on declaration order
-    # Constructor args: weth (offset 128), then owner (offset 384 - last)
-    # Created immutables: in order of creation, starting offset 160
+    # Build name_to_order based on sorted offsets
+    # This maps each immutable name to its position in declaration order
+    sorted_offsets = sorted(offset_to_name.keys())
+    name_to_order = {}
+    for order, offset in enumerate(sorted_offsets):
+        name = offset_to_name[offset]
+        name_to_order[name] = order
     
-    # Update constructor_args and created_immutables with correct IDs from Yul
+    # Update constructor_args and created_immutables with IDs and ORDER from Yul
     if offset_to_id:
         print(f"    Found {len(offset_to_id)} immutables in Yul")
         
-        # Map constructor args by known positions
-        if 128 in offset_to_id and 'weth' in constructor_args:
-            constructor_args['weth']['id'] = offset_to_id[128]
-            print(f"    • weth: ID {offset_to_id[128]} (offset 128)")
-        if 384 in offset_to_id and 'owner' in constructor_args:
-            constructor_args['owner']['id'] = offset_to_id[384]
-            print(f"    • owner: ID {offset_to_id[384]} (offset 384)")
-        
-        # Map created immutables in order
-        created_offsets = [160, 192, 224, 256, 288, 320, 352]
-        created_names = list(created_immutables.keys())
-        for i, name in enumerate(created_names):
-            if i < len(created_offsets) and created_offsets[i] in offset_to_id:
-                created_immutables[name]['id'] = offset_to_id[created_offsets[i]]
-                print(f"    • {name}: ID {offset_to_id[created_offsets[i]]} (offset {created_offsets[i]})")
+        # Map by discovered names from @src comments
+        for offset, name in offset_to_name.items():
+            imm_id = offset_to_id[offset]
+            order = name_to_order.get(name, 999)
+            
+            if name in constructor_args:
+                constructor_args[name]['id'] = imm_id
+                constructor_args[name]['order'] = order
+                print(f"    • {name}: ID {imm_id} (offset {offset}, order {order})")
+            elif name in created_immutables:
+                created_immutables[name]['id'] = imm_id
+                created_immutables[name]['order'] = order
+                print(f"    • {name}: ID {imm_id} (offset {offset}, order {order})")
     
     # Build config - merge with existing
     # Use relative paths (relative to SCRIPT_DIR for portability)
@@ -606,6 +648,9 @@ def cmd_prepare(args):
             "type": info['type'],
             "value": existing_args.get(name, {}).get("value", "")
         }
+        # Include order field - REQUIRED for correct immutable mapping
+        if 'order' in info:
+            config["constructor_args"][name]["order"] = info['order']
         # Optionally include ID for documentation (not used by transpiler)
         if info.get('id'):
             config["constructor_args"][name]["id"] = info['id']
@@ -618,6 +663,9 @@ def cmd_prepare(args):
         config["auto_predicted"][name] = {
             "type": info['type']
         }
+        # Include order field - REQUIRED for correct immutable mapping
+        if 'order' in info:
+            config["auto_predicted"][name]["order"] = info['order']
         # Optionally include ID for documentation
         if info.get('id'):
             config["auto_predicted"][name]["id"] = info['id']
@@ -829,59 +877,107 @@ def cmd_transpile(args):
             if imm_id not in offset_to_ids[offset]:
                 offset_to_ids[offset].append(imm_id)
         
-        # AUTOMATIC MAPPING: Match offsets to config names by position
-        # 1. Get sorted offsets from Yul (ascending order = declaration order)
-        # 2. Get sorted config names by 'order' field (for predictable matching)
-        # 3. Match positionally
+        # DIRECT ID MAPPING: Use 'id' field from config if present
+        # This is more reliable than positional matching since solc IDs are stable per compile
+        # Fallback to positional matching only if 'id' fields are missing
         
-        # Collect all config names with their values and order
-        config_immutables = []  # list of (name, value, order)
+        # Build immutables_map: ID -> value
+        immutables_map = {}
+        print("│")
+        print("│ Immutable ID Discovery:")
         
+        # First pass: Direct ID mapping from config 'id' field
+        direct_mapped = set()
         for name, info in constructor_args.items():
             value = info.get('value', '')
-            order = info.get('order', 999)  # default high order for unspecified
-            if isinstance(value, str) and value.startswith("0x"):
-                config_immutables.append((name, int(value, 16), order))
-            elif value:
-                config_immutables.append((name, int(value), order))
+            config_id = info.get('id')
+            if config_id and value:
+                if isinstance(value, str) and value.startswith("0x"):
+                    val = int(value, 16)
+                else:
+                    val = int(value)
+                # Config ID is string, convert to int for immutables_map
+                imm_id = int(config_id)
+                immutables_map[imm_id] = val
+                direct_mapped.add(name)
+                print(f"│   • {name} (id {config_id}): = {hex(val)}")
         
         for name, info in auto_predicted.items():
             if name.startswith('_'):  # Skip comment fields
                 continue
             value = info.get('predicted_value', info.get('value', ''))
-            order = info.get('order', 999)
-            if isinstance(value, str) and value.startswith("0x"):
-                config_immutables.append((name, int(value, 16), order))
-            elif value:
-                config_immutables.append((name, int(value), order))
+            config_id = info.get('id')
+            if config_id and value:
+                if isinstance(value, str) and value.startswith("0x"):
+                    val = int(value, 16)
+                else:
+                    val = int(value)
+                imm_id = int(config_id)
+                immutables_map[imm_id] = val
+                direct_mapped.add(name)
+                print(f"│   • {name} (id {config_id}): = {hex(val)}")
         
-        # Sort by order field (stable for same order - maintains insertion order)
-        config_immutables.sort(key=lambda x: x[2])
-        
-        # Get sorted offsets from Yul
-        sorted_offsets = sorted(offset_to_ids.keys())
-        
-        # Build immutables_map: ID -> value
-        immutables_map = {}
-        print("│")
-        print("│ Immutable ID Discovery (from Yul):")
-        
-        for i, offset in enumerate(sorted_offsets):
-            ids = offset_to_ids[offset]
-            if i < len(config_immutables):
-                name, value, order = config_immutables[i]
-                for imm_id in ids:
+        # Second pass: Positional fallback for entries without 'id' field
+        # Collect unmapped config entries and unmapped Yul IDs
+        if offset_to_ids:
+            yul_ids_used = set(immutables_map.keys())
+            unmapped_offsets = []
+            for offset in sorted(offset_to_ids.keys()):
+                for imm_id in offset_to_ids[offset]:
+                    if imm_id not in yul_ids_used:
+                        unmapped_offsets.append((offset, imm_id))
+            
+            # Collect config entries without 'id' field
+            unmapped_configs = []
+            for name, info in constructor_args.items():
+                if name not in direct_mapped and info.get('value'):
+                    value = info.get('value', '')
+                    order = info.get('order', 999)
+                    if isinstance(value, str) and value.startswith("0x"):
+                        unmapped_configs.append((name, int(value, 16), order))
+                    else:
+                        unmapped_configs.append((name, int(value), order))
+            
+            for name, info in auto_predicted.items():
+                if name.startswith('_') or name in direct_mapped:
+                    continue
+                value = info.get('predicted_value', info.get('value', ''))
+                order = info.get('order', 999)
+                if value:
+                    if isinstance(value, str) and value.startswith("0x"):
+                        unmapped_configs.append((name, int(value, 16), order))
+                    else:
+                        unmapped_configs.append((name, int(value), order))
+            
+            # Sort unmapped configs by order for positional matching
+            unmapped_configs.sort(key=lambda x: x[2])
+            
+            # Match positionally
+            for i, (offset, imm_id) in enumerate(unmapped_offsets):
+                if i < len(unmapped_configs):
+                    name, value, order = unmapped_configs[i]
                     immutables_map[imm_id] = value
-                print(f"│   • {name} (offset {offset}, order {order}): IDs {ids} = {hex(value)}")
-            else:
-                print(f"│   ⚠ Offset {offset}: IDs {ids} - NO MATCHING CONFIG (index {i})")
-        
-        # Report any config values that weren't mapped
-        if len(config_immutables) > len(sorted_offsets):
-            unmapped = [name for name, _, _ in config_immutables[len(sorted_offsets):]]
-            print(f"│   ⚠ Config values not found in Yul: {unmapped}")
+                    print(f"│   • {name} (offset {offset}, order {order}): ID {imm_id} = {hex(value)} [positional]")
         
         print(f"│ Total: {len(immutables_map)} immutable IDs mapped")
+        
+        # Build name_to_value for sidecar immutable resolution
+        # Sidecars have DIFFERENT IDs but SAME semantic names (weth, owner, etc.)
+        name_to_value = {}
+        for name, info in constructor_args.items():
+            value = info.get('value', '')
+            if isinstance(value, str) and value.startswith("0x"):
+                name_to_value[name] = int(value, 16)
+            elif value:
+                name_to_value[name] = int(value)
+        for name, info in auto_predicted.items():
+            if name.startswith('_'):
+                continue
+            value = info.get('predicted_value', info.get('value', ''))
+            if isinstance(value, str) and value.startswith("0x"):
+                name_to_value[name] = int(value, 16)
+            elif value:
+                name_to_value[name] = int(value)
             
         opt_config = config.copy()
         
@@ -1258,8 +1354,19 @@ def cmd_transpile(args):
         bytecode, _ = generate_bytecode(asm)
         return bytecode
 
-    # Step 2: Compile Sub-Objects (Runtime Code)
+    # Step 2: Compile Sub-Objects (Runtime Code + Nested Sidecars)
     data_map = {}
+    
+    # NESTED SUB-OBJECTS SUPPORT: Recursively collect ALL sub-objects including sidecars
+    def collect_all_subobjects(obj, depth=0):
+        """Recursively collect all sub-objects with their depth level."""
+        result = []
+        for sub in obj.sub_objects:
+            clean_name = sub.name.strip('"')
+            result.append((sub, clean_name, depth))
+            # Recursively collect nested sub-objects (e.g., sidecars inside _deployed)
+            result.extend(collect_all_subobjects(sub, depth + 1))
+        return result
     
     # Determine output path immediately so it can be used for .vnm generation
     if not output_path:
@@ -1268,14 +1375,21 @@ def cmd_transpile(args):
         # If yul_path is same as output_path (e.g. if input was .bin?), ensure we don't overwrite source if we can avoid it, 
         # but here we expect .yul input.
     
-    # helper to transpile sub-objects (runtime code)
+    # Collect ALL sub-objects recursively (runtime + sidecars)
+    all_subobjects = collect_all_subobjects(top_obj)
     runtime_bytecode = None
-    if top_obj.sub_objects:
-        print(f"Found {len(top_obj.sub_objects)} nested objects. Compiling runtime code first...")
-        for sub in top_obj.sub_objects:
-            # Handle quoted names e.g. "Contract_deployed"
-            clean_name = sub.name.strip('"')
-            print(f"  • Compiling sub-object: {clean_name}")
+    sidecar_bytecodes = []  # List of (name, bytecode) for sidecars
+    
+    if all_subobjects:
+        print(f"Found {len(all_subobjects)} sub-objects (including nested sidecars). Compiling...")
+        
+        # CRITICAL: Process deepest objects FIRST so their bytecode is available for parents
+        # Sort by depth descending (deepest first), then by name to ensure _deployed comes before parent
+        sorted_subobjects = sorted(all_subobjects, key=lambda x: (-x[2], x[1]))
+        
+        for sub, clean_name, depth in sorted_subobjects:
+            indent = "  " * (depth + 1)
+            print(f"{indent}• Compiling sub-object: {clean_name} (depth {depth})")
             
             try:
                 # Determine IR Dump Path
@@ -1285,19 +1399,93 @@ def cmd_transpile(args):
                 elif args.dump_ir:
                     ir_path = output_path
                 
-                sub_bytecode = transpile_object(sub, vnm_output_path=ir_path, immutables=immutables_map)
-                data_map[clean_name] = sub_bytecode
-                print(f"    ✓ Success ({len(sub_bytecode)} bytes)")
+                # SIDECAR IMMUTABLE RESOLUTION: Discover sidecar's own IDs
+                # Sidecars have DIFFERENT IDs but SAME semantic names (weth, owner)
+                # Use original (non-optimized) Yul to find @src comments with variable names
+                sidecar_immutables = discover_sidecar_immutables(raw_yul, name_to_value)
                 
-                # Save runtime bytecode for testing even if Init Code fails
-                if "_deployed" in clean_name:
+                # Merge: sidecar-specific IDs take precedence, fallback to parent's
+                merged_immutables = immutables_map.copy()
+                merged_immutables.update(sidecar_immutables)
+                
+                if sidecar_immutables:
+                    print(f"{indent}    [Sidecar] Discovered {len(sidecar_immutables)} immutable IDs")
+                
+                # For sidecar INIT objects, we need TWO-PASS approach
+                # because the init code calls datasize("SidecarName") which is init + runtime
+                # AND needs literal offset for dataoffset("SidecarName_deployed")
+                if "_deployed" not in clean_name:
+                    sidecar_runtime_name = f"{clean_name}_deployed"
+                    if sidecar_runtime_name in data_map:
+                        sidecar_runtime = data_map[sidecar_runtime_name]
+                        runtime_size = len(sidecar_runtime)
+                        
+                        # PASS 1: Estimate with placeholder (runtime_size + typical init overhead)
+                        # Sidecar init is typically small (~100-200 bytes)
+                        estimated_init_size = 200  # Conservative estimate
+                        estimated_total = estimated_init_size + runtime_size
+                        data_map[clean_name] = bytes(estimated_total)
+                        
+                        # Create offset_map for sidecar transpilation
+                        # Layout: [sidecar_init][sidecar_runtime]
+                        # dataoffset("X_deployed") = init_size (where runtime starts)
+                        sidecar_offset_map = {
+                            sidecar_runtime_name: estimated_init_size
+                        }
+                        
+                        sub_bytecode_p1 = transpile_object(sub, data_map=data_map, vnm_output_path=None, 
+                                                           immutables=merged_immutables,
+                                                           offset_map=sidecar_offset_map)
+                        init_size = len(sub_bytecode_p1)
+                        
+                        # PASS 2: Re-transpile with actual init + runtime size
+                        actual_size = init_size + runtime_size
+                        data_map[clean_name] = bytes(actual_size)
+                        sidecar_offset_map[sidecar_runtime_name] = init_size
+                        
+                        sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, 
+                                                        immutables=merged_immutables,
+                                                        offset_map=sidecar_offset_map)
+                        
+                        # Convergence check
+                        if len(sub_bytecode) != init_size:
+                            # One more pass for convergence
+                            init_size = len(sub_bytecode)
+                            actual_size = init_size + runtime_size
+                            data_map[clean_name] = bytes(actual_size)
+                            sidecar_offset_map[sidecar_runtime_name] = init_size
+                            sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, 
+                                                            immutables=merged_immutables,
+                                                            offset_map=sidecar_offset_map)
+                        
+                        # Full sidecar = init + runtime
+                        full_sidecar = sub_bytecode + sidecar_runtime
+                        sidecar_bytecodes.append((clean_name, full_sidecar))
+                        data_map[clean_name] = full_sidecar
+                        print(f"{indent}    ✓ Success ({len(sub_bytecode)} init + {runtime_size} runtime = {len(full_sidecar)} bytes)")
+                        continue
+                    else:
+                        # No runtime found, transpile as-is
+                        sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, immutables=merged_immutables)
+                        data_map[clean_name] = sub_bytecode
+                        sidecar_bytecodes.append((clean_name, sub_bytecode))
+                        print(f"{indent}    ✓ Success ({len(sub_bytecode)} bytes)")
+                        continue
+                
+                # For _deployed objects, just transpile normally
+                sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, immutables=merged_immutables)
+                data_map[clean_name] = sub_bytecode
+                print(f"{indent}    ✓ Success ({len(sub_bytecode)} bytes)")
+                
+                # Handle main contract runtime (depth 0)
+                if "_deployed" in clean_name and depth == 0:
                     runtime_bytecode = sub_bytecode
+                    
             except Exception as e:
                 import traceback
                 traceback.print_exc()
-                print(f"    ✗ Failed: {e}", file=sys.stderr)
-                # import traceback; traceback.print_exc()
-                return 1
+                print(f"{indent}    ✗ Failed: {e}", file=sys.stderr)
+
 
     # Step 3: Generate Init Code
     with_init = getattr(args, 'with_init', False)
@@ -1340,21 +1528,35 @@ def cmd_transpile(args):
                 # so that: codesize() - datasize("Outer") = constructor_args_size
                 print(f"    Pass 2: Finalizing with correct datasize...")
                 
-                # Create a fake bytecode entry of the correct total size
-                # datasize() only needs len(), not actual content
-                total_program_size = init_size_estimate + runtime_size
+                # Calculate sidecar total size FIRST since we need it for datasize("OuterObj")
+                sidecar_total_size = sum(len(bc) for _, bc in sidecar_bytecodes)
+                
+                # Total program size includes: init + runtime + all sidecars
+                # This is what datasize("OuterObj") should return for constructor args calculation
+                total_program_size = init_size_estimate + runtime_size + sidecar_total_size
                 data_map_pass2 = data_map.copy()
                 data_map_pass2[outer_obj_name] = bytes(total_program_size)  # Fake entry with correct size
                 
-                # CRITICAL FIX: Build offset_map for dataoffset("runtime") resolution
-                # Runtime is at offset = init_size (NOT at codesize - runtime_size)
-                # Bytecode layout: [init][runtime][constructor_args]
+                # CRITICAL FIX: Build offset_map for dataoffset() resolution
+                # Bytecode layout: [init][runtime][sidecar_1][sidecar_2]...[constructor_args]
+                # Runtime is at offset = init_size
+                # Sidecars are at offset = init_size + runtime_size + cumulative_sidecar_sizes
                 offset_map = {}
+                
+                # Runtime object starts at init code offset
                 for obj_name in data_map.keys():
                     if "_deployed" in obj_name:
-                        # Runtime object starts at init code offset
                         offset_map[obj_name] = init_size_estimate
-                        print(f"        dataoffset({obj_name}) = {init_size_estimate} (literal)")
+                        print(f"        dataoffset({obj_name}) = {init_size_estimate} (runtime)")
+                
+                # Sidecar offsets: init_size + runtime_size + cumulative offsets
+                sidecar_offset = init_size_estimate + runtime_size
+                for sidecar_name, sidecar_bc in sidecar_bytecodes:
+                    offset_map[sidecar_name] = sidecar_offset
+                    print(f"        dataoffset({sidecar_name}) = {sidecar_offset} (sidecar, {len(sidecar_bc)} bytes)")
+                    sidecar_offset += len(sidecar_bc)
+                
+                print(f"        DEBUG: offset_map before first pass = {list(offset_map.keys())}")
                 
                 final_bytecode = transpile_object(top_obj, data_map=data_map_pass2, 
                                                    vnm_output_path=init_ir_path, 
@@ -1369,11 +1571,18 @@ def cmd_transpile(args):
                         break  # Converged
                     print(f"        Size changed ({init_size_estimate} -> {len(final_bytecode)}), re-converging...")
                     init_size_estimate = len(final_bytecode)
-                    total_program_size = init_size_estimate + runtime_size
+                    total_program_size = init_size_estimate + runtime_size + sidecar_total_size
                     data_map_pass2[outer_obj_name] = bytes(total_program_size)
                     # Update offset_map with new init size
-                    for obj_name in offset_map:
-                        offset_map[obj_name] = init_size_estimate
+                    # Runtime offset
+                    for obj_name in list(offset_map.keys()):
+                        if "_deployed" in obj_name:
+                            offset_map[obj_name] = init_size_estimate
+                    # Sidecar offsets: recalculate based on new init size
+                    sidecar_offset = init_size_estimate + runtime_size
+                    for sidecar_name, sidecar_bc in sidecar_bytecodes:
+                        offset_map[sidecar_name] = sidecar_offset
+                        sidecar_offset += len(sidecar_bc)
                     final_bytecode = transpile_object(top_obj, data_map=data_map_pass2,
                                                        vnm_output_path=init_ir_path,
                                                        immutables=immutables_map,
@@ -1440,6 +1649,14 @@ def cmd_transpile(args):
             
             # Append runtime to final bytecode (Init Code + Runtime)
             final_bytecode += runtime_bytecode
+            
+            # NESTED SUB-OBJECTS: Append sidecar bytecodes after runtime
+            # Layout: [init][runtime][sidecar_1][sidecar_2]...
+            if sidecar_bytecodes:
+                print(f"│ Sidecars: {len(sidecar_bytecodes)} embedded")
+                for sidecar_name, sidecar_bc in sidecar_bytecodes:
+                    final_bytecode += sidecar_bc
+                    print(f"│   • {sidecar_name}: {len(sidecar_bc)} bytes")
         
         # Write final bytecode (binary)
         with open(output_path, "wb") as f:

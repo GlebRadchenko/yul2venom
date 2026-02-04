@@ -41,16 +41,19 @@
     "flag1": {
       "type": "bool",
       "value": "1",
+      "order": 0,
       "id": "16"
     },
     "flag2": {
       "type": "bool",
       "value": "0",
+      "order": 1,
       "id": "18"
     },
     "hash": {
       "type": "bytes32",
       "value": "0x9c22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658",
+      "order": 2,
       "id": "20"
     }
   },

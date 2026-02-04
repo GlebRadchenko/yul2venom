@@ -65,7 +65,14 @@ jobs:
           else
             echo "⚠ Artifacts not found - running full pipeline"
             python3.11 testing/test_framework.py --prepare-all
-            python3.11 testing/test_framework.py --transpile-all
+            # Use transpile_for_testing logic (same as --test-all but skip tests)
+            # This ensures correct bytecode types for each category
+            python3.11 -c "
+import sys
+sys.path.insert(0, 'testing')
+from test_framework import transpile_for_testing
+transpile_for_testing()
+"
           fi
 
       - name: Run Benchmarks

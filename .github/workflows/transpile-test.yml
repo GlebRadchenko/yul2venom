@@ -3,6 +3,11 @@
 #
 # Used by: ci.yml, nightly.yml
 # Tests: Runs ALL tests (bench, init, repro, core)
+# Bytecode Types: Uses transpile_for_testing() for smart per-category selection:
+#   - core/  → default (both _opt.bin and _opt_runtime.bin)
+#   - bench/ → runtime only
+#   - repro/ → runtime only  
+#   - init/  → full init code
 # Outputs: test results + transpiled bytecode artifacts
 
 name: Transpile and Test
@@ -57,23 +62,24 @@ jobs:
       - name: Prepare contracts (Solidity → Yul)
         run: python3.11 testing/test_framework.py --prepare-all
 
-      - name: Transpile contracts (Yul → Venom → Bytecode)
-        run: python3.11 testing/test_framework.py --transpile-all
-
-      - name: Run Forge tests
+      - name: Transpile and Test (Yul → Venom → Bytecode → Forge)
         id: test
-        working-directory: foundry
-        # Runs ALL tests (bench, init, repro, core)
-        # Gas comparison is done via benchmark workflow
+        # Uses --test-all which:
+        # 1. Transpiles each category with correct bytecode type:
+        #    - core/   → default (both _opt.bin and _opt_runtime.bin)
+        #    - bench/  → runtime only (_opt_runtime.bin)
+        #    - repro/  → runtime only (_opt_runtime.bin)
+        #    - init/   → init + runtime (_opt.bin with full init code)
+        # 2. Runs all Forge tests
         run: |
           set +e
-          forge test -v 2>&1 | tee ../test-output.txt
+          python3.11 testing/test_framework.py --test-all 2>&1 | tee test-output.txt
           TEST_EXIT=$?
           set -e
 
           # Parse results
-          if grep -qE '[0-9]+ tests passed' ../test-output.txt; then
-            COUNT=$(grep -oE '[0-9]+ tests passed' ../test-output.txt | grep -oE '^[0-9]+')
+          if grep -qE '[0-9]+ tests passed' test-output.txt; then
+            COUNT=$(grep -oE '[0-9]+ tests passed' test-output.txt | grep -oE '^[0-9]+')
             echo "count=${COUNT}" >> $GITHUB_OUTPUT
           else
             echo "count=0" >> $GITHUB_OUTPUT

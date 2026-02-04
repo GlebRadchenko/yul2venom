@@ -2,21 +2,33 @@
 """
 Yul2Venom Test Framework - Comprehensive transpilation testing and analysis.
 
-Usage:
+USAGE:
+    python3 test_framework.py --test-all          # Full dry run: transpile + test all
     python3 test_framework.py --prepare-all       # Prepare (compile Solidity to Yul)
-    python3 test_framework.py --transpile-all    # Transpile all contracts
-    python3 test_framework.py --test-all         # Run all Forge tests
-    python3 test_framework.py --analyze <vnm>    # Analyze VNM file
-    python3 test_framework.py --compare <a> <b>  # Compare two VNM files
-    python3 test_framework.py --full             # Full pipeline test
+    python3 test_framework.py --transpile-all     # Transpile all contracts
+    python3 test_framework.py --analyze <vnm>     # Analyze VNM file
 
-This framework provides:
-1. Batch preparation (Solidity -> Yul)
-2. Batch transpilation (Yul -> Bytecode) with status tracking
-3. Automated Forge test execution for core and bench tests
-4. VNM IR analysis (phi nodes, memory ops, loops)
-5. Bytecode comparison tools
-6. Regression detection
+CONTRACT CATEGORIES:
+    Each category has specific bytecode requirements for its test pattern:
+
+    ┌─────────────┬─────────────────────┬──────────────────────────────────┐
+    │ Category    │ Bytecode Type       │ Test Pattern                     │
+    ├─────────────┼─────────────────────┼──────────────────────────────────┤
+    │ core/       │ runtime only        │ vm.etch (direct code injection)  │
+    │ bench/      │ runtime only        │ vm.etch (direct code injection)  │
+    │ repro/      │ runtime only        │ vm.etch (direct code injection)  │
+    │ init/       │ init + runtime      │ CREATE opcode (deployment)       │
+    └─────────────┴─────────────────────┴──────────────────────────────────┘
+
+    - Runtime only: Pure runtime bytecode for vm.etch tests
+    - Init + runtime: Full init code that decodes constructor args at deploy time
+
+FEATURES:
+    1. Batch preparation (Solidity -> Yul)
+    2. Smart transpilation (knows bytecode type per category)
+    3. Automated Forge test execution
+    4. VNM IR analysis (phi nodes, memory ops, loops)
+    5. Bytecode comparison tools
 """
 
 import subprocess
@@ -30,6 +42,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+from enum import Enum
 
 # Directory constants
 SCRIPT_DIR = Path(__file__).parent.absolute()
@@ -50,6 +63,12 @@ FOUNDRY_SRC_REPRO = FOUNDRY_DIR / "src" / "repro"
 PREPARE_TIMEOUT = 60
 TRANSPILE_TIMEOUT = 120
 FORGE_TEST_TIMEOUT = 300
+
+
+class BytecodeType(Enum):
+    """Bytecode output type for transpilation."""
+    RUNTIME_ONLY = "runtime"   # Pure runtime for vm.etch tests
+    WITH_INIT = "init"         # Full init+runtime for CREATE deployment
 
 
 @dataclass
@@ -98,6 +117,30 @@ class VenomAnalysis:
         }
 
 
+def get_bytecode_type(config_path: str) -> BytecodeType:
+    """Determine the required bytecode type based on config directory.
+    
+    - configs/init/* -> WITH_INIT (needs full init code for CREATE deployment)
+    - configs/* (core, bench, repro) -> RUNTIME_ONLY (for vm.etch tests)
+    """
+    path = Path(config_path)
+    if "init" in path.parts:
+        return BytecodeType.WITH_INIT
+    return BytecodeType.RUNTIME_ONLY
+
+
+def get_category(config_path: str) -> str:
+    """Get the category name for a config (core, bench, init, repro)."""
+    path = Path(config_path)
+    if "bench" in path.parts:
+        return "bench"
+    if "init" in path.parts:
+        return "init"
+    if "repro" in path.parts:
+        return "repro"
+    return "core"
+
+
 def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[bool, str, str]:
     """Run a command and return (success, stdout, stderr)."""
     try:
@@ -115,51 +158,57 @@ def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[boo
         return False, "", str(e)
 
 
-def get_config_contract_mapping() -> Dict[str, Tuple[Path, Path]]:
-    """Get mapping of config files to their Solidity sources.
+def discover_contracts() -> Dict[str, Tuple[Path, Path]]:
+    """Discover all Solidity contracts from foundry/src/ directories.
     
     Returns dict: config_path -> (solidity_path, yul_path)
-    Core configs are in configs/, bench configs are in configs/bench/
-    Core contracts are in foundry/src/, bench contracts are in foundry/src/bench/
+    This works even when configs don't exist yet.
     """
     mapping = {}
     
-    # Core configs (configs/*.yul2venom.json -> foundry/src/*.sol)
-    for config in CONFIGS_DIR.glob("*.yul2venom.json"):
-        name = config.stem.replace('.yul2venom', '')
-        sol_path = FOUNDRY_SRC / f"{name}.sol"
+    # Core contracts (foundry/src/*.sol -> configs/*.yul2venom.json)
+    for sol in FOUNDRY_SRC.glob("*.sol"):
+        name = sol.stem
+        config_path = CONFIGS_DIR / f"{name}.yul2venom.json"
         yul_path = OUTPUT_DIR / f"{name}.yul"
-        if sol_path.exists():
-            mapping[str(config)] = (sol_path, yul_path)
+        mapping[str(config_path)] = (sol, yul_path)
     
-    # Bench configs (configs/bench/*.yul2venom.json -> foundry/src/bench/*.sol)
-    if CONFIGS_BENCH_DIR.exists():
-        for config in CONFIGS_BENCH_DIR.glob("*.yul2venom.json"):
-            name = config.stem.replace('.yul2venom', '')
-            sol_path = FOUNDRY_SRC_BENCH / f"{name}.sol"
-            yul_path = OUTPUT_DIR / "bench" / f"{name}.yul"
-            if sol_path.exists():
-                mapping[str(config)] = (sol_path, yul_path)
-    
-    # Init configs (configs/init/*.yul2venom.json -> foundry/src/init/*.sol)
-    if CONFIGS_INIT_DIR.exists():
-        for config in CONFIGS_INIT_DIR.glob("*.yul2venom.json"):
-            name = config.stem.replace('.yul2venom', '')
-            sol_path = FOUNDRY_SRC_INIT / f"{name}.sol"
+    # Bench contracts (foundry/src/bench/*.sol -> configs/bench/*.yul2venom.json)
+    if FOUNDRY_SRC_BENCH.exists():
+        for sol in FOUNDRY_SRC_BENCH.glob("*.sol"):
+            name = sol.stem
+            config_path = CONFIGS_BENCH_DIR / f"{name}.yul2venom.json"
             yul_path = OUTPUT_DIR / f"{name}.yul"
-            if sol_path.exists():
-                mapping[str(config)] = (sol_path, yul_path)
+            mapping[str(config_path)] = (sol, yul_path)
     
-    # Repro configs (configs/repro/*.yul2venom.json -> foundry/src/repro/*.sol)
-    if CONFIGS_REPRO_DIR.exists():
-        for config in CONFIGS_REPRO_DIR.glob("*.yul2venom.json"):
-            name = config.stem.replace('.yul2venom', '')
-            sol_path = FOUNDRY_SRC_REPRO / f"{name}.sol"
+    # Init contracts (foundry/src/init/*.sol -> configs/init/*.yul2venom.json)
+    if FOUNDRY_SRC_INIT.exists():
+        for sol in FOUNDRY_SRC_INIT.glob("*.sol"):
+            name = sol.stem
+            config_path = CONFIGS_INIT_DIR / f"{name}.yul2venom.json"
             yul_path = OUTPUT_DIR / f"{name}.yul"
-            if sol_path.exists():
-                mapping[str(config)] = (sol_path, yul_path)
+            mapping[str(config_path)] = (sol, yul_path)
+    
+    # Repro contracts (foundry/src/repro/*.sol -> configs/repro/*.yul2venom.json)
+    if FOUNDRY_SRC_REPRO.exists():
+        for sol in FOUNDRY_SRC_REPRO.glob("*.sol"):
+            name = sol.stem
+            config_path = CONFIGS_REPRO_DIR / f"{name}.yul2venom.json"
+            yul_path = OUTPUT_DIR / f"{name}.yul"
+            mapping[str(config_path)] = (sol, yul_path)
     
     return mapping
+
+
+def get_config_contract_mapping() -> Dict[str, Tuple[Path, Path]]:
+    """Get mapping of existing config files to their Solidity sources.
+    
+    Returns dict: config_path -> (solidity_path, yul_path)
+    Only returns configs that already exist.
+    """
+    all_contracts = discover_contracts()
+    # Filter to only configs that exist
+    return {k: v for k, v in all_contracts.items() if Path(k).exists()}
 
 
 def prepare_contract(config_path: str, sol_path: Path) -> Tuple[bool, str]:
@@ -283,8 +332,12 @@ def analyze_venom(vnm_path: str) -> VenomAnalysis:
 
 
 def prepare_all(verbose: bool = True) -> List[Tuple[str, bool, str]]:
-    """Prepare all contracts (Solidity -> Yul)."""
-    mapping = get_config_contract_mapping()
+    """Prepare all contracts (Solidity -> Yul).
+    
+    Uses discover_contracts() to find Sol files directly, allowing
+    preparation even when configs don't exist yet.
+    """
+    mapping = discover_contracts()
     
     if verbose:
         print(f"Found {len(mapping)} contracts to prepare")
@@ -413,16 +466,128 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
     return results
 
 
+def transpile_for_testing() -> List[TranspileResult]:
+    """Transpile ALL contracts with correct bytecode types for testing.
+    
+    This is the canonical way to prepare all contracts for Forge tests.
+    Each category gets the correct bytecode type:
+    
+    - core/   -> default (generates both _opt.bin and _opt_runtime.bin)
+    - bench/  -> runtime only (_opt_runtime.bin for vm.etch)  
+    - repro/  -> runtime only (_opt_runtime.bin for vm.etch)
+    - init/   -> init + runtime (_opt.bin with full init code for CREATE)
+    
+    Returns list of all transpilation results.
+    """
+    results = []
+    
+    # Collect ALL configs from all directories
+    all_configs = []
+    
+    # Core configs
+    for config in CONFIGS_DIR.glob('*.yul2venom.json'):
+        all_configs.append(('core', config))
+    
+    # Bench configs
+    if CONFIGS_BENCH_DIR.exists():
+        for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
+            all_configs.append(('bench', config))
+    
+    # Repro configs
+    if CONFIGS_REPRO_DIR.exists():
+        for config in CONFIGS_REPRO_DIR.glob('*.yul2venom.json'):
+            all_configs.append(('repro', config))
+    
+    # Init configs
+    if CONFIGS_INIT_DIR.exists():
+        for config in CONFIGS_INIT_DIR.glob('*.yul2venom.json'):
+            all_configs.append(('init', config))
+    
+    # Group by category for display
+    categories = {}
+    for cat, config in all_configs:
+        if cat not in categories:
+            categories[cat] = []
+        categories[cat].append(config)
+    
+    total = len(all_configs)
+    print(f"Transpiling {total} contracts for testing")
+    print(f"  • core:  {len(categories.get('core', []))} contracts (runtime only)")
+    print(f"  • bench: {len(categories.get('bench', []))} contracts (runtime only)")
+    print(f"  • repro: {len(categories.get('repro', []))} contracts (runtime only)")
+    print(f"  • init:  {len(categories.get('init', []))} contracts (init + runtime)")
+    print("=" * 60)
+    
+    passed = 0
+    failed = 0
+    
+    # Transpile each config with correct bytecode type
+    for category, config in sorted(all_configs, key=lambda x: (x[0], x[1].stem)):
+        name = config.stem.replace('.yul2venom', '')
+        bytecode_type = get_bytecode_type(str(config))
+        
+        if not check_yul_exists(str(config)):
+            print(f"  [{category:5s}] {name:30s} ... ✗ Yul not found")
+            failed += 1
+            results.append(TranspileResult(
+                config_path=str(config),
+                success=False,
+                error_message="Yul file not found"
+            ))
+            continue
+        
+        print(f"  [{category:5s}] {name:30s} ... ", end='', flush=True)
+        
+        # Transpilation strategy per category:
+        # - init/  -> --with-init (full init code for CREATE deployment)
+        # - core/  -> default (generates both _opt.bin and _opt_runtime.bin)
+        # - bench/ -> --runtime-only (only need _opt_runtime.bin for vm.etch)
+        # - repro/ -> --runtime-only (only need _opt_runtime.bin for vm.etch)
+        if bytecode_type == BytecodeType.WITH_INIT:
+            result = transpile_contract(str(config), with_init=True)
+            type_label = "init"
+        elif category in ('bench', 'repro'):
+            result = transpile_contract(str(config), runtime_only=True)
+            type_label = "rt"
+        else:
+            # Core: default mode generates both _opt.bin and _opt_runtime.bin
+            result = transpile_contract(str(config))
+            type_label = "both"
+        
+        results.append(result)
+        
+        if result.success:
+            passed += 1
+            print(f"✓ {result.bytecode_size} bytes [{type_label}] ({result.duration_ms:.0f}ms)")
+        else:
+            failed += 1
+            print(f"✗ {result.error_message[:40]}")
+    
+    print("=" * 60)
+    print(f"Results: {passed} passed, {failed} failed, {len(results)} total")
+    
+    # Save results
+    DEBUG_DIR.mkdir(exist_ok=True)
+    results_path = DEBUG_DIR / 'transpile_results.json'
+    with open(results_path, 'w') as f:
+        json.dump([r.to_dict() for r in results], f, indent=2)
+    print(f"Results saved to {results_path}")
+    
+    return results
+
+
 def run_forge_tests(test_pattern: str = None, verbose: bool = True) -> Tuple[bool, str, int, int]:
     """Run Forge tests and return (success, output, passed, failed)."""
     if verbose:
         print("Running Forge tests...")
     
-    # Default: run both core and bench tests
+    # Default: run all tests
     if test_pattern is None:
         cmd = ["forge", "test", "-v"]
     elif test_pattern == "core":
-        cmd = ["forge", "test", "--match-path", "test/core/*", "-v"]
+        # Core tests are in test/*.t.sol (not in subdirectories)
+        # Exclude bench/, init/, repro/ subdirectories
+        cmd = ["forge", "test", "--match-path", "test/*.t.sol", "-v"]
     elif test_pattern == "bench":
         cmd = ["forge", "test", "--match-path", "test/bench/*", "-v"]
     else:
@@ -644,20 +809,8 @@ def main():
             print(json.dumps([r.to_dict() for r in results], indent=2))
     
     elif args.test_all:
-        # Transpile ALL contracts (core + bench + init) to ensure binaries are up-to-date
-        print("Transpiling all contracts before testing...")
-        transpile_all(runtime_only=False, include_bench=True, include_init=True)
-        # Re-transpile bench with runtime-only for vm.etch tests
-        print("Re-transpiling bench contracts with --runtime-only...")
-        for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
-            if check_yul_exists(str(config)):
-                transpile_contract(str(config), runtime_only=True)
-        # Also re-transpile repro contracts with runtime-only (they use vm.etch too)
-        if CONFIGS_REPRO_DIR.exists():
-            for config in CONFIGS_REPRO_DIR.glob('*.yul2venom.json'):
-                if check_yul_exists(str(config)):
-                    transpile_contract(str(config), runtime_only=True)
-        
+        # Full dry run: transpile all contracts with correct bytecode types, then test
+        transpile_for_testing()
         success, output, passed, failed = run_forge_tests()
         sys.exit(0 if success else 1)
     

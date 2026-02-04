@@ -3,7 +3,7 @@
   "contract": "foundry/src/init/InitNewChildTest.sol",
   "yul": "output/InitNewChildTest.yul",
   "deployment": {
-    "deployer": "0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496",
+    "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0
   },
   "sidecar_nonce_start": 1,
@@ -11,13 +11,15 @@
   "auto_predicted": {
     "childA": {
       "type": "address",
+      "order": 0,
       "id": "67",
-      "predicted_value": "0xa5668d1a670c8e192b4ef3f2d47232baf287e2cf"
+      "predicted_value": "0xc7d6453e01e8ab0b6ebbf684e4ca06d3b8ad28e2"
     },
     "childB": {
       "type": "address",
+      "order": 1,
       "id": "69",
-      "predicted_value": "0x6804a3ff6bcf551facf1a66369a5f8802b3c9c58"
+      "predicted_value": "0x3b3c04704280dc5c137d7cc3fb2812c0a40b6ed3"
     }
   }
 }

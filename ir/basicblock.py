@@ -127,13 +127,13 @@ class IRInstruction:
         s += opcode_str
         
         # Venom convention: jmp/call args not reversed, others reversed
+        # NOTE: Local IR does NOT reverse operands - this matches how existing code was written.
+        # The Vyper parser reverses on read, but our serialization format is inversed already.
         ops = self.operands
         if self.opcode == "invoke":
              # invoke label, arg1, arg2 -> label is first, args reversed
-             # Keep invoke reversal if it's a calling convention
              ops = [ops[0]] + list(reversed(ops[1:]))
-        # elif self.opcode not in ("jmp", "jnz", "djmp", "phi"):
-        #      ops = reversed(ops)
+        # DO NOT reverse - local convention is different from Vyper's
 
         s += ", ".join([(f"@{op}" if isinstance(op, IRLabel) else str(op)) for op in ops])
 

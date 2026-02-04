@@ -11,16 +11,19 @@
     "DEPLOY_TIME": {
       "type": "uint256",
       "value": "1700000000",
+      "order": 0,
       "id": "15"
     },
     "DEPLOYER": {
       "type": "address",
       "value": "0x1234567890123456789012345678901234567890",
+      "order": 1,
       "id": "17"
     },
     "DEPLOY_HASH": {
       "type": "bytes32",
       "value": "0x0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "order": 2,
       "id": "19"
     }
   },

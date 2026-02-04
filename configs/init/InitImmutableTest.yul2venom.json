@@ -11,11 +11,13 @@
     "IMMUTABLE_VALUE": {
       "type": "uint256",
       "value": "12345",
+      "order": 0,
       "id": "4"
     },
     "IMMUTABLE_OWNER": {
       "type": "address",
       "value": "0x000000000000000000000000000000000000DEAD",
+      "order": 1,
       "id": "6"
     }
   },

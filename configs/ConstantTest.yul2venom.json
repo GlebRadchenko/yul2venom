@@ -11,6 +11,7 @@
     "IMMUTABLE_VAL": {
       "type": "uint256",
       "value": "999",
+      "order": 0,
       "id": "6"
     }
   },

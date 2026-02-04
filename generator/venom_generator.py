@@ -488,12 +488,20 @@ class VenomIRBuilder:
                     if ret_name in self.var_map:
                         # VENOM NATIVE: var_map contains registers directly, not memory pointers
                         val = self.var_map[ret_name]
-                        ret_vals.append(val)
+                        # FIX: ALWAYS use add pattern for ALL values (both literals and variables).
+                        # This forces a consistent sequence for stack ordering.
+                        temp_var = self.current_fn.get_next_variable()
+                        temp_var.annotation = f"ret_{ret_name}"
+                        self.current_bb.append_instruction("add", val, IRLiteral(0), ret=temp_var)
+                        ret_vals.append(temp_var)
                     else:
-                        ret_vals.append(IRLiteral(0))
-                # Return values + PC (args already consumed by param instructions)
-                # NOTE: We put PC FIRST - the backend handles this correctly
-                self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
+                        # Create a variable for the default 0 value
+                        temp_var = self.current_fn.get_next_variable()
+                        temp_var.annotation = f"ret_{ret_name}_default"
+                        self.current_bb.append_instruction("add", IRLiteral(0), IRLiteral(0), ret=temp_var)
+                        ret_vals.append(temp_var)
+                # Return values first, PC last (native Vyper convention, no parser reversal)
+                self.current_bb.append_instruction("ret", *ret_vals, self.var_map['$pc'])
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
     
@@ -1075,8 +1083,6 @@ class VenomIRBuilder:
                     default_case = case
                 else:
                     lbl = self.ctx.get_next_label("case")
-                    # Value extraction
-                    # print(f"DEBUG: Processing case value: {case.value} type: {type(case.value)}", file=sys.stderr)
                     val_str = case.value
                     if isinstance(val_str, str) and val_str.startswith("0x"): val = IRLiteral(int(val_str, 16))
                     elif isinstance(val_str, str) and val_str.isdigit(): val = IRLiteral(int(val_str))
@@ -1541,11 +1547,21 @@ class VenomIRBuilder:
                 ret_vals = []
                 for n in self.current_return_names:
                     if n in self.var_map:
-                        ret_vals.append(self.var_map[n])
+                        val = self.var_map[n]
+                        # FIX: ALWAYS use add pattern for ALL values (both literals and variables).
+                        # The optimizer eliminates assign but respects add for stack ordering.
+                        # This forces consistent ordering between base case and recursive case.
+                        temp_var = self.current_fn.get_next_variable()
+                        temp_var.annotation = f"ret_{n}"
+                        self.current_bb.append_instruction("add", val, IRLiteral(0), ret=temp_var)
+                        ret_vals.append(temp_var)
                     else:
-                        ret_vals.append(IRLiteral(0))
-                # PC first - backend handles this correctly
-                self.current_bb.append_instruction("ret", self.var_map['$pc'], *ret_vals)
+                        temp_var = self.current_fn.get_next_variable()
+                        temp_var.annotation = f"ret_{n}_default"
+                        self.current_bb.append_instruction("add", IRLiteral(0), IRLiteral(0), ret=temp_var)
+                        ret_vals.append(temp_var)
+                # Return values first, PC last (native Vyper convention, no parser reversal)
+                self.current_bb.append_instruction("ret", *ret_vals, self.var_map['$pc'])
             else:
                 self.current_bb.append_instruction("ret", self.var_map['$pc'])
 
@@ -1732,7 +1748,6 @@ class VenomIRBuilder:
                  # (layout: [init][runtime][args]), not at the END.
                  if obj_name in self.offset_map:
                      offset = self.offset_map[obj_name]
-                     # print(f"DEBUG: dataoffset({obj_name}) = {offset} (literal from offset_map)", file=sys.stderr)
                      return IRLiteral(offset)
                  
                  # RUNTIME CODE FALLBACK: Dynamic calculation for data at END
@@ -1754,12 +1769,9 @@ class VenomIRBuilder:
             # datasize("name")
             if args and isinstance(args[0], YulLiteral):
                  obj_name = args[0].value.strip('"')
-                 # print(f"DEBUG: resolving datasize({obj_name}). Available: {list(self.data_map.keys())}", file=sys.stderr)
                  
                  if obj_name in self.data_map:
-                     # data_map stores raw bytes from transpile_object
                      size = len(self.data_map[obj_name])
-                     # print(f"DEBUG: datasize({obj_name}) = {size} bytes", file=sys.stderr)
                      return IRLiteral(size)
                  else:
                      print(f"WARNING: datasize({obj_name}) failed. Keys: {list(self.data_map.keys())}", file=sys.stderr)
