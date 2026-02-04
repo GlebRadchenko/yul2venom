@@ -588,6 +588,12 @@ def run_gas_benchmark(config: BenchmarkConfig, contract: str, bytecode_path: Opt
             if match:
                 gas = int(match.group(1))
                 func_name = match.group(2)
+                
+                # Normalize Forge-generated fallback function names
+                # Forge generates names like "CodeIsLawZ95677371" for fallback()
+                if func_name.startswith("CodeIsLaw"):
+                    func_name = "fallback"
+                
                 # Avoid duplicates - take first occurrence (call, not the return)
                 if func_name not in seen_funcs:
                     seen_funcs.add(func_name)

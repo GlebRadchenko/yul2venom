@@ -1694,16 +1694,28 @@ def cmd_transpile(args):
     
     # Step 4: Write Output
     if runtime_only:
-        # Runtime-only mode: just write runtime bytecode
+        # Runtime-only mode: write runtime bytecode + sidecars
+        # Must match full bytecode layout for dataoffset()/datasize() references
         if runtime_bytecode:
+            output_bytecode = runtime_bytecode
+            
+            # Append sidecars to match deployed code layout
+            # This is critical for CREATE/CREATE2 contracts using dataoffset()/datasize()
+            if sidecar_bytecodes:
+                for sidecar_name, sidecar_bc in sidecar_bytecodes:
+                    output_bytecode += sidecar_bc
+            
             with open(output_path, "wb") as f:
-                f.write(runtime_bytecode)
+                f.write(output_bytecode)
             print()
             print("┌─────────────────────────────────────────────────────────")
             print("│ ✓ SUCCESS (Runtime Only)")
             print("├─────────────────────────────────────────────────────────")
             print(f"│ Target: {output_path}")
-            print(f"│ Size: {len(runtime_bytecode)} bytes")
+            print(f"│ Runtime: {len(runtime_bytecode)} bytes")
+            if sidecar_bytecodes:
+                print(f"│ Sidecars: {len(sidecar_bytecodes)} embedded ({sum(len(bc) for _, bc in sidecar_bytecodes)} bytes)")
+            print(f"│ Total: {len(output_bytecode)} bytes")
             print("└─────────────────────────────────────────────────────────")
         else:
             # No sub-objects - the top-level IS the runtime
