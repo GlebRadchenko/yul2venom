@@ -1663,8 +1663,9 @@ def cmd_transpile(args):
         print(f"Found {len(all_subobjects)} sub-objects (including nested sidecars). Compiling...")
         
         # CRITICAL: Process deepest objects FIRST so their bytecode is available for parents
-        # Sort by depth descending (deepest first), then by name to ensure _deployed comes before parent
-        sorted_subobjects = sorted(all_subobjects, key=lambda x: (-x[2], x[1]))
+        # Sort by depth descending (deepest first), then by _deployed suffix (deployed FIRST), then by name
+        # CRITICAL: _deployed must come BEFORE init at same depth so runtime bytecode is available for datasize/dataoffset
+        sorted_subobjects = sorted(all_subobjects, key=lambda x: (-x[2], 0 if "_deployed" in x[1] else 1, x[1]))
         
         for sub, clean_name, depth in sorted_subobjects:
             indent = "  " * (depth + 1)
