@@ -338,9 +338,13 @@ class YulSourceOptimizer:
         )
         
         # Strip require_helper calls (error message wrappers)
+        # IMPORTANT: These can have deeply nested parentheses like:
+        #   require_helper_e9a2(iszero(lt(mload(...), 32)))
+        # We need to match balanced parens, not just [^)]+
+        # Pattern matches: require_helper_XXXX followed by balanced ()
         self._add_rule(
             "Strip Require Helper",
-            r'require_helper_\w+\([^)]+\)',
+            r'require_helper_\w+\((?:[^()]*|\((?:[^()]*|\([^()]*\))*\))*\)',
             '',
             OptimizationLevel.AGGRESSIVE
         )

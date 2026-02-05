@@ -1290,11 +1290,14 @@ class VenomIRBuilder:
             
             # 3. Visit Bodies and Collect Phi Inputs
             phi_inputs = {v: [] for v in vars_needing_phi}
+            end_bb_has_predecessors = False
             
             # Helper to process body exit
             def process_exit(bb):
+                nonlocal end_bb_has_predecessors
                 if not bb.is_terminated:
                     bb.append_instruction("jmp", end_lbl)
+                    end_bb_has_predecessors = True
                     # Collect phi values for this path - ALWAYS collect for ALL vars_needing_phi
                     # to ensure proper SSA with phi nodes covering all predecessors
                     for v in vars_needing_phi:
@@ -1337,42 +1340,50 @@ class VenomIRBuilder:
                 process_exit(self.current_bb)
             
             # 4. Join Block and Phi Nodes
-            # Set scope to entry scope (base) - we will update with Phis
-            self.var_map = entry_var_map.copy() 
-            self.current_fn.append_basic_block(end_bb)
-            self.current_bb = end_bb
-            
-            for v in vars_needing_phi:
-                inputs = phi_inputs[v]
-                if not inputs: continue
+            # CRITICAL: Only append end_bb if it has at least one predecessor
+            # Orphan blocks cause SSA violations (vars referenced but not in scope)
+            if not end_bb_has_predecessors:
+                # No case body jumps to end_bb - it's orphan, skip it entirely
+                # Just restore scope and continue (switch had no fallthrough paths)
+                self.var_map = entry_var_map.copy()
+                # current_bb remains as-is (last case block or default)
+            else:
+                # Set scope to entry scope (base) - we will update with Phis
+                self.var_map = entry_var_map.copy() 
+                self.current_fn.append_basic_block(end_bb)
+                self.current_bb = end_bb
                 
-                # Single-input phi is redundant - but we still need to materialize
-                # the value in the predecessor block to make it available in end_bb
-                if len(inputs) == 1:
-                    item = inputs[0]
-                    val = item['val']
-                    pred_bb = item['block']
-                    # Materialize in predecessor so value is forwarded to end_bb via jmp
-                    val_reg = self._materialize_literal(val, pred_bb)
-                    self.var_map[v] = val_reg
-                    continue
-                
-                # Flatten args for Phi instruction: label, val, label, val...
-                phi_args = []
-                for item in inputs:
-                    lbl = item['label']
-                    val = item['val']
-                    pred_bb = item['block']
+                for v in vars_needing_phi:
+                    inputs = phi_inputs[v]
+                    if not inputs: continue
                     
-                    # Materialize literal
-                    val_reg = self._materialize_literal(val, pred_bb)
+                    # Single-input phi is redundant - but we still need to materialize
+                    # the value in the predecessor block to make it available in end_bb
+                    if len(inputs) == 1:
+                        item = inputs[0]
+                        val = item['val']
+                        pred_bb = item['block']
+                        # Materialize in predecessor so value is forwarded to end_bb via jmp
+                        val_reg = self._materialize_literal(val, pred_bb)
+                        self.var_map[v] = val_reg
+                        continue
                     
-                    phi_args.append(lbl)
-                    phi_args.append(val_reg)
-                
-                # Emit Phi
-                phi_res = self.current_bb.append_instruction("phi", *phi_args)
-                self.var_map[v] = phi_res
+                    # Flatten args for Phi instruction: label, val, label, val...
+                    phi_args = []
+                    for item in inputs:
+                        lbl = item['label']
+                        val = item['val']
+                        pred_bb = item['block']
+                        
+                        # Materialize literal
+                        val_reg = self._materialize_literal(val, pred_bb)
+                        
+                        phi_args.append(lbl)
+                        phi_args.append(val_reg)
+                    
+                    # Emit Phi
+                    phi_res = self.current_bb.append_instruction("phi", *phi_args)
+                    self.var_map[v] = phi_res
 
         elif stmt_type == 'YulForLoop':
             # 1. Init
@@ -1820,11 +1831,15 @@ class VenomIRBuilder:
             if args and isinstance(args[0], YulLiteral):
                  obj_name = args[0].value.strip('"')
                  
+                 # DEBUG: Trace dataoffset resolution
+                 print(f"DEBUG _handle_intrinsic: dataoffset('{obj_name}') - offset_map keys: {list(self.offset_map.keys())[:5]}..., data_map keys: {list(self.data_map.keys())[:5]}...", file=sys.stderr)
+                 
                  # INIT CODE FIX: Use literal offset if available in offset_map
                  # This is used when runtime code is in the MIDDLE of bytecode
                  # (layout: [init][runtime][args]), not at the END.
                  if obj_name in self.offset_map:
                      offset = self.offset_map[obj_name]
+                     print(f"DEBUG _handle_intrinsic: dataoffset('{obj_name}') = {offset} (from offset_map)", file=sys.stderr)
                      return IRLiteral(offset)
                  
                  # RUNTIME CODE FALLBACK: Dynamic calculation for data at END
@@ -1975,6 +1990,14 @@ class VenomIRBuilder:
         
         if func in ("codecopy", "calldatacopy", "returndatacopy", "mcopy"):
             self.current_bb.append_instruction(func, *args)
+            return IRLiteral(0)
+        
+        # Yul datacopy(dst, offset, size) copies from deployed bytecode
+        # This is semantically equivalent to codecopy in EVM
+        # Used for copying embedded sidecar bytecode during init code execution
+        if func == "datacopy":
+            # datacopy(dst, offset, size) -> codecopy(dst, offset, size)
+            self.current_bb.append_instruction("codecopy", *args)
             return IRLiteral(0)
         
         if func == "extcodecopy":

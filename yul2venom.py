@@ -8,9 +8,9 @@ Workflow:
   3. yul2venom transpile <file.yul>       → Predict addresses & compile
 
 Example:
-  $ python3 yul2venom.py prepare src/traders/QuotedTrader.sol
-  $ vim yul2venom.config.json  # Fill deployer, nonce, weth, owner
-  $ python3 yul2venom.py transpile output/QuotedTrader.yul
+  $ python3 yul2venom.py prepare src/MyContract.sol
+  $ vim yul2venom.config.json  # Fill deployer, nonce, constructor args
+  $ python3 yul2venom.py transpile output/MyContract.yul
 """
 
 import sys
@@ -151,6 +151,129 @@ def discover_sidecar_immutables(yul_code: str, name_to_value: dict) -> dict:
     return sidecar_immutables
 
 
+def extract_sidecar_order_from_yul(yul_code: str) -> list:
+    """Extract sidecar object order from Yul init code.
+    
+    The order of datasize() calls in the Yul init code matches the Solidity
+    constructor's CREATE order. This function parses the Yul to extract that order.
+    
+    We look for patterns like:
+        let _3 := datasize("SidecarA_5774")
+        let _6 := datasize("SidecarB_4952")
+        ...
+    
+    These appear in the order that `new SidecarContract()` calls appear in Solidity.
+    
+    The main contract's object name is extracted from the top-level object declaration
+    (e.g., `object "MainContract_182"`) and excluded from the sidecar list.
+    
+    Args:
+        yul_code: The Yul source code (typically the main contract's init code)
+        
+    Returns:
+        Ordered list of sidecar init object names (e.g., ['SidecarA_5774', 'SidecarB_4952', ...])
+    """
+    # First, extract the main contract's object name from the top-level object declaration
+    # Pattern: object "ContractName_NNNN" at the beginning of the file
+    main_contract_pattern = re.compile(r'^\s*object\s+"([^"]+)"', re.MULTILINE)
+    main_contract_match = main_contract_pattern.search(yul_code)
+    main_contract_name = main_contract_match.group(1) if main_contract_match else None
+    
+    # Pattern: datasize("ObjectName") where ObjectName does NOT end in _deployed
+    # The _deployed suffix indicates runtime code, not init code
+    datasize_pattern = re.compile(r'datasize\s*\(\s*"([^"]+)"\s*\)')
+    
+    seen = set()
+    ordered = []
+    
+    for match in datasize_pattern.finditer(yul_code):
+        obj_name = match.group(1)
+        # Skip _deployed objects (we want init object names, not runtime)
+        if "_deployed" in obj_name:
+            continue
+        # Skip the main contract's own object - it's NOT a sidecar
+        if main_contract_name and obj_name == main_contract_name:
+            continue
+        if obj_name not in seen:
+            seen.add(obj_name)
+            ordered.append(obj_name)
+    
+    return ordered
+
+
+def compute_sidecar_addresses(yul_code: str, config: dict) -> dict:
+    """Compute correct sidecar addresses based on Yul order and config.
+    
+    This function:
+    1. Extracts ALL sidecar names from Yul in CREATE order
+    2. Determines which are immutables (in auto_predicted) vs storage slots
+    3. Calculates correct nonces for each based on actual position
+    4. Computes CREATE addresses for immutable sidecars
+    
+    Args:
+        yul_code: The Yul source code
+        config: The transpiler config dict with deployment, auto_predicted, etc.
+        
+    Returns:
+        Dict mapping sidecar names to their computed addresses, plus updated nonces
+    """
+    # Extract full sidecar order from Yul
+    full_order = extract_sidecar_order_from_yul(yul_code)
+    if not full_order:
+        return {}
+    
+    # Get deployment info from config
+    deployment = config.get('deployment', {})
+    deployer = deployment.get('deployer', '')
+    main_nonce = deployment.get('nonce', 0)
+    
+    if not deployer or not main_nonce:
+        print(f"  [WARN] compute_sidecar_addresses: missing deployment info", file=sys.stderr)
+        return {}
+    
+    # Compute main contract address
+    main_addr = compute_create_address(deployer, main_nonce)
+    
+    # Get auto_predicted from config to know which sidecars are immutables
+    auto_predicted = config.get('auto_predicted', {})
+    
+    # Build lowercase name mapping for matching (Yul names like "SidecarPath_5012" -> "sidecarPath")
+    # Config uses camelCase like "sidecarPath", "helperPath"
+    def normalize_name(yul_name: str) -> str:
+        """Convert Yul name like 'SidecarPath_5012' to config name like 'sidecarPath'."""
+        # Remove numeric suffix
+        base = yul_name.rsplit('_', 1)[0]
+        # Convert to camelCase (first letter lowercase)
+        return base[0].lower() + base[1:] if base else base
+    
+    # Calculate addresses for each sidecar based on position in full order
+    computed = {}
+    nonce_updates = {}
+    
+    for idx, yul_name in enumerate(full_order):
+        sidecar_nonce = idx + 1  # Nonce starts at 1 for first CREATE from main contract
+        config_name = normalize_name(yul_name)
+        
+        # Only compute for sidecars that are in auto_predicted (immutables)
+        if config_name in auto_predicted:
+            computed_addr = compute_create_address(main_addr, sidecar_nonce)
+            old_predicted = auto_predicted[config_name].get('predicted_value', '')
+            old_order = auto_predicted[config_name].get('order', -1)
+            
+            # Check if address changed
+            if old_predicted.lower() != computed_addr.lower():
+                print(f"  [INFO] Sidecar {config_name}: nonce {old_order} -> {sidecar_nonce}, addr {old_predicted} -> {computed_addr}", file=sys.stderr)
+                computed[config_name] = {
+                    'address': computed_addr,
+                    'old_address': old_predicted,
+                    'nonce': sidecar_nonce,
+                    'old_nonce': old_order,
+                    'yul_name': yul_name
+                }
+                nonce_updates[config_name] = sidecar_nonce
+    
+    return {'computed': computed, 'nonce_updates': nonce_updates, 'main_addr': main_addr, 'full_order': full_order}
+
 
 def generate_init_stub(runtime_size: int) -> bytes:
     """
@@ -249,7 +372,7 @@ def analyze_solidity_contract(contract_path: str, remappings_file: str = "remapp
                 find_constructor_params(item)
     
     def find_create_assignments(node, in_constructor=False):
-        """Find assignments like: curvePath = address(new CurvePath(...))"""
+        """Find assignments like: sidecar = address(new SidecarContract(...))"""
         if isinstance(node, dict):
             is_constructor = node.get('nodeType') == 'FunctionDefinition' and node.get('kind') == 'constructor'
             if is_constructor:
@@ -491,7 +614,7 @@ def cmd_prepare(args):
 
     # Only extract Yul objects if we regenerated (not when using existing)
     if not using_existing_yul:
-        # Match: object "QuotedTrader_182" (with any numeric suffix)
+        # Match: object "ContractName_NNN" (with any numeric suffix)
         # Refactored to iteratate through ALL objects in the stream
         cursor = 0
         created_files = {} # name -> path
@@ -796,7 +919,7 @@ def cmd_transpile(args):
             if os.path.exists(script_relative_path):
                 yul_path = script_relative_path
             else:
-                # Fallback: config-relative (for external projects like onchain-trader)
+                # Fallback: config-relative (for external projects)
                 config_dir = os.path.dirname(os.path.abspath(config_path))
                 config_relative_path = os.path.normpath(os.path.join(config_dir, yul_path))
                 if os.path.exists(config_relative_path):
@@ -923,6 +1046,31 @@ def cmd_transpile(args):
     try:
         with open(yul_path, 'r') as f:
             raw_yul = f.read()
+        
+        # CRITICAL FIX: Auto-detect sidecar order from Yul and recalculate addresses
+        # This handles cases where storage-slot sidecars (e.g., ApprovePath) are created
+        # before immutable sidecars, shifting all nonces.
+        sidecar_addr_info = compute_sidecar_addresses(raw_yul, config)
+        if sidecar_addr_info and sidecar_addr_info.get('computed'):
+            print(f"  [INFO] Auto-detected sidecar order from Yul:")
+            print(f"         Full order: {sidecar_addr_info.get('full_order', [])}")
+            # Update auto_predicted with corrected addresses
+            # NOTE: Only update predicted_value, NOT order!
+            # The 'order' field is based on memory offset order from prepare and is used
+            # for positional immutable mapping. Nonce is CREATE order, which is different.
+            for sidecar_name, info in sidecar_addr_info['computed'].items():
+                if sidecar_name in auto_predicted:
+                    old_addr = auto_predicted[sidecar_name].get('predicted_value', '')
+                    new_addr = info['address']
+                    auto_predicted[sidecar_name]['predicted_value'] = new_addr
+                    print(f"         Fixed {sidecar_name}: {old_addr} -> {new_addr}")
+            # Update config in memory (will be written to file)
+            config['auto_predicted'] = auto_predicted
+            config_updated = True
+            # Write corrected addresses to config file
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+            print(f"         ✓ Config updated with corrected sidecar addresses")
         
         # CRITICAL: Scan Yul to discover actual immutable IDs
         # solc generates different IDs each compile - we can't rely on config IDs
@@ -1102,7 +1250,8 @@ def cmd_transpile(args):
         # Fallback for local run
         from parser.yul_parser import YulParser
 
-    parser = YulParser(open(yul_path).read())
+    yul_source = open(yul_path).read()
+    parser = YulParser(yul_source)
     all_objects = parser.parse_toplevel_objects()
     
     if not all_objects:
@@ -1606,6 +1755,25 @@ def cmd_transpile(args):
                 # datasize("OuterObj") should return init_size + runtime_size  
                 # so that: codesize() - datasize("Outer") = constructor_args_size
                 print(f"    Pass 2: Finalizing with correct datasize...")
+                
+                # CRITICAL FIX: Reorder sidecars to match Yul init code's CREATE order
+                # The order of datasize() calls in Yul matches the Solidity constructor's CREATE order
+                # We must embed sidecars in this order for dataoffset() to resolve correctly
+                if sidecar_bytecodes:
+                    yul_order = extract_sidecar_order_from_yul(yul_source)
+                    if yul_order:
+                        # Build a lookup for bytecode by sidecar name
+                        sidecar_map = {name: bc for name, bc in sidecar_bytecodes}
+                        # Reorder according to Yul order, keeping any not found at end
+                        reordered = []
+                        for name in yul_order:
+                            if name in sidecar_map:
+                                reordered.append((name, sidecar_map.pop(name)))
+                        # Append any remaining sidecars (shouldn't happen, but be safe)
+                        for name, bc in sidecar_map.items():
+                            reordered.append((name, bc))
+                        sidecar_bytecodes = reordered
+                        print(f"        Sidecar order from Yul: {[n for n, _ in sidecar_bytecodes]}")
                 
                 # Calculate sidecar total size FIRST since we need it for datasize("OuterObj")
                 sidecar_total_size = sum(len(bc) for _, bc in sidecar_bytecodes)
