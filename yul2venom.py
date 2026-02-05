@@ -240,37 +240,78 @@ def compute_sidecar_addresses(yul_code: str, config: dict) -> dict:
     # Build lowercase name mapping for matching (Yul names like "SidecarPath_5012" -> "sidecarPath")
     # Config uses camelCase like "sidecarPath", "helperPath"
     def normalize_name(yul_name: str) -> str:
-        """Convert Yul name like 'SidecarPath_5012' to config name like 'sidecarPath'."""
+        """Convert Yul name like 'SidecarPath_5012' to config name like 'sidecarPath'.
+        
+        Handles uppercase prefixes/acronyms by lowercasing leading uppercase chars.
+        """
         # Remove numeric suffix
         base = yul_name.rsplit('_', 1)[0]
-        # Convert to camelCase (first letter lowercase)
-        return base[0].lower() + base[1:] if base else base
+        if not base:
+            return base
+        
+        # Lowercase all leading uppercase chars until we hit lowercase or digit
+        result = []
+        found_lower = False
+        for i, c in enumerate(base):
+            if not found_lower and c.isupper():
+                # Check if next char exists and is lowercase (end of acronym)
+                if i + 1 < len(base) and base[i + 1].islower():
+                    # This is the last uppercase before lowercase, keep as uppercase
+                    # for CamelCase like "CurvePath" -> "curvePath"
+                    result.append(c.lower())
+                    found_lower = True
+                else:
+                    result.append(c.lower())
+            else:
+                result.append(c)
+                if c.islower():
+                    found_lower = True
+        
+        return ''.join(result)
     
     # Calculate addresses for each sidecar based on position in full order
     computed = {}
     nonce_updates = {}
     
+    # Build case-insensitive lookup for auto_predicted keys
+    auto_predicted_lower = {k.lower(): k for k in auto_predicted.keys()}
+    
     for idx, yul_name in enumerate(full_order):
         sidecar_nonce = idx + 1  # Nonce starts at 1 for first CREATE from main contract
-        config_name = normalize_name(yul_name)
+        config_name = normalize_name(yul_name).lower()  # Normalize and lowercase
+        
+        # Case-insensitive lookup for config key
+        actual_key = auto_predicted_lower.get(config_name)
         
         # Only compute for sidecars that are in auto_predicted (immutables)
-        if config_name in auto_predicted:
+        if actual_key:
             computed_addr = compute_create_address(main_addr, sidecar_nonce)
-            old_predicted = auto_predicted[config_name].get('predicted_value', '')
-            old_order = auto_predicted[config_name].get('order', -1)
+            old_predicted = auto_predicted[actual_key].get('predicted_value', '')
+            old_order = auto_predicted[actual_key].get('order', -1)
             
-            # Check if address changed
-            if old_predicted.lower() != computed_addr.lower():
-                print(f"  [INFO] Sidecar {config_name}: nonce {old_order} -> {sidecar_nonce}, addr {old_predicted} -> {computed_addr}", file=sys.stderr)
-                computed[config_name] = {
-                    'address': computed_addr,
-                    'old_address': old_predicted,
-                    'nonce': sidecar_nonce,
-                    'old_nonce': old_order,
-                    'yul_name': yul_name
-                }
-                nonce_updates[config_name] = sidecar_nonce
+            # Check if address OR order changed
+            addr_changed = old_predicted.lower() != computed_addr.lower()
+            order_changed = old_order != sidecar_nonce
+            
+            # Always add to computed dict for refresh, report changes
+            if addr_changed or order_changed:
+                changes = []
+                if addr_changed:
+                    changes.append(f"addr {old_predicted} -> {computed_addr}")
+                if order_changed:
+                    changes.append(f"order {old_order} -> {sidecar_nonce}")
+                print(f"  [INFO] Sidecar {actual_key}: {', '.join(changes)}", file=sys.stderr)
+            
+            # Always include in computed dict for refresh (use actual_key for config update)
+            computed[actual_key] = {
+                'address': computed_addr,
+                'old_address': old_predicted,
+                'nonce': sidecar_nonce,
+                'old_nonce': old_order,
+                'yul_name': yul_name,
+                'changed': addr_changed or order_changed
+            }
+            nonce_updates[actual_key] = sidecar_nonce
     
     return {'computed': computed, 'nonce_updates': nonce_updates, 'main_addr': main_addr, 'full_order': full_order}
 
@@ -1054,23 +1095,33 @@ def cmd_transpile(args):
         if sidecar_addr_info and sidecar_addr_info.get('computed'):
             print(f"  [INFO] Auto-detected sidecar order from Yul:")
             print(f"         Full order: {sidecar_addr_info.get('full_order', [])}")
-            # Update auto_predicted with corrected addresses
-            # NOTE: Only update predicted_value, NOT order!
-            # The 'order' field is based on memory offset order from prepare and is used
-            # for positional immutable mapping. Nonce is CREATE order, which is different.
+            
+            # Always refresh auto_predicted with computed addresses and orders
+            config_changed = False
             for sidecar_name, info in sidecar_addr_info['computed'].items():
                 if sidecar_name in auto_predicted:
                     old_addr = auto_predicted[sidecar_name].get('predicted_value', '')
+                    old_order = auto_predicted[sidecar_name].get('order', -1)
                     new_addr = info['address']
+                    new_order = info['nonce']
+                    
+                    # Update both address and order
                     auto_predicted[sidecar_name]['predicted_value'] = new_addr
-                    print(f"         Fixed {sidecar_name}: {old_addr} -> {new_addr}")
-            # Update config in memory (will be written to file)
+                    auto_predicted[sidecar_name]['order'] = new_order
+                    
+                    if info.get('changed'):
+                        print(f"         Fixed {sidecar_name}: addr={new_addr}, order={new_order}")
+                        config_changed = True
+            
+            # Update config in memory and write to file
             config['auto_predicted'] = auto_predicted
-            config_updated = True
-            # Write corrected addresses to config file
             with open(config_path, 'w') as f:
                 json.dump(config, f, indent=2)
-            print(f"         ✓ Config updated with corrected sidecar addresses")
+            if config_changed:
+                print(f"         ✓ Config updated with corrected sidecar addresses")
+            else:
+                print(f"         ✓ Config refreshed (no changes)")
+            config_updated = True
         
         # CRITICAL: Scan Yul to discover actual immutable IDs
         # solc generates different IDs each compile - we can't rely on config IDs
