@@ -1009,13 +1009,19 @@ class VenomIRBuilder:
             # Create blocks
             then_lbl = self.ctx.get_next_label("then")
             end_lbl = self.ctx.get_next_label("end_if")
+            # FIX: Create a separate fallthrough block for the false path
+            # This ensures PHI operand materialization only affects the false path,
+            # not both paths (which caused stack pollution bug where literals were
+            # pushed unconditionally before the branch)
+            fallthrough_lbl = self.ctx.get_next_label("fallthrough")
             
             then_bb = IRBasicBlock(then_lbl, self.current_fn)
             end_bb = IRBasicBlock(end_lbl, self.current_fn)
+            fallthrough_bb = IRBasicBlock(fallthrough_lbl, self.current_fn)
             
             # Emit Branch
-            # Entry -> Then (true), Entry -> End (false)
-            self.current_bb.append_instruction("jnz", cond_var, then_bb.label, end_bb.label)
+            # Entry -> Then (true), Entry -> Fallthrough (false)
+            self.current_bb.append_instruction("jnz", cond_var, then_bb.label, fallthrough_bb.label)
             
             # Visit Then Path
             # Reset scope to entry
@@ -1039,6 +1045,14 @@ class VenomIRBuilder:
                 then_end_bb = self.current_bb
                 then_end_map = self.var_map.copy()
             
+            # Setup fallthrough block (false path) - materialization happens here
+            self.current_fn.append_basic_block(fallthrough_bb)
+            self.current_bb = fallthrough_bb
+            # Fallthrough block will contain PHI operand materializations and jump to end
+            # This ensures values are only pushed when the false path is actually taken
+            self.current_bb.append_instruction("jmp", end_bb.label)
+            fallthrough_end_bb = fallthrough_bb
+            
             # Join Block
             self.current_fn.append_basic_block(end_bb)
             self.current_bb = end_bb
@@ -1047,7 +1061,7 @@ class VenomIRBuilder:
             self.var_map = entry_var_map.copy()
             
             if then_reached_end:
-                # Merge Entry (False) + Then (True)
+                # Merge Fallthrough (False) + Then (True)
                 for v in vars_needing_phi:
                     val_entry = entry_var_map[v]
                     val_then = then_end_map[v]
@@ -1056,19 +1070,19 @@ class VenomIRBuilder:
                     if val_entry == val_then:
                          continue
                          
-                    # Materialize literals
-                    # Predecessor 1: entry_bb (False path)
-                    val_entry_reg = self._materialize_literal(val_entry, entry_bb)
+                    # Materialize literals in the CORRECT predecessor blocks
+                    # Predecessor 1: fallthrough_bb (False path)
+                    val_entry_reg = self._materialize_literal(val_entry, fallthrough_end_bb)
                     
                     # Predecessor 2: then_end_bb (True path)
                     val_then_reg = self._materialize_literal(val_then, then_end_bb)
 
                     phi_res = self.current_bb.append_instruction("phi", 
-                                                               entry_bb.label, val_entry_reg, 
+                                                               fallthrough_end_bb.label, val_entry_reg, 
                                                                then_end_label, val_then_reg)
                     self.var_map[v] = phi_res
             else:
-                # Then path diverged/reverted. End is only reachable from Entry (False).
+                # Then path diverged/reverted. End is only reachable from Fallthrough (False).
                 # State remains as Entry state. No Phis needed.
                 pass
 
@@ -1091,14 +1105,11 @@ class VenomIRBuilder:
             entry_var_map = self.var_map.copy()
             entry_bb = self.current_bb
             
-            # Materialize entry values BEFORE dispatch to ensure they're in scope
-            # for all case blocks (fixes nested switch SSA issues)
-            entry_materialized = {}
-            for v in vars_needing_phi:
-                if v in entry_var_map:
-                    val = entry_var_map[v]
-                    # Create a copy in entry_bb that will be available to all successors
-                    entry_materialized[v] = self._materialize_literal(val, entry_bb)
+            # NOTE: DO NOT materialize entry values here before dispatch!
+            # Pre-dispatch materialization causes values to be pushed unconditionally
+            # before the branch is taken (same bug as YulIf). Values should be
+            # materialized lazily in each case's exit path when building PHI nodes,
+            # in the actual predecessor block that jumps to switch_end.
             
             end_lbl = self.ctx.get_next_label("switch_end")
             end_bb = IRBasicBlock(end_lbl, self.current_fn)
@@ -1301,12 +1312,12 @@ class VenomIRBuilder:
                     # Collect phi values for this path - ALWAYS collect for ALL vars_needing_phi
                     # to ensure proper SSA with phi nodes covering all predecessors
                     for v in vars_needing_phi:
-                        # Use current value if modified, else use MATERIALIZED entry value
-                        # (not raw entry_var_map which may be out of scope in nested switches)
+                        # Use current value if modified, else use entry value
+                        # Materialization happens lazily in phi building (lines 1387-1393)
                         if v in self.var_map:
                             val = self.var_map[v]
                         else:
-                            val = entry_materialized.get(v)
+                            val = entry_var_map.get(v)
                         if val is not None:
                             phi_inputs[v].append({'val': val, 'label': bb.label, 'block': bb})
             
@@ -1959,9 +1970,10 @@ class VenomIRBuilder:
         # This avoids the double-reversal bug that was causing incorrect bytecode.
         
         if func == "memoryguard":
-            # Venom Backend reserves 0x80-VENOM_MEMORY_START for stack spills (Frame).
-            # We MUST start Yul heap at VENOM_MEMORY_START to avoid corruption.
-            return IRLiteral(VENOM_MEMORY_START)
+            # Venom Backend reserves 0x80-venom_start for stack spills (Frame).
+            # We MUST start Yul heap at venom_start to avoid corruption.
+            venom_start = self.config.memory.venom_start if self.config else VENOM_MEMORY_START
+            return IRLiteral(venom_start)
         
         # VENOM-NATIVE MEMORY MODEL: Handle mload(64) - Solidity's allocate_unbounded
         # 

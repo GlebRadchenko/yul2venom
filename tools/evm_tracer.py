@@ -115,6 +115,9 @@ OPCODES: Dict[int, Tuple[str, int, int]] = {
     0x9D: ("SWAP14", 0, 0),
     0x9E: ("SWAP15", 0, 0),
     0x9F: ("SWAP16", 0, 0),
+    0x5C: ("TLOAD", 1, 1),      # Cancun: Transient SLOAD
+    0x5D: ("TSTORE", 2, 0),     # Cancun: Transient SSTORE
+    0x5E: ("MCOPY", 3, 0),      # Cancun: Memory copy
     0xF3: ("RETURN", 2, 0),
     0xFD: ("REVERT", 2, 0),
     0xFE: ("INVALID", 0, 0),
@@ -131,16 +134,23 @@ for i in range(5):
 
 
 class EVMTracer:
-    def __init__(self, bytecode: bytes, calldata: bytes = b"", max_steps: int = 10000):
+    def __init__(self, bytecode: bytes, calldata: bytes = b"", max_steps: int = 10000,
+                 address: int = 0xDEADBEEF, caller: int = 0xBEEF, origin: int = 0xCAFE):
         self.code = bytecode
         self.calldata = calldata
         self.max_steps = max_steps
+        
+        # Environment
+        self.address = address  # Contract address
+        self.caller = caller    # msg.sender
+        self.origin = origin    # tx.origin
         
         # State
         self.pc = 0
         self.stack: List[int] = []
         self.memory: bytearray = bytearray(1024 * 1024)  # 1MB
         self.storage: Dict[int, int] = {}
+        self.transient_storage: Dict[int, int] = {}  # Cancun: Transient storage
         self.gas = 10_000_000
         self.stopped = False
         self.reverted = False
@@ -365,6 +375,46 @@ class EVMTracer:
         elif op == 0x38:  # CODESIZE
             self.stack.append(len(self.code))
             self.pc += 1
+        elif op == 0x39:  # CODECOPY
+            mem_off, code_off, size = self.stack.pop(), self.stack.pop(), self.stack.pop()
+            code_data = self.code[code_off:code_off+size] if code_off < len(self.code) else b""
+            code_data = code_data.ljust(size, b'\x00')
+            self._mem_write(mem_off, code_data)
+            self.pc += 1
+        elif op == 0x30:  # ADDRESS
+            self.stack.append(self.address)
+            self.pc += 1
+        elif op == 0x32:  # ORIGIN
+            self.stack.append(self.origin)
+            self.pc += 1
+        elif op == 0x33:  # CALLER
+            self.stack.append(self.caller)
+            self.pc += 1
+        elif op == 0x20:  # SHA3/KECCAK256
+            import hashlib
+            offset, size = self.stack.pop(), self.stack.pop()
+            data = self._mem_read(offset, size)
+            # Use keccak256 (note: Python's hashlib doesn't have keccak, 
+            # so we use a mock for tracing purposes)
+            result = int.from_bytes(hashlib.sha256(data).digest(), 'big')
+            self.stack.append(result)
+            self.pc += 1
+        elif op == 0x1A:  # BYTE
+            i, x = self.stack.pop(), self.stack.pop()
+            if i < 32:
+                self.stack.append((x >> (248 - i * 8)) & 0xFF)
+            else:
+                self.stack.append(0)
+            self.pc += 1
+        elif op == 0x3D:  # RETURNDATASIZE
+            self.stack.append(len(self.return_data))
+            self.pc += 1
+        elif op == 0x3E:  # RETURNDATACOPY
+            mem_off, data_off, size = self.stack.pop(), self.stack.pop(), self.stack.pop()
+            data = self.return_data[data_off:data_off+size] if data_off < len(self.return_data) else b""
+            data = data.ljust(size, b'\x00')
+            self._mem_write(mem_off, data)
+            self.pc += 1
         
         # Stack/Memory/Storage
         elif op == 0x50:  # POP
@@ -416,6 +466,19 @@ class EVMTracer:
             self.stack.append(self.gas)
             self.pc += 1
         elif op == 0x5B:  # JUMPDEST
+            self.pc += 1
+        elif op == 0x5C:  # TLOAD (transient storage load)
+            key = self.stack.pop()
+            self.stack.append(self.transient_storage.get(key, 0))
+            self.pc += 1
+        elif op == 0x5D:  # TSTORE (transient storage store)
+            key, value = self.stack.pop(), self.stack.pop()
+            self.transient_storage[key] = value
+            self.pc += 1
+        elif op == 0x5E:  # MCOPY
+            dest, src, size = self.stack.pop(), self.stack.pop(), self.stack.pop()
+            data = self._mem_read(src, size)
+            self._mem_write(dest, data)
             self.pc += 1
         
         # PUSH0
@@ -474,7 +537,23 @@ class EVMTracer:
 
 
 def main():
-    if len(sys.argv) < 2:
+    import argparse
+    parser = argparse.ArgumentParser(description='EVM Bytecode Tracer')
+    parser.add_argument('bytecode_file', nargs='?', help='Path to bytecode file')
+    parser.add_argument('calldata', nargs='?', default='', help='Hex-encoded calldata')
+    parser.add_argument('--address', type=lambda x: int(x, 16), default=0xDEADBEEF,
+                        help='Contract address (hex, default: 0xDEADBEEF)')
+    parser.add_argument('--caller', type=lambda x: int(x, 16), default=0xBEEF,
+                        help='msg.sender (hex, default: 0xBEEF)')
+    parser.add_argument('--origin', type=lambda x: int(x, 16), default=0xCAFE,
+                        help='tx.origin (hex, default: 0xCAFE)')
+    parser.add_argument('--eoa', action='store_true',
+                        help='Simulate EOA call (sets origin=caller)')
+    parser.add_argument('--max-steps', type=int, default=500,
+                        help='Maximum execution steps (default: 500)')
+    args = parser.parse_args()
+    
+    if not args.bytecode_file:
         # Default: load the LoopCheckCalldata bytecode
         bytecode_file = "output/LoopCheckCalldata_opt_runtime.bin"
         # Calldata for processStructs with 1 element:
@@ -487,8 +566,16 @@ def main():
         elem_value = (100).to_bytes(32, 'big')
         calldata = selector + offset + length + elem_id + elem_value
     else:
-        bytecode_file = sys.argv[1]
-        calldata = bytes.fromhex(sys.argv[2]) if len(sys.argv) > 2 else b""
+        bytecode_file = args.bytecode_file
+        calldata = bytes.fromhex(args.calldata) if args.calldata else b""
+    
+    # Handle --eoa flag  
+    caller = args.caller
+    origin = args.origin
+    if args.eoa:
+        # EOA call: same address for both
+        origin = caller
+        print(f"EOA mode: caller=origin=0x{caller:x}")
     
     # Load bytecode
     with open(bytecode_file, 'rb') as f:
@@ -500,10 +587,12 @@ def main():
             bytecode = content
     
     print(f"Loaded {len(bytecode)} bytes of bytecode")
-    print(f"Calldata: {len(calldata)} bytes: {calldata.hex()}")
+    print(f"Calldata: {len(calldata)} bytes: {calldata.hex() if calldata else 'empty'}")
+    print(f"Address: 0x{args.address:x}, Caller: 0x{caller:x}, Origin: 0x{origin:x}")
     print("=" * 80)
     
-    tracer = EVMTracer(bytecode, calldata, max_steps=500)
+    tracer = EVMTracer(bytecode, calldata, max_steps=args.max_steps,
+                       address=args.address, caller=caller, origin=origin)
     success, return_data = tracer.run()
     
     print("=" * 80)

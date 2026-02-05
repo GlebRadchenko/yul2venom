@@ -227,7 +227,7 @@ def compute_sidecar_addresses(yul_code: str, config: dict) -> dict:
     deployer = deployment.get('deployer', '')
     main_nonce = deployment.get('nonce', 0)
     
-    if not deployer or not main_nonce:
+    if not deployer or main_nonce is None:
         print(f"  [WARN] compute_sidecar_addresses: missing deployment info", file=sys.stderr)
         return {}
     
@@ -1131,6 +1131,27 @@ def cmd_transpile(args):
         # Reuse pattern from optimizer/yul_source_optimizer.py
         yul_no_comments = re.sub(r'/\*[\s\S]*?\*/', '', raw_yul)
         
+        # IMPORTANT: First scan RAW Yul (with @src comments) for name→ID mapping
+        # Pattern: setimmutable(_X, "ID", mload(/** @src ... "varname = ..." */ OFFSET))
+        setimm_with_src_pattern = re.compile(
+            r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*/\*\*\s*@src[^"]*"(\w+)\s*=\s*[^"]*"\s*\*/\s*(\d+)\s*\)\s*\)'
+        )
+        
+        # Build name_to_yul_id from @src comments (most reliable, from raw Yul)
+        name_to_yul_id = {}  # name -> ID discovered from Yul @src
+        offset_to_name_yul = {}  # offset -> name for positional fallback
+        for match in setimm_with_src_pattern.finditer(raw_yul):
+            imm_id = match.group(1)
+            var_name = match.group(2)
+            offset = int(match.group(3))
+            if var_name not in name_to_yul_id:
+                name_to_yul_id[var_name] = imm_id
+                offset_to_name_yul[offset] = var_name
+        
+        if name_to_yul_id:
+            print(f"│ Discovered {len(name_to_yul_id)} named immutables from Yul @src comments")
+        
+        # Fallback: scan simplified Yul (no comments) for offset→ID mapping
         setimm_pattern = re.compile(r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*(\d+)\s*\)\s*\)')
         offset_to_ids = {}  # offset -> list of IDs
         for match in setimm_pattern.finditer(yul_no_comments):
@@ -1216,14 +1237,54 @@ def cmd_transpile(args):
             # Sort unmapped configs by order for positional matching
             unmapped_configs.sort(key=lambda x: x[2])
             
-            # Match positionally
+            # Match positionally AND track discovered IDs by name
+            discovered_ids = {}  # name -> id for config update
             for i, (offset, imm_id) in enumerate(unmapped_offsets):
                 if i < len(unmapped_configs):
                     name, value, order = unmapped_configs[i]
                     immutables_map[imm_id] = value
+                    discovered_ids[name] = str(imm_id)  # Store as string for JSON
                     print(f"│   • {name} (offset {offset}, order {order}): ID {imm_id} = {hex(value)} [positional]")
         
         print(f"│ Total: {len(immutables_map)} immutable IDs mapped")
+        
+        # =========================================================================
+        # CRITICAL FIX: Update config with discovered IDs
+        # solc generates different IDs each compile, so we need to sync config
+        # Merge IDs from @src comments (name_to_yul_id) + positional matching (discovered_ids)
+        # =========================================================================
+        
+        # Merge: prefer @src-based IDs (direct name mapping) over positional
+        all_discovered_ids = dict(name_to_yul_id)  # Start with @src-based
+        all_discovered_ids.update(discovered_ids)  # Add positional (won't override @src)
+        
+        config_ids_updated = False
+        
+        # Update constructor_args with discovered IDs
+        for name, info in constructor_args.items():
+            if name in all_discovered_ids:
+                new_id = all_discovered_ids[name]
+                if info.get('id') != new_id:
+                    config['constructor_args'][name]['id'] = new_id
+                    config_ids_updated = True
+                    print(f"│   ↳ Updated constructor_args.{name}.id = {new_id}")
+        
+        # Update auto_predicted with discovered IDs (AND compute new addresses)
+        for name, info in auto_predicted.items():
+            if name.startswith('_'):
+                continue
+            if name in all_discovered_ids:
+                new_id = all_discovered_ids[name]
+                if info.get('id') != new_id:
+                    config['auto_predicted'][name]['id'] = new_id
+                    config_ids_updated = True
+                    print(f"│   ↳ Updated auto_predicted.{name}.id = {new_id}")
+        
+        # Write updated config if any IDs changed
+        if config_ids_updated:
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+            print(f"│ ✓ Config IDs synced with Yul")
         
         # Build name_to_value for sidecar immutable resolution
         # Sidecars have DIFFERENT IDs but SAME semantic names (weth, owner, etc.)
@@ -1921,7 +1982,17 @@ def cmd_transpile(args):
             
             # Append sidecars to match deployed code layout
             # This is critical for CREATE/CREATE2 contracts using dataoffset()/datasize()
+            # 
+            # WARNING: With multiple sidecars, dataoffset() intrinsics computed as
+            # (codesize - datasize) will only point to the LAST sidecar, not named ones.
+            # This is a known limitation - runtime-only mode works correctly only when:
+            # 1. There's a single sidecar, OR
+            # 2. Runtime code doesn't use dataoffset() for sidecar deployment
+            #
+            # For contracts deploying multiple sidecars from runtime, use full init mode.
             if sidecar_bytecodes:
+                if len(sidecar_bytecodes) > 1:
+                    print(f"  [WARN] Runtime-only with {len(sidecar_bytecodes)} sidecars: dataoffset() may be incorrect", file=sys.stderr)
                 for sidecar_name, sidecar_bc in sidecar_bytecodes:
                     output_bytecode += sidecar_bc
             

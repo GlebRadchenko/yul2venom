@@ -42,7 +42,7 @@ yul_optimizer:
   # - standard: Remove non-payable checks, basic ABI decoder checks
   # - aggressive: Remove runtime checks (extcodesize, returndatasize)
   # - maximum: Remove overflow/bounds checks (DANGEROUS - use with caution)
-  level: aggressive  # Testing fix for parser compatibility
+  level: safe  # TESTING: Disabled aggressive to debug mstore bug
   
   # Maximum number of optimization passes before stopping
   # Optimizer runs until no changes or this limit is reached
