@@ -19,7 +19,7 @@ def extract_deployed_object(solc_output: str, contract_name: str) -> Tuple[Optio
     
     Args:
         solc_output: Raw output from solc --ir-optimized
-        contract_name: Contract name (e.g., "QuotedTrader")
+        contract_name: Contract name (e.g., "MyContract")
         
     Returns:
         Tuple of (deployed_yul, full_yul) or (None, None) if not found

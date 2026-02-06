@@ -12,7 +12,7 @@ contract LoopTraceTest is Test {
     function test_traceBytes() public {
         // Load transpiled bytecode
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/LoopCheckCalldata_opt.bin"
+            "../output/LoopCheckCalldata_opt.bin"
         );
         address deployed;
         assembly {

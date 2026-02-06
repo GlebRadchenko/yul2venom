@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 /// @title Test: Deep inheritance chain constructor
-/// @dev Pattern from LowGasTrader - multiple levels of inheritance with immutables
 
 // Level 1: Base contract
 contract BaseLevel1 {

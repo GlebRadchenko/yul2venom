@@ -1,6 +1,6 @@
 # Nightly Benchmark Workflow
 # Triggers: 2 AM UTC daily, manual dispatch
-# Pipeline: transpile-test → benchmark → archive
+# Pipeline: transpile-test (346 tests) → benchmark (15 contracts) → archive
 
 name: Nightly
 
@@ -49,7 +49,7 @@ jobs:
     with:
       python-version: '3.11'
       solc-version: '0.8.30'
-      contracts: 'Arithmetic,ControlFlow,StateManagement,DataStructures,Functions,Events,Encoding,Edge,AdvancedFeatures,Libraries,Modifiers,TypeLimits,TransientStorage'
+      contracts: 'Arithmetic,ControlFlow,StateManagement,DataStructures,Functions,Events,Encoding,Edge,AdvancedFeatures,Libraries,Modifiers,TypeLimits,TransientStorage,SoladyToken,ExternalLibrary'
 
   # ============================================
   # Archive Results

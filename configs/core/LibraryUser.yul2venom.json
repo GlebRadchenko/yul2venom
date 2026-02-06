@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "contract": "foundry/src/core/LibraryUser.sol",
+  "yul": "output/LibraryUser.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "sidecar_nonce_start": 1,
+  "constructor_args": {},
+  "auto_predicted": {},
+  "library_addresses": {
+    "foundry/src/core/LibraryUser.sol:SimpleMath": {
+      "name": "SimpleMath",
+      "type": "address",
+      "value": "0x3333333333333333333333333333333333333333"
+    }
+  }
+}

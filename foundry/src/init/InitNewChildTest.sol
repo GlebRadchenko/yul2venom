@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 /// @title Test: Constructor creates child contracts using `new`
-/// @dev Pattern from BootPath.sol - creates multiple child contracts in constructor
 
 // Simple child contract to be created
 contract ChildContractA {

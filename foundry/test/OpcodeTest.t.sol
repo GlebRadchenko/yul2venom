@@ -20,6 +20,7 @@ interface IOpcodeBasics {
     function test_lt_literal(uint256 b) external pure returns (uint256);
     function test_mul(uint256 a, uint256 b) external pure returns (uint256);
     function test_loop_lt(uint256 limit) external pure returns (uint256);
+    function test_invalid() external pure;
 }
 
 contract OpcodeTest is Test {
@@ -28,7 +29,7 @@ contract OpcodeTest is Test {
     function setUp() public {
         address addr = address(0xCAFE);
         try
-            vm.readFileBinary("yul2venom/output/OpcodeBasics_opt_runtime.bin")
+            vm.readFileBinary("../output/OpcodeBasics_opt_runtime.bin")
         returns (bytes memory code) {
             vm.etch(addr, code);
             opcodeTarget = IOpcodeBasics(addr);
@@ -93,6 +94,15 @@ contract OpcodeTest is Test {
         if (!checkDeployed()) return;
         assertEq(opcodeTarget.test_loop_lt(2), 2, "loop(2) != 2");
     }
+
+    function test_Opcodes_Invalid() public {
+        if (!checkDeployed()) return;
+        (bool success, bytes memory data) = address(opcodeTarget).call(
+            abi.encodeWithSelector(IOpcodeBasics.test_invalid.selector)
+        );
+        assertFalse(success, "invalid() must halt exceptionally");
+        assertEq(data.length, 0, "invalid() should not return ABI error payload");
+    }
 }
 
 // ==========================================
@@ -103,7 +113,7 @@ contract OpcodeDebugTest is Test {
     function test_debug_mstore_return() public {
         address addr = address(0xDEAD);
         try
-            vm.readFileBinary("yul2venom/output/Debug_opt_runtime.bin")
+            vm.readFileBinary("../output/Debug_opt_runtime.bin")
         returns (bytes memory code) {
             vm.etch(addr, code);
         } catch {
@@ -123,7 +133,7 @@ contract OpcodeDebugTest is Test {
     function test_opcode_basics_raw() public {
         bytes memory code;
         try
-            vm.readFileBinary("yul2venom/output/OpcodeBasics_opt_runtime.bin")
+            vm.readFileBinary("../output/OpcodeBasics_opt_runtime.bin")
         returns (bytes memory c) {
             code = c;
         } catch {

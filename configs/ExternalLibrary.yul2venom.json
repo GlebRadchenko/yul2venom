@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "contract": "foundry/src/bench/ExternalLibrary.sol",
+  "yul": "output/ExternalLibrary.yul",
+  "deployment": {
+    "deployer": "0x1234567890123456789012345678901234567890",
+    "nonce": 0
+  },
+  "sidecar_nonce_start": 1,
+  "constructor_args": {},
+  "auto_predicted": {},
+  "library_addresses": {
+    "foundry/src/bench/ExternalLibrary.sol:MathLib": {
+      "name": "MathLib",
+      "type": "address",
+      "value": "0x1111111111111111111111111111111111111111"
+    },
+    "foundry/src/bench/ExternalLibrary.sol:ArrayLib": {
+      "name": "ArrayLib",
+      "type": "address",
+      "value": "0x2222222222222222222222222222222222222222"
+    }
+  }
+}

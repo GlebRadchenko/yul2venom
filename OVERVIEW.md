@@ -125,6 +125,14 @@ When using `--analyze`, you get:
 - Loop detection
 - Identity operations (potential bugs)
 
+### Test Status
+
+**346 tests passing** across 46 test suites:
+- 18 core contracts (46 tests)
+- 15 benchmark contracts (~250 tests)
+- 10 init contracts (~50 tests)
+- 1 reproduction test
+
 ---
 
 ## Benchmark Tool
@@ -527,4 +535,4 @@ python3.11 tools/benchmark.py --output report.md
 
 ---
 
-*Last updated: 2026-02-02*
+*Last updated: 2026-02-04*

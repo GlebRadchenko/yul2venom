@@ -19,7 +19,7 @@ contract SolcRefTest is Test {
     function setUp() public {
         try
             vm.readFileBinary(
-                "yul2venom/output/LoopCheckCalldata_solc_runtime.bin"
+                "../output/LoopCheckCalldata_solc_runtime.bin"
             )
         returns (bytes memory code) {
             address addr = address(0xDEAD);

@@ -16,7 +16,7 @@ interface IMinimalLoop {
 contract MinimalLoopTest is Test {
     function test_minimal() public {
         bytes memory code = vm.readFileBinary(
-            "yul2venom/output/MinimalLoop_opt_runtime.bin"
+            "../output/MinimalLoop_opt_runtime.bin"
         );
         address addr = address(0x10094);
         vm.etch(addr, code);

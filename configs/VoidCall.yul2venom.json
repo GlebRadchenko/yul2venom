@@ -6,6 +6,8 @@
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0
   },
+  "sidecar_nonce_start": 1,
   "constructor_args": {},
-  "auto_predicted": {}
+  "auto_predicted": {},
+  "library_addresses": {}
 }

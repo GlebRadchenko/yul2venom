@@ -121,10 +121,11 @@ class AssertOptimizer(YulOptimizer):
                             val0 = int(arg0.value, 16) if arg0.value.startswith("0x") else int(arg0.value)
                             val1 = int(arg1.value, 16) if arg1.value.startswith("0x") else int(arg1.value)
                             return val0 == 0 and val1 == 0
-                        except:
+                        except ValueError:
                             pass
-            elif stmt.function.startswith("revert_error_"):
-                return True
+            # NOTE: revert_error_* functions are NOT simple reverts - they emit
+            # custom error selectors and data. Converting them to assert would
+            # lose this information. Only revert(0,0) is truly "simple".
         
         return False
 
@@ -219,7 +220,7 @@ class Sha3Optimizer(YulOptimizer):
                 if isinstance(val, str):
                     val = int(val, 16) if val.startswith("0x") else int(val)
                 return val == expected
-            except:
+            except ValueError:
                 pass
         return False
 
@@ -508,7 +509,7 @@ class SelectorDispatchOptimizer(YulOptimizer):
                     if isinstance(val, str):
                         val = int(val, 16) if val.startswith("0x") else int(val)
                     result['selectors'].append((val, case.body))
-                except:
+                except ValueError:
                     pass
         
         # djmp is beneficial for 4+ selectors
@@ -549,7 +550,7 @@ class SelectorDispatchOptimizer(YulOptimizer):
                     val = int(val, 16) if val.startswith("0x") else int(val)
                 if val != 224:
                     return False
-            except:
+            except ValueError:
                 return False
         else:
             return False
@@ -570,7 +571,7 @@ class SelectorDispatchOptimizer(YulOptimizer):
                 if isinstance(val, str):
                     val = int(val, 16) if val.startswith("0x") else int(val)
                 return val == 0
-            except:
+            except ValueError:
                 return False
         
         return False
@@ -789,6 +790,15 @@ class AlgebraicOptimizer:
         # div(x, 1) = x
         if op == "div" and b_is_one:
             return a
+        
+        # exp(x, 0) = 1 (any number to power 0 is 1)
+        # exp(x, 1) = x (any number to power 1 is itself)
+        # exp opcode costs ~50+ gas, so these are significant savings
+        if op == "exp":
+            if b_is_zero:
+                return IRLiteral(1)
+            if b_is_one:
+                return a
         
         # POWER-OF-2 OPTIMIZATIONS
         # mul(x, 2^n) = shl(n, x) - saves gas (shl is cheaper than mul)

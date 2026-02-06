@@ -88,11 +88,18 @@ class YulExpressionStmt(YulStatement):
     expr: YulExpression
 
 @dataclass
+class YulData(AstNode):
+    name: str
+    encoding: str
+    value: str
+
+@dataclass
 class YulObject(AstNode):
     name: str
     code: YulBlock
     functions: List[YulFunctionDef] = field(default_factory=list)
     sub_objects: List['YulObject'] = field(default_factory=list)
+    data_items: List[YulData] = field(default_factory=list)
 
 
 class YulParser:
@@ -175,6 +182,7 @@ class YulParser:
         code_block = None
         functions = []
         sub_objects = []
+        data_items = []
         
         while True:
             p = self.peek()
@@ -195,17 +203,26 @@ class YulParser:
                 func_def = self.parse_function_def()
                 functions.append(func_def)
             elif token == 'data':
-                # Skip data sections for now, or capture if needed
-                self.consume() # name
-                self.consume() # format (hex)
-                self.consume() # value
+                data_name = self.consume()
+                data_encoding = self.consume()
+                data_value = self.consume()
+                if data_name and data_encoding and data_value:
+                    data_items.append(
+                        YulData(name=data_name, encoding=data_encoding, value=data_value)
+                    )
             else:
                 pass
         
         self.consume('}')
         
         if code_block:
-             return YulObject(name=name, code=code_block, functions=functions, sub_objects=sub_objects)
+             return YulObject(
+                 name=name,
+                 code=code_block,
+                 functions=functions,
+                 sub_objects=sub_objects,
+                 data_items=data_items,
+             )
         return None
 
     def skip_block(self):
@@ -257,6 +274,79 @@ class YulParser:
         body = self.parse_block()
         return YulFunctionDef(name=name, args=args, returns=returns, body=body)
 
+    def _parse_let_declaration(self) -> YulVariableDeclaration:
+        vars_ = []
+        has_initializer = False
+
+        while self.peek() is not None:
+            self.skip_whitespace()
+            if self.content.startswith(':=', self.pos):
+                self.consume(':=')
+                has_initializer = True
+                break
+
+            saved_pos = self.pos
+            next_token = self.consume()
+            if next_token in ('let', 'if', 'switch', 'for', 'function', 'leave', 'break', 'continue', '}'):
+                self.pos = saved_pos
+                break
+
+            vars_.append(next_token)
+            if self.peek() == ',':
+                self.consume(',')
+
+        expr = self.parse_expression() if has_initializer else None
+        return YulVariableDeclaration(vars=vars_, value=expr)
+
+    def _parse_switch_statement(self) -> YulSwitch:
+        cond = self.parse_expression()
+        cases = []
+
+        while True:
+            token = self.peek()
+            if token is None or token == '}':
+                break
+
+            saved_pos = self.pos
+            keyword = self.consume()
+
+            if keyword == 'case':
+                value = self.consume()
+                body = self.parse_block()
+                cases.append(YulCase(value=value, body=body))
+                continue
+
+            if keyword == 'default':
+                body = self.parse_block()
+                cases.append(YulCase(value=None, body=body))
+                continue
+
+            self.pos = saved_pos
+            break
+
+        return YulSwitch(condition=cond, cases=cases)
+
+    def _parse_assignment_or_expression(self, first_word: str) -> YulStatement:
+        if self.peek() == '(':
+            self.pos -= len(first_word)
+            return YulExpressionStmt(expr=self.parse_expression())
+
+        vars_ = [first_word]
+        while self.peek() == ',':
+            self.consume(',')
+            vars_.append(self.consume())
+
+        self.skip_whitespace()
+        if self.content.startswith(':=', self.pos):
+            self.consume(':=')
+            value = self.parse_expression()
+            return YulAssignment(vars=vars_, value=value)
+
+        if len(vars_) == 1:
+            return YulExpressionStmt(expr=YulLiteral(value=first_word))
+
+        raise ValueError(f"Unexpected tokens at {self.pos}")
+
     def parse_statement(self) -> Optional[YulStatement]:
         token = self.peek()
         if token is None or token == '}': return None
@@ -265,67 +355,16 @@ class YulParser:
         word = self.consume()
         if not word: return None
 
-
         if word == 'let':
-            vars_ = []
-            has_initializer = False
-            while self.peek() is not None:
-                self.skip_whitespace()
-                # Check for := (assignment operator)
-                if self.content.startswith(':=', self.pos):
-                    self.consume(':=')
-                    has_initializer = True
-                    break
-                
-                # Peek at next token - if it's a KEYWORD, this let has no initializer
-                saved_pos = self.pos
-                next_token = self.consume()
-                
-                # If next token is a Yul keyword, put it back and stop
-                if next_token in ('let', 'if', 'switch', 'for', 'function', 'leave', 'break', 'continue', '}'):
-                    self.pos = saved_pos
-                    break
-                
-                # Otherwise it's a variable name
-                vars_.append(next_token)
-                if self.peek() == ',': self.consume(',')
-            
-            # Parse initializer expression if present
-            if has_initializer:
-                expr = self.parse_expression()
-            else:
-                expr = None  # No initializer - value=None
-            return YulVariableDeclaration(vars=vars_, value=expr)
+            return self._parse_let_declaration()
         
         elif word == 'if':
             cond = self.parse_expression()
             body = self.parse_block()
             return YulIf(condition=cond, body=body)
         
-        elif word.strip() == 'switch':
-            # print(f"DEBUG: Entering parse_switch at {self.pos}", file=sys.stderr); sys.stderr.flush()
-            cond = self.parse_expression()
-            # print(f"DEBUG: Parsed switch condition: {cond}", file=sys.stderr); sys.stderr.flush()
-            cases = []
-            while True:
-                p = self.peek()
-                if p is None or p == '}': 
-                    # print(f"DEBUG: Switch end at {self.pos}, peek='{p}'", file=sys.stderr); sys.stderr.flush()
-                    break
-                saved = self.pos
-                tok = self.consume()
-                # print(f"DEBUG: Switch token '{tok}' at {saved}", file=sys.stderr)
-                if tok == 'case':
-                    val = self.consume()
-                    body = self.parse_block()
-                    cases.append(YulCase(value=val, body=body))
-                elif tok == 'default':
-                    body = self.parse_block()
-                    cases.append(YulCase(value=None, body=body))
-                else:
-                    self.pos = saved 
-                    break
-            return YulSwitch(condition=cond, cases=cases)
+        elif word == 'switch':
+            return self._parse_switch_statement()
         
         elif word == 'for':
             init_block = self.parse_block()
@@ -343,29 +382,7 @@ class YulParser:
         elif word == 'continue': return YulContinue()
 
         else:
-            # Check for expression (call) or assignment
-            if self.peek() == '(':
-                self.pos -= len(word) 
-                expr = self.parse_expression()
-                return YulExpressionStmt(expr=expr)
-            
-            # Check for assignment
-            vars_ = [word]
-            while self.peek() == ',':
-                self.consume(',')
-                vars_.append(self.consume())
-                
-            self.skip_whitespace()
-            if self.content.startswith(':=', self.pos):
-                self.consume(':=')
-                val = self.parse_expression()
-                return YulAssignment(vars=vars_, value=val)
-            
-            if len(vars_) == 1:
-                 # Check again for keyword handling fallback
-                 return YulExpressionStmt(expr=YulLiteral(value=word))
-            
-            raise ValueError(f"Unexpected tokens at {self.pos}")
+            return self._parse_assignment_or_expression(word)
 
     def parse_expression(self) -> Union[YulLiteral, YulCall]:
         # Iterative Expression Parser
@@ -411,4 +428,3 @@ class YulParser:
                 if self.peek() == ',': self.consume(',')
         
         return final_call
-

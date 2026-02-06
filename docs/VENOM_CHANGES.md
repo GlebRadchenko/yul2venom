@@ -285,10 +285,9 @@ The other changes are Yul-specific extensions and would need discussion with the
 
 ## Testing Verification
 
-All 344 Forge tests pass with these changes:
+All 346 Forge tests pass with these changes:
 - 36 runtime bytecode tests
 - 10 init bytecode tests
-- Full benchmark suite (8 contracts)
-- QuotedTrader industrial contract (34KB)
+- Full benchmark suite (300 tests across 15 contracts)
 
 Removing any of these patches causes test failures.

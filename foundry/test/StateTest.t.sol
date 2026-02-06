@@ -34,7 +34,7 @@ contract StateTests is Test {
 
     function deployStorageMemory() internal {
         bytes memory runtimeCode = vm.readFileBinary(
-            "yul2venom/output/StorageMemoryTest_opt_runtime.bin"
+            "../output/StorageMemoryTest_opt_runtime.bin"
         );
         address addr = address(0xCAFE);
         vm.etch(addr, runtimeCode);
@@ -78,7 +78,7 @@ contract StateTests is Test {
 
     function deployConstants() internal {
         bytes memory runtimeCode = vm.readFileBinary(
-            "yul2venom/output/ConstantTest_opt_runtime.bin"
+            "../output/ConstantTest_opt_runtime.bin"
         );
         address addr = address(0xBEEF);
         vm.etch(addr, runtimeCode);

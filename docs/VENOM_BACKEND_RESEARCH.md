@@ -51,10 +51,10 @@ The Venom backend transforms Venom IR into EVM bytecode. The architecture follow
 ```
 
 **Key Files**:
-- [`context.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/context.py) - `IRContext` container
-- [`function.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/function.py) - `IRFunction` with basic blocks
-- [`basicblock.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/basicblock.py) - Core IR types
-- [`__init__.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/__init__.py) - Entry point, pass orchestration
+- [`context.py`](file://vyper/vyper/venom/context.py) - `IRContext` container
+- [`function.py`](file://vyper/vyper/venom/function.py) - `IRFunction` with basic blocks
+- [`basicblock.py`](file://vyper/vyper/venom/basicblock.py) - Core IR types
+- [`__init__.py`](file://vyper/vyper/venom/__init__.py) - Entry point, pass orchestration
 
 ---
 
@@ -149,7 +149,7 @@ class IRContext:
 
 > **⚠️ CRITICAL FOR YUL2VENOM**
 
-### File: [`parser.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/parser.py)
+### File: [`parser.py`](file://vyper/vyper/venom/parser.py)
 
 The parser implements **operand reversal** for most instructions.
 
@@ -347,7 +347,7 @@ Venom uses `:` suffix for SSA versions:
 
 ### MakeSSA Pass
 
-**File**: [`passes/make_ssa.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/make_ssa.py)
+**File**: [`passes/make_ssa.py`](file://vyper/vyper/venom/passes/make_ssa.py)
 
 **Algorithm (Standard SSA Construction)**:
 
@@ -411,7 +411,7 @@ merge:
 
 ### Phi Elimination Pass
 
-**File**: [`passes/phi_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/phi_elimination.py)
+**File**: [`passes/phi_elimination.py`](file://vyper/vyper/venom/passes/phi_elimination.py)
 
 **Purpose**: Simplify phis that have a single origin to `assign` instructions.
 
@@ -515,7 +515,7 @@ This works because:
 
 ### Assign Elimination Pass
 
-**File**: [`passes/assign_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/assign_elimination.py)
+**File**: [`passes/assign_elimination.py`](file://vyper/vyper/venom/passes/assign_elimination.py)
 
 Propagates variable values through assign chains and removes redundant assigns:
 
@@ -534,7 +534,7 @@ use(%x)
 
 ### Analysis Base Classes
 
-**File**: [`analysis/analysis.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/analysis.py)
+**File**: [`analysis/analysis.py`](file://vyper/vyper/venom/analysis/analysis.py)
 
 ```python
 class IRAnalysis:
@@ -552,7 +552,7 @@ class IRAnalysesCache:
 
 ### CFGAnalysis
 
-**File**: [`analysis/cfg.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/cfg.py)
+**File**: [`analysis/cfg.py`](file://vyper/vyper/venom/analysis/cfg.py)
 
 ```python
 class CFGAnalysis(IRAnalysis):
@@ -568,7 +568,7 @@ class CFGAnalysis(IRAnalysis):
 
 ### LivenessAnalysis
 
-**File**: [`analysis/liveness.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/liveness.py)
+**File**: [`analysis/liveness.py`](file://vyper/vyper/venom/analysis/liveness.py)
 
 ```python
 class LivenessAnalysis(IRAnalysis):
@@ -589,7 +589,7 @@ for instruction in reversed(bb.instructions):
 
 ### DFGAnalysis
 
-**File**: [`analysis/dfg.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/dfg.py)
+**File**: [`analysis/dfg.py`](file://vyper/vyper/venom/analysis/dfg.py)
 
 ```python
 class DFGAnalysis(IRAnalysis):
@@ -600,7 +600,7 @@ class DFGAnalysis(IRAnalysis):
 
 ### DominatorTreeAnalysis
 
-**File**: [`analysis/dominators.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/dominators.py)
+**File**: [`analysis/dominators.py`](file://vyper/vyper/venom/analysis/dominators.py)
 
 ```python
 class DominatorTreeAnalysis(IRAnalysis):
@@ -619,7 +619,7 @@ class DominatorTreeAnalysis(IRAnalysis):
 
 ### Pass Base Class
 
-**File**: [`passes/base_pass.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/base_pass.py)
+**File**: [`passes/base_pass.py`](file://vyper/vyper/venom/passes/base_pass.py)
 
 ```python
 class IRPass:
@@ -631,7 +631,7 @@ class IRPass:
 
 ### MakeSSA Pass
 
-**File**: [`passes/make_ssa.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/make_ssa.py)
+**File**: [`passes/make_ssa.py`](file://vyper/vyper/venom/passes/make_ssa.py)
 
 **Purpose**: Convert function to Static Single Assignment form.
 
@@ -652,7 +652,7 @@ new_var = IRVariable(f"{og_var.name}:{version}")
 
 ### Mem2Var Pass
 
-**File**: [`passes/mem2var.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/mem2var.py)
+**File**: [`passes/mem2var.py`](file://vyper/vyper/venom/passes/mem2var.py)
 
 **Purpose**: Promote memory operations to stack variables when safe.
 
@@ -666,7 +666,7 @@ new_var = IRVariable(f"{og_var.name}:{version}")
 
 ### PhiEliminationPass
 
-**File**: [`passes/phi_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/phi_elimination.py)
+**File**: [`passes/phi_elimination.py`](file://vyper/vyper/venom/passes/phi_elimination.py)
 
 **Purpose**: Eliminate redundant phi nodes by tracing origin chains.
 
@@ -678,7 +678,7 @@ if len(origins) == 1:
 
 ### SCCP (Sparse Conditional Constant Propagation)
 
-**File**: [`passes/sccp/sccp.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/sccp/sccp.py)
+**File**: [`passes/sccp/sccp.py`](file://vyper/vyper/venom/passes/sccp/sccp.py)
 
 **Purpose**: Propagate constants and eliminate dead branches.
 
@@ -689,7 +689,7 @@ Uses lattice-based dataflow:
 
 ### DFTPass (Data Flow Tree)
 
-**File**: [`passes/dft.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/dft.py)
+**File**: [`passes/dft.py`](file://vyper/vyper/venom/passes/dft.py)
 
 **Purpose**: Reorder instructions within basic blocks for optimal stack usage.
 
@@ -706,7 +706,7 @@ Uses lattice-based dataflow:
 
 ### SingleUseExpansion
 
-**File**: [`passes/single_use_expansion.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/single_use_expansion.py)
+**File**: [`passes/single_use_expansion.py`](file://vyper/vyper/venom/passes/single_use_expansion.py)
 
 **Purpose**: Prepare IR for venom_to_assembly by ensuring:
 1. Each variable used at most once (except by assigns)
@@ -725,7 +725,7 @@ Uses lattice-based dataflow:
 
 ### CFGNormalization
 
-**File**: [`passes/cfg_normalization.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/cfg_normalization.py)
+**File**: [`passes/cfg_normalization.py`](file://vyper/vyper/venom/passes/cfg_normalization.py)
 
 **Purpose**: Split basic blocks to ensure CFG normalization.
 
@@ -746,7 +746,7 @@ Inserts split blocks when BB has multiple predecessors from branching blocks.
 
 ### SimplifyCFGPass
 
-**File**: [`passes/simplify_cfg.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/simplify_cfg.py)
+**File**: [`passes/simplify_cfg.py`](file://vyper/vyper/venom/passes/simplify_cfg.py)
 
 **Purpose**: Merge sequential blocks, remove unreachable code.
 
@@ -760,7 +760,7 @@ Inserts split blocks when BB has multiple predecessors from branching blocks.
 
 ## Assembly Emission
 
-### File: [`venom_to_assembly.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/venom_to_assembly.py)
+### File: [`venom_to_assembly.py`](file://vyper/vyper/venom/venom_to_assembly.py)
 
 ### VenomCompiler Class
 
@@ -851,7 +851,7 @@ elif opcode == "ret":
 
 ### StackModel
 
-**File**: [`stack_model.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/stack_model.py)
+**File**: [`stack_model.py`](file://vyper/vyper/venom/stack_model.py)
 
 ```python
 class StackModel:
@@ -871,7 +871,7 @@ class StackModel:
 
 ### StackSpiller
 
-**File**: [`stack_spiller.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/stack_spiller.py)
+**File**: [`stack_spiller.py`](file://vyper/vyper/venom/stack_spiller.py)
 
 **Purpose**: Handle stacks deeper than EVM's DUP16/SWAP16 limit.
 
@@ -898,7 +898,7 @@ class StackSpiller:
 
 ### MemoryAllocator
 
-**File**: [`memory_allocator.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/memory_allocator.py)
+**File**: [`memory_allocator.py`](file://vyper/vyper/venom/memory_allocator.py)
 
 ```python
 class MemoryAllocator:
@@ -923,7 +923,7 @@ class MemoryAllocator:
 
 ## Effects System
 
-### File: [`effects.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/effects.py)
+### File: [`effects.py`](file://vyper/vyper/venom/effects.py)
 
 **Purpose**: Track side effects for instruction ordering.
 
@@ -962,7 +962,7 @@ writes = {
 
 ## Calling Convention
 
-### File: [`check_venom.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/check_venom.py)
+### File: [`check_venom.py`](file://vyper/vyper/venom/check_venom.py)
 
 ### Invariants Enforced
 
@@ -1052,7 +1052,7 @@ if opcode == "ret":
 
 ### O2 Optimization Pipeline
 
-**File**: [`optimization_levels/O2.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/optimization_levels/O2.py)
+**File**: [`optimization_levels/O2.py`](file://vyper/vyper/venom/optimization_levels/O2.py)
 
 ```python
 PASSES_O2 = [
@@ -1169,7 +1169,7 @@ FunctionInlinerPass(ir_analyses, ctx, flags).run_pass()  # If enabled
 
 ### AlgebraicOptimization Pass
 
-**File**: [`passes/algebraic_optimization.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/algebraic_optimization.py)
+**File**: [`passes/algebraic_optimization.py`](file://vyper/vyper/venom/passes/algebraic_optimization.py)
 
 **Purpose**: Reduce algebraically evaluatable expressions.
 
@@ -1187,7 +1187,7 @@ if self._var_ranges.can_eliminate_signextend(inst):
 
 ### Common Subexpression Elimination (CSE)
 
-**File**: [`passes/common_subexpression_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/common_subexpression_elimination.py)
+**File**: [`passes/common_subexpression_elimination.py`](file://vyper/vyper/venom/passes/common_subexpression_elimination.py)
 
 **Purpose**: Replace redundant computations with previous results.
 
@@ -1204,7 +1204,7 @@ if available_expr := self.avail_exprs.get(inst):
 
 ### Load Elimination Pass
 
-**File**: [`passes/load_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/load_elimination.py)
+**File**: [`passes/load_elimination.py`](file://vyper/vyper/venom/passes/load_elimination.py)
 
 **Purpose**: Eliminate redundant memory/storage loads.
 
@@ -1221,7 +1221,7 @@ class LoadAnalysis:
 
 ### Dead Store Elimination
 
-**File**: [`passes/dead_store_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/dead_store_elimination.py)
+**File**: [`passes/dead_store_elimination.py`](file://vyper/vyper/venom/passes/dead_store_elimination.py)
 
 **Purpose**: Remove stores whose values are never read.
 
@@ -1237,7 +1237,7 @@ return True  # Safe to eliminate
 
 ### Branch Optimization Pass
 
-**File**: [`passes/branch_optimization.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/branch_optimization.py)
+**File**: [`passes/branch_optimization.py`](file://vyper/vyper/venom/passes/branch_optimization.py)
 
 **Purpose**: Optimize conditional branches.
 
@@ -1254,7 +1254,7 @@ if invert_cost < normal_cost:
 
 ### Assign Elimination Pass
 
-**File**: [`passes/assign_elimination.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/assign_elimination.py)
+**File**: [`passes/assign_elimination.py`](file://vyper/vyper/venom/passes/assign_elimination.py)
 
 **Purpose**: Forward variables through assign chains and remove redundant assigns.
 
@@ -1265,7 +1265,7 @@ if invert_cost < normal_cost:
 
 ### Remove Unused Variables Pass
 
-**File**: [`passes/remove_unused_variables.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/remove_unused_variables.py)
+**File**: [`passes/remove_unused_variables.py`](file://vyper/vyper/venom/passes/remove_unused_variables.py)
 
 **Purpose**: Remove instructions whose outputs are never used.
 
@@ -1279,7 +1279,7 @@ if invert_cost < normal_cost:
 
 ### FunctionInlinerPass
 
-**File**: [`passes/function_inliner.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/function_inliner.py)
+**File**: [`passes/function_inliner.py`](file://vyper/vyper/venom/passes/function_inliner.py)
 
 **Purpose**: Inline function bodies at call sites to reduce call overhead.
 
@@ -1311,7 +1311,7 @@ if alloca_id in callocas:
 
 ### FloatAllocas Pass
 
-**File**: [`passes/float_allocas.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/float_allocas.py)
+**File**: [`passes/float_allocas.py`](file://vyper/vyper/venom/passes/float_allocas.py)
 
 **Purpose**: Move all allocas to entry block (required for SCCP).
 
@@ -1326,7 +1326,7 @@ if alloca_id in callocas:
 
 ### MemMergePass
 
-**File**: [`passes/memmerging.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/memmerging.py)
+**File**: [`passes/memmerging.py`](file://vyper/vyper/venom/passes/memmerging.py)
 
 **Purpose**: Fuse multiple memory operations into bulk copies.
 
@@ -1345,7 +1345,7 @@ if alloca_id in callocas:
 
 ### LowerDloadPass
 
-**File**: [`passes/lower_dload.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/lower_dload.py)
+**File**: [`passes/lower_dload.py`](file://vyper/vyper/venom/passes/lower_dload.py)
 
 **Purpose**: Lower `dload`/`dloadbytes` pseudo-instructions to `codecopy`.
 
@@ -1359,7 +1359,7 @@ if alloca_id in callocas:
 
 ### FixMemLocationsPass
 
-**File**: [`passes/fix_mem_locations.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/fix_mem_locations.py)
+**File**: [`passes/fix_mem_locations.py`](file://vyper/vyper/venom/passes/fix_mem_locations.py)
 
 **Purpose**: Replace literal FREE_VAR_SPACE accesses with pinned allocations.
 
@@ -1424,7 +1424,7 @@ CFG_ALTERING_INSTRUCTIONS = frozenset(["jmp", "djmp", "jnz"])
 
 ## Native IR Conversion (ir_node_to_venom.py)
 
-### File: [`ir_node_to_venom.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/ir_node_to_venom.py)
+### File: [`ir_node_to_venom.py`](file://vyper/vyper/venom/ir_node_to_venom.py)
 
 **Purpose**: Convert Vyper's internal IRnode representation to Venom IR.
 
@@ -1476,7 +1476,7 @@ def _handle_internal_func(fn, ir, does_return_data, symbols):
 
 ### Memory SSA (MemSSAAbstract)
 
-**File**: [`analysis/mem_ssa.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/mem_ssa.py)
+**File**: [`analysis/mem_ssa.py`](file://vyper/vyper/venom/analysis/mem_ssa.py)
 
 **Purpose**: Track memory state through Memory SSA form (based on LLVM MemorySSA).
 
@@ -1493,7 +1493,7 @@ class LiveOnEntry:        # Memory state at function entry
 
 ### Base Pointer Analysis
 
-**File**: [`analysis/base_ptr_analysis.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/base_ptr_analysis.py)
+**File**: [`analysis/base_ptr_analysis.py`](file://vyper/vyper/venom/analysis/base_ptr_analysis.py)
 
 **Purpose**: Track base allocations for all pointers.
 
@@ -1509,7 +1509,7 @@ class BasePtrAnalysis:
 
 ### Function Call Graph (FCGAnalysis)
 
-**File**: [`analysis/fcg.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/fcg.py)
+**File**: [`analysis/fcg.py`](file://vyper/vyper/venom/analysis/fcg.py)
 
 **Purpose**: Build call graph from invoke instructions.
 
@@ -1524,7 +1524,7 @@ class FCGAnalysis:
 
 ### Reachable Analysis
 
-**File**: [`analysis/reachable.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/analysis/reachable.py)
+**File**: [`analysis/reachable.py`](file://vyper/vyper/venom/analysis/reachable.py)
 
 **Purpose**: Compute transitive reachability in CFG.
 
@@ -1537,7 +1537,7 @@ class ReachableAnalysis:
 
 ## InstUpdater Utility
 
-**File**: [`passes/machinery/inst_updater.py`](file:///Users/gleb/Developer/onchain-trader/yul2venom/vyper/vyper/venom/passes/machinery/inst_updater.py)
+**File**: [`passes/machinery/inst_updater.py`](file://vyper/vyper/venom/passes/machinery/inst_updater.py)
 
 **Purpose**: Safe instruction modification with DFG maintenance.
 

@@ -1,0 +1,441 @@
+{
+  "generated": "2026-02-06T11:53:50.541459",
+  "config": {
+    "baseline": "default_200",
+    "optimization_runs": [
+      200
+    ],
+    "solc_modes": [
+      "default"
+    ],
+    "transpiler_opt_level": "yul-o2"
+  },
+  "results": {
+    "Arithmetic": {
+      "transpiled": {
+        "success": true,
+        "size": 1586,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "and_",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "eq",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          },
+          {
+            "function": "gt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "gte",
+            "avg_gas": 189,
+            "min_gas": 189,
+            "max_gas": 189,
+            "calls": 1
+          },
+          {
+            "function": "iszero",
+            "avg_gas": 160,
+            "min_gas": 160,
+            "max_gas": 160,
+            "calls": 1
+          },
+          {
+            "function": "lt",
+            "avg_gas": 195,
+            "min_gas": 195,
+            "max_gas": 195,
+            "calls": 1
+          },
+          {
+            "function": "lte",
+            "avg_gas": 189,
+            "min_gas": 189,
+            "max_gas": 189,
+            "calls": 1
+          },
+          {
+            "function": "not_",
+            "avg_gas": 160,
+            "min_gas": 160,
+            "max_gas": 160,
+            "calls": 1
+          },
+          {
+            "function": "or_",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          },
+          {
+            "function": "safeAdd",
+            "avg_gas": 244,
+            "min_gas": 244,
+            "max_gas": 244,
+            "calls": 1
+          },
+          {
+            "function": "safeDiv",
+            "avg_gas": 246,
+            "min_gas": 246,
+            "max_gas": 246,
+            "calls": 1
+          },
+          {
+            "function": "safeExp",
+            "avg_gas": 314,
+            "min_gas": 314,
+            "max_gas": 314,
+            "calls": 1
+          },
+          {
+            "function": "safeMod",
+            "avg_gas": 208,
+            "min_gas": 208,
+            "max_gas": 208,
+            "calls": 1
+          },
+          {
+            "function": "safeMul",
+            "avg_gas": 246,
+            "min_gas": 246,
+            "max_gas": 246,
+            "calls": 1
+          },
+          {
+            "function": "safeSub",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "sar",
+            "avg_gas": 166,
+            "min_gas": 166,
+            "max_gas": 166,
+            "calls": 1
+          },
+          {
+            "function": "sgt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "shl",
+            "avg_gas": 209,
+            "min_gas": 209,
+            "max_gas": 209,
+            "calls": 1
+          },
+          {
+            "function": "shr",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "signExtend16",
+            "avg_gas": 171,
+            "min_gas": 171,
+            "max_gas": 171,
+            "calls": 1
+          },
+          {
+            "function": "signExtend8",
+            "avg_gas": 193,
+            "min_gas": 193,
+            "max_gas": 193,
+            "calls": 1
+          },
+          {
+            "function": "slt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "unsafeAdd",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "unsafeDiv",
+            "avg_gas": 208,
+            "min_gas": 208,
+            "max_gas": 208,
+            "calls": 1
+          },
+          {
+            "function": "unsafeExp",
+            "avg_gas": 243,
+            "min_gas": 243,
+            "max_gas": 243,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMod",
+            "avg_gas": 254,
+            "min_gas": 254,
+            "max_gas": 254,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMul",
+            "avg_gas": 188,
+            "min_gas": 188,
+            "max_gas": 188,
+            "calls": 1
+          },
+          {
+            "function": "unsafeSub",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "xor_",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "and_",
+            "avg_gas": 485,
+            "min_gas": 485,
+            "max_gas": 485,
+            "calls": 1
+          },
+          {
+            "function": "eq",
+            "avg_gas": 287,
+            "min_gas": 287,
+            "max_gas": 287,
+            "calls": 1
+          },
+          {
+            "function": "gt",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "gte",
+            "avg_gas": 642,
+            "min_gas": 642,
+            "max_gas": 642,
+            "calls": 1
+          },
+          {
+            "function": "iszero",
+            "avg_gas": 770,
+            "min_gas": 770,
+            "max_gas": 770,
+            "calls": 1
+          },
+          {
+            "function": "lt",
+            "avg_gas": 191,
+            "min_gas": 191,
+            "max_gas": 191,
+            "calls": 1
+          },
+          {
+            "function": "lte",
+            "avg_gas": 796,
+            "min_gas": 796,
+            "max_gas": 796,
+            "calls": 1
+          },
+          {
+            "function": "not_",
+            "avg_gas": 707,
+            "min_gas": 707,
+            "max_gas": 707,
+            "calls": 1
+          },
+          {
+            "function": "or_",
+            "avg_gas": 331,
+            "min_gas": 331,
+            "max_gas": 331,
+            "calls": 1
+          },
+          {
+            "function": "safeAdd",
+            "avg_gas": 799,
+            "min_gas": 799,
+            "max_gas": 799,
+            "calls": 1
+          },
+          {
+            "function": "safeDiv",
+            "avg_gas": 697,
+            "min_gas": 697,
+            "max_gas": 697,
+            "calls": 1
+          },
+          {
+            "function": "safeExp",
+            "avg_gas": 524,
+            "min_gas": 524,
+            "max_gas": 524,
+            "calls": 1
+          },
+          {
+            "function": "safeMod",
+            "avg_gas": 477,
+            "min_gas": 477,
+            "max_gas": 477,
+            "calls": 1
+          },
+          {
+            "function": "safeMul",
+            "avg_gas": 783,
+            "min_gas": 783,
+            "max_gas": 783,
+            "calls": 1
+          },
+          {
+            "function": "safeSub",
+            "avg_gas": 601,
+            "min_gas": 601,
+            "max_gas": 601,
+            "calls": 1
+          },
+          {
+            "function": "sar",
+            "avg_gas": 559,
+            "min_gas": 559,
+            "max_gas": 559,
+            "calls": 1
+          },
+          {
+            "function": "sgt",
+            "avg_gas": 265,
+            "min_gas": 265,
+            "max_gas": 265,
+            "calls": 1
+          },
+          {
+            "function": "shl",
+            "avg_gas": 529,
+            "min_gas": 529,
+            "max_gas": 529,
+            "calls": 1
+          },
+          {
+            "function": "shr",
+            "avg_gas": 463,
+            "min_gas": 463,
+            "max_gas": 463,
+            "calls": 1
+          },
+          {
+            "function": "signExtend16",
+            "avg_gas": 652,
+            "min_gas": 652,
+            "max_gas": 652,
+            "calls": 1
+          },
+          {
+            "function": "signExtend8",
+            "avg_gas": 365,
+            "min_gas": 365,
+            "max_gas": 365,
+            "calls": 1
+          },
+          {
+            "function": "slt",
+            "avg_gas": 353,
+            "min_gas": 353,
+            "max_gas": 353,
+            "calls": 1
+          },
+          {
+            "function": "unsafeAdd",
+            "avg_gas": 309,
+            "min_gas": 309,
+            "max_gas": 309,
+            "calls": 1
+          },
+          {
+            "function": "unsafeDiv",
+            "avg_gas": 653,
+            "min_gas": 653,
+            "max_gas": 653,
+            "calls": 1
+          },
+          {
+            "function": "unsafeExp",
+            "avg_gas": 564,
+            "min_gas": 564,
+            "max_gas": 564,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMod",
+            "avg_gas": 741,
+            "min_gas": 741,
+            "max_gas": 741,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMul",
+            "avg_gas": 421,
+            "min_gas": 421,
+            "max_gas": 421,
+            "calls": 1
+          },
+          {
+            "function": "unsafeSub",
+            "avg_gas": 551,
+            "min_gas": 551,
+            "max_gas": 551,
+            "calls": 1
+          },
+          {
+            "function": "xor_",
+            "avg_gas": 243,
+            "min_gas": 243,
+            "max_gas": 243,
+            "calls": 1
+          }
+        ]
+      }
+    }
+  }
+}

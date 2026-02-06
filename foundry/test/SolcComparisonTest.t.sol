@@ -21,7 +21,7 @@ contract SolcComparisonTest is Test {
         // Load solc binary (optional)
         try
             vm.readFileBinary(
-                "yul2venom/output/LoopCheckCalldata_solc_runtime.bin"
+                "../output/LoopCheckCalldata_solc_runtime.bin"
             )
         returns (bytes memory code) {
             address addr = address(0x10099);
@@ -35,7 +35,7 @@ contract SolcComparisonTest is Test {
         // Load transpiler binary (optional)
         try
             vm.readFileBinary(
-                "yul2venom/output/LoopCheckCalldata_opt_runtime.bin"
+                "../output/LoopCheckCalldata_opt_runtime.bin"
             )
         returns (bytes memory code) {
             address addr = address(0x10098);

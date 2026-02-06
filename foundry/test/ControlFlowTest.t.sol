@@ -87,7 +87,7 @@ contract LoopCheckTest is Test {
     function setUp() public {
         address target = address(0x10091);
         try
-            vm.readFileBinary("yul2venom/output/LoopCheck_opt_runtime.bin")
+            vm.readFileBinary("../output/LoopCheck_opt_runtime.bin")
         returns (bytes memory code) {
             vm.etch(target, code);
             loopCheck = ILoopCheck(target);
@@ -134,8 +134,8 @@ contract LoopCheckCalldataTest is Test {
         address target = address(0x10092);
         // Note: Filename might vary based on pipeline runs, using most recent known good one or generic
         string[2] memory candidates = [
-            "yul2venom/output/LoopCheckCalldata_opt_runtime.bin",
-            "yul2venom/output/LoopCheckCalldata_opt_opt_runtime.bin"
+            "../output/LoopCheckCalldata_opt_runtime.bin",
+            "../output/LoopCheckCalldata_opt_opt_runtime.bin"
         ];
         bytes memory code;
 
@@ -232,7 +232,7 @@ contract LoopCheckMinimalTest is Test {
         address addr = address(0x123);
         try
             vm.readFileBinary(
-                "yul2venom/output/LoopCheckMinimal_opt_runtime.bin"
+                "../output/LoopCheckMinimal_opt_runtime.bin"
             )
         returns (bytes memory code) {
             vm.etch(addr, code);

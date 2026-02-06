@@ -6,12 +6,15 @@
     "deployer": "0x1234567890123456789012345678901234567890",
     "nonce": 0
   },
+  "sidecar_nonce_start": 1,
   "constructor_args": {
     "IMMUTABLE_VAL": {
-      "id": "14",
       "type": "uint256",
-      "value": "999"
+      "value": "999",
+      "order": 0,
+      "id": "14"
     }
   },
-  "auto_predicted": {}
+  "auto_predicted": {},
+  "library_addresses": {}
 }

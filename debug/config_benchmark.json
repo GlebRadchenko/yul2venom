@@ -1,0 +1,98 @@
+{
+  "emit-all": {
+    "stmt_threshold": 0,
+    "call_threshold": 0,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1912,
+      "Functions": 2389,
+      "Libraries": 4241,
+      "StateManagement": 2373
+    },
+    "total": 11406
+  },
+  "aggressive": {
+    "stmt_threshold": 1,
+    "call_threshold": 1,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1781,
+      "Functions": 2290,
+      "Libraries": 4562,
+      "StateManagement": 2329
+    },
+    "total": 11453
+  },
+  "default": {
+    "stmt_threshold": 1,
+    "call_threshold": 2,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2299,
+      "Libraries": 4800,
+      "StateManagement": 2329
+    },
+    "total": 11691
+  },
+  "balanced": {
+    "stmt_threshold": 2,
+    "call_threshold": 2,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2260,
+      "Libraries": 4800,
+      "StateManagement": 2329
+    },
+    "total": 11652
+  },
+  "moderate": {
+    "stmt_threshold": 3,
+    "call_threshold": 3,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2329,
+      "Libraries": 4800,
+      "StateManagement": 2329
+    },
+    "total": 11721
+  },
+  "inline-small": {
+    "stmt_threshold": 5,
+    "call_threshold": 3,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2329,
+      "Libraries": 5073,
+      "StateManagement": 2329
+    },
+    "total": 11994
+  },
+  "inline-more": {
+    "stmt_threshold": 10,
+    "call_threshold": 5,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2716,
+      "Libraries": 5073,
+      "StateManagement": 2329
+    },
+    "total": 12381
+  },
+  "inline-all": {
+    "stmt_threshold": 9999,
+    "call_threshold": 9999,
+    "sizes": {
+      "ComplexFeaturesTest": 491,
+      "MegaTest": 1772,
+      "Functions": 2716,
+      "Libraries": 5073,
+      "StateManagement": 2329
+    },
+    "total": 12381
+  }
+}

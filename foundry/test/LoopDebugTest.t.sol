@@ -13,7 +13,7 @@ contract LoopDebugTest is Test {
 
     function setUp() public {
         bytes memory bytecode = vm.readFileBinary(
-            "yul2venom/output/LoopCheckCalldata_opt.bin"
+            "../output/LoopCheckCalldata_opt.bin"
         );
         address addr;
         assembly {

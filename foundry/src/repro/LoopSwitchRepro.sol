@@ -18,7 +18,7 @@ contract LoopSwitchRepro {
         uint256 field3;
     }
 
-    // This function reproduces the pattern from QuotedTrader
+    // This function reproduces a pattern that triggers SSA renaming issues
     function processData(bytes calldata input) external pure returns (uint256) {
         uint256 total = 0;
         uint256 offset = 0;
