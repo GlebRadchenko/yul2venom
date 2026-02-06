@@ -1,1667 +1,31 @@
 {
-  "generated": "2026-02-01T22:37:13.055384",
+  "generated": "2026-02-06T20:18:50.818715",
   "config": {
-    "baseline": "ir_optimized",
+    "baseline": "default_200",
     "optimization_runs": [
       200
     ],
     "solc_modes": [
       "default",
+      "via_ir",
       "ir_optimized"
     ],
     "transpiler_opt_level": "yul-o2"
   },
   "results": {
-    "Arithmetic": {
-      "transpiled": {
-        "success": true,
-        "size": 1644,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 1368,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 1650,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "and_",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "eq",
-            "avg_gas": 195,
-            "min_gas": 195,
-            "max_gas": 195,
-            "calls": 1
-          },
-          {
-            "function": "gt",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "gte",
-            "avg_gas": 193,
-            "min_gas": 193,
-            "max_gas": 193,
-            "calls": 1
-          },
-          {
-            "function": "iszero",
-            "avg_gas": 154,
-            "min_gas": 154,
-            "max_gas": 154,
-            "calls": 1
-          },
-          {
-            "function": "lt",
-            "avg_gas": 189,
-            "min_gas": 189,
-            "max_gas": 189,
-            "calls": 1
-          },
-          {
-            "function": "lte",
-            "avg_gas": 193,
-            "min_gas": 193,
-            "max_gas": 193,
-            "calls": 1
-          },
-          {
-            "function": "not_",
-            "avg_gas": 154,
-            "min_gas": 154,
-            "max_gas": 154,
-            "calls": 1
-          },
-          {
-            "function": "or_",
-            "avg_gas": 195,
-            "min_gas": 195,
-            "max_gas": 195,
-            "calls": 1
-          },
-          {
-            "function": "safeAdd",
-            "avg_gas": 248,
-            "min_gas": 248,
-            "max_gas": 248,
-            "calls": 1
-          },
-          {
-            "function": "safeDiv",
-            "avg_gas": 240,
-            "min_gas": 240,
-            "max_gas": 240,
-            "calls": 1
-          },
-          {
-            "function": "safeExp",
-            "avg_gas": 318,
-            "min_gas": 318,
-            "max_gas": 318,
-            "calls": 1
-          },
-          {
-            "function": "safeMod",
-            "avg_gas": 212,
-            "min_gas": 212,
-            "max_gas": 212,
-            "calls": 1
-          },
-          {
-            "function": "safeMul",
-            "avg_gas": 250,
-            "min_gas": 250,
-            "max_gas": 250,
-            "calls": 1
-          },
-          {
-            "function": "safeSub",
-            "avg_gas": 225,
-            "min_gas": 225,
-            "max_gas": 225,
-            "calls": 1
-          },
-          {
-            "function": "sar",
-            "avg_gas": 160,
-            "min_gas": 160,
-            "max_gas": 160,
-            "calls": 1
-          },
-          {
-            "function": "sgt",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "shl",
-            "avg_gas": 213,
-            "min_gas": 213,
-            "max_gas": 213,
-            "calls": 1
-          },
-          {
-            "function": "shr",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "signExtend16",
-            "avg_gas": 165,
-            "min_gas": 165,
-            "max_gas": 165,
-            "calls": 1
-          },
-          {
-            "function": "signExtend8",
-            "avg_gas": 187,
-            "min_gas": 187,
-            "max_gas": 187,
-            "calls": 1
-          },
-          {
-            "function": "slt",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "unsafeAdd",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "unsafeDiv",
-            "avg_gas": 212,
-            "min_gas": 212,
-            "max_gas": 212,
-            "calls": 1
-          },
-          {
-            "function": "unsafeExp",
-            "avg_gas": 247,
-            "min_gas": 247,
-            "max_gas": 247,
-            "calls": 1
-          },
-          {
-            "function": "unsafeMod",
-            "avg_gas": 258,
-            "min_gas": 258,
-            "max_gas": 258,
-            "calls": 1
-          },
-          {
-            "function": "unsafeMul",
-            "avg_gas": 192,
-            "min_gas": 192,
-            "max_gas": 192,
-            "calls": 1
-          },
-          {
-            "function": "unsafeSub",
-            "avg_gas": 190,
-            "min_gas": 190,
-            "max_gas": 190,
-            "calls": 1
-          },
-          {
-            "function": "xor_",
-            "avg_gas": 195,
-            "min_gas": 195,
-            "max_gas": 195,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "and_",
-            "avg_gas": 485,
-            "min_gas": 485,
-            "max_gas": 485,
-            "calls": 1
-          },
-          {
-            "function": "eq",
-            "avg_gas": 287,
-            "min_gas": 287,
-            "max_gas": 287,
-            "calls": 1
-          },
-          {
-            "function": "gt",
-            "avg_gas": 221,
-            "min_gas": 221,
-            "max_gas": 221,
-            "calls": 1
-          },
-          {
-            "function": "gte",
-            "avg_gas": 642,
-            "min_gas": 642,
-            "max_gas": 642,
-            "calls": 1
-          },
-          {
-            "function": "iszero",
-            "avg_gas": 770,
-            "min_gas": 770,
-            "max_gas": 770,
-            "calls": 1
-          },
-          {
-            "function": "lt",
-            "avg_gas": 191,
-            "min_gas": 191,
-            "max_gas": 191,
-            "calls": 1
-          },
-          {
-            "function": "lte",
-            "avg_gas": 796,
-            "min_gas": 796,
-            "max_gas": 796,
-            "calls": 1
-          },
-          {
-            "function": "not_",
-            "avg_gas": 707,
-            "min_gas": 707,
-            "max_gas": 707,
-            "calls": 1
-          },
-          {
-            "function": "or_",
-            "avg_gas": 331,
-            "min_gas": 331,
-            "max_gas": 331,
-            "calls": 1
-          },
-          {
-            "function": "safeAdd",
-            "avg_gas": 799,
-            "min_gas": 799,
-            "max_gas": 799,
-            "calls": 1
-          },
-          {
-            "function": "safeDiv",
-            "avg_gas": 697,
-            "min_gas": 697,
-            "max_gas": 697,
-            "calls": 1
-          },
-          {
-            "function": "safeExp",
-            "avg_gas": 524,
-            "min_gas": 524,
-            "max_gas": 524,
-            "calls": 1
-          },
-          {
-            "function": "safeMod",
-            "avg_gas": 477,
-            "min_gas": 477,
-            "max_gas": 477,
-            "calls": 1
-          },
-          {
-            "function": "safeMul",
-            "avg_gas": 783,
-            "min_gas": 783,
-            "max_gas": 783,
-            "calls": 1
-          },
-          {
-            "function": "safeSub",
-            "avg_gas": 601,
-            "min_gas": 601,
-            "max_gas": 601,
-            "calls": 1
-          },
-          {
-            "function": "sar",
-            "avg_gas": 559,
-            "min_gas": 559,
-            "max_gas": 559,
-            "calls": 1
-          },
-          {
-            "function": "sgt",
-            "avg_gas": 265,
-            "min_gas": 265,
-            "max_gas": 265,
-            "calls": 1
-          },
-          {
-            "function": "shl",
-            "avg_gas": 529,
-            "min_gas": 529,
-            "max_gas": 529,
-            "calls": 1
-          },
-          {
-            "function": "shr",
-            "avg_gas": 463,
-            "min_gas": 463,
-            "max_gas": 463,
-            "calls": 1
-          },
-          {
-            "function": "signExtend16",
-            "avg_gas": 652,
-            "min_gas": 652,
-            "max_gas": 652,
-            "calls": 1
-          },
-          {
-            "function": "signExtend8",
-            "avg_gas": 365,
-            "min_gas": 365,
-            "max_gas": 365,
-            "calls": 1
-          },
-          {
-            "function": "slt",
-            "avg_gas": 353,
-            "min_gas": 353,
-            "max_gas": 353,
-            "calls": 1
-          },
-          {
-            "function": "unsafeAdd",
-            "avg_gas": 309,
-            "min_gas": 309,
-            "max_gas": 309,
-            "calls": 1
-          },
-          {
-            "function": "unsafeDiv",
-            "avg_gas": 653,
-            "min_gas": 653,
-            "max_gas": 653,
-            "calls": 1
-          },
-          {
-            "function": "unsafeExp",
-            "avg_gas": 564,
-            "min_gas": 564,
-            "max_gas": 564,
-            "calls": 1
-          },
-          {
-            "function": "unsafeMod",
-            "avg_gas": 741,
-            "min_gas": 741,
-            "max_gas": 741,
-            "calls": 1
-          },
-          {
-            "function": "unsafeMul",
-            "avg_gas": 421,
-            "min_gas": 421,
-            "max_gas": 421,
-            "calls": 1
-          },
-          {
-            "function": "unsafeSub",
-            "avg_gas": 551,
-            "min_gas": 551,
-            "max_gas": 551,
-            "calls": 1
-          },
-          {
-            "function": "xor_",
-            "avg_gas": 243,
-            "min_gas": 243,
-            "max_gas": 243,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "ControlFlow": {
-      "transpiled": {
-        "success": true,
-        "size": 1007,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 962,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 1043,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "breakLoop",
-            "avg_gas": 1310,
-            "min_gas": 1310,
-            "max_gas": 1310,
-            "calls": 1
-          },
-          {
-            "function": "continueLoop",
-            "avg_gas": 1497,
-            "min_gas": 1497,
-            "max_gas": 1497,
-            "calls": 1
-          },
-          {
-            "function": "earlyReturn",
-            "avg_gas": 175,
-            "min_gas": 175,
-            "max_gas": 175,
-            "calls": 1
-          },
-          {
-            "function": "ifElse",
-            "avg_gas": 205,
-            "min_gas": 205,
-            "max_gas": 205,
-            "calls": 1
-          },
-          {
-            "function": "loopCount",
-            "avg_gas": 8114,
-            "min_gas": 8114,
-            "max_gas": 8114,
-            "calls": 1
-          },
-          {
-            "function": "loopSum",
-            "avg_gas": 677,
-            "min_gas": 677,
-            "max_gas": 677,
-            "calls": 1
-          },
-          {
-            "function": "nestedLoop",
-            "avg_gas": 1517,
-            "min_gas": 1517,
-            "max_gas": 1517,
-            "calls": 1
-          },
-          {
-            "function": "ternary",
-            "avg_gas": 233,
-            "min_gas": 233,
-            "max_gas": 233,
-            "calls": 1
-          },
-          {
-            "function": "whileLoop",
-            "avg_gas": 3415,
-            "min_gas": 3415,
-            "max_gas": 3415,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "breakLoop",
-            "avg_gas": 1858,
-            "min_gas": 1858,
-            "max_gas": 1858,
-            "calls": 1
-          },
-          {
-            "function": "continueLoop",
-            "avg_gas": 1678,
-            "min_gas": 1678,
-            "max_gas": 1678,
-            "calls": 1
-          },
-          {
-            "function": "earlyReturn",
-            "avg_gas": 354,
-            "min_gas": 354,
-            "max_gas": 354,
-            "calls": 1
-          },
-          {
-            "function": "ifElse",
-            "avg_gas": 294,
-            "min_gas": 294,
-            "max_gas": 294,
-            "calls": 1
-          },
-          {
-            "function": "loopCount",
-            "avg_gas": 11415,
-            "min_gas": 11415,
-            "max_gas": 11415,
-            "calls": 1
-          },
-          {
-            "function": "loopSum",
-            "avg_gas": 706,
-            "min_gas": 706,
-            "max_gas": 706,
-            "calls": 1
-          },
-          {
-            "function": "nestedLoop",
-            "avg_gas": 1778,
-            "min_gas": 1778,
-            "max_gas": 1778,
-            "calls": 1
-          },
-          {
-            "function": "ternary",
-            "avg_gas": 347,
-            "min_gas": 347,
-            "max_gas": 347,
-            "calls": 1
-          },
-          {
-            "function": "whileLoop",
-            "avg_gas": 4872,
-            "min_gas": 4872,
-            "max_gas": 4872,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "StateManagement": {
-      "transpiled": {
-        "success": true,
-        "size": 2502,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 2686,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 2981,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "CONST_VALUE",
-            "avg_gas": 171,
-            "min_gas": 171,
-            "max_gas": 171,
-            "calls": 1
-          },
-          {
-            "function": "CONST_HASH",
-            "avg_gas": 194,
-            "min_gas": 194,
-            "max_gas": 194,
-            "calls": 1
-          },
-          {
-            "function": "getArrayLength",
-            "avg_gas": 2247,
-            "min_gas": 2247,
-            "max_gas": 2247,
-            "calls": 1
-          },
-          {
-            "function": "pushArray",
-            "avg_gas": 42444,
-            "min_gas": 42444,
-            "max_gas": 42444,
-            "calls": 1
-          },
-          {
-            "function": "getArrayElement",
-            "avg_gas": 460,
-            "min_gas": 460,
-            "max_gas": 460,
-            "calls": 1
-          },
-          {
-            "function": "popArray",
-            "avg_gas": 532,
-            "min_gas": 532,
-            "max_gas": 532,
-            "calls": 1
-          },
-          {
-            "function": "balances",
-            "avg_gas": 2321,
-            "min_gas": 2321,
-            "max_gas": 2321,
-            "calls": 1
-          },
-          {
-            "function": "incrementBalance",
-            "avg_gas": 20335,
-            "min_gas": 20335,
-            "max_gas": 20335,
-            "calls": 1
-          },
-          {
-            "function": "getMappingValue",
-            "avg_gas": 2315,
-            "min_gas": 2315,
-            "max_gas": 2315,
-            "calls": 1
-          },
-          {
-            "function": "setMappingValue",
-            "avg_gas": 20239,
-            "min_gas": 20239,
-            "max_gas": 20239,
-            "calls": 1
-          },
-          {
-            "function": "memoryAlloc",
-            "avg_gas": 361,
-            "min_gas": 361,
-            "max_gas": 361,
-            "calls": 1
-          },
-          {
-            "function": "memoryCopy",
-            "avg_gas": 1823,
-            "min_gas": 1823,
-            "max_gas": 1823,
-            "calls": 1
-          },
-          {
-            "function": "setNestedMap",
-            "avg_gas": 22355,
-            "min_gas": 22355,
-            "max_gas": 22355,
-            "calls": 1
-          },
-          {
-            "function": "getNestedMap",
-            "avg_gas": 414,
-            "min_gas": 414,
-            "max_gas": 414,
-            "calls": 1
-          },
-          {
-            "function": "setPackedAB",
-            "avg_gas": 22300,
-            "min_gas": 22300,
-            "max_gas": 22300,
-            "calls": 1
-          },
-          {
-            "function": "getPackedAB",
-            "avg_gas": 278,
-            "min_gas": 278,
-            "max_gas": 278,
-            "calls": 1
-          },
-          {
-            "function": "getStoredBool",
-            "avg_gas": 2288,
-            "min_gas": 2288,
-            "max_gas": 2288,
-            "calls": 1
-          },
-          {
-            "function": "setStoredBool",
-            "avg_gas": 20288,
-            "min_gas": 20288,
-            "max_gas": 20288,
-            "calls": 1
-          },
-          {
-            "function": "getStoredUint",
-            "avg_gas": 2270,
-            "min_gas": 2270,
-            "max_gas": 2270,
-            "calls": 1
-          },
-          {
-            "function": "setStoredUint",
-            "avg_gas": 20126,
-            "min_gas": 20126,
-            "max_gas": 20126,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "CONST_VALUE",
-            "avg_gas": 876,
-            "min_gas": 876,
-            "max_gas": 876,
-            "calls": 1
-          },
-          {
-            "function": "CONST_HASH",
-            "avg_gas": 986,
-            "min_gas": 986,
-            "max_gas": 986,
-            "calls": 1
-          },
-          {
-            "function": "getArrayLength",
-            "avg_gas": 2245,
-            "min_gas": 2245,
-            "max_gas": 2245,
-            "calls": 1
-          },
-          {
-            "function": "pushArray",
-            "avg_gas": 42720,
-            "min_gas": 42720,
-            "max_gas": 42720,
-            "calls": 1
-          },
-          {
-            "function": "getArrayElement",
-            "avg_gas": 547,
-            "min_gas": 547,
-            "max_gas": 547,
-            "calls": 1
-          },
-          {
-            "function": "popArray",
-            "avg_gas": 1329,
-            "min_gas": 1329,
-            "max_gas": 1329,
-            "calls": 1
-          },
-          {
-            "function": "balances",
-            "avg_gas": 2533,
-            "min_gas": 2533,
-            "max_gas": 2533,
-            "calls": 1
-          },
-          {
-            "function": "incrementBalance",
-            "avg_gas": 20593,
-            "min_gas": 20593,
-            "max_gas": 20593,
-            "calls": 1
-          },
-          {
-            "function": "getMappingValue",
-            "avg_gas": 2912,
-            "min_gas": 2912,
-            "max_gas": 2912,
-            "calls": 1
-          },
-          {
-            "function": "setMappingValue",
-            "avg_gas": 21055,
-            "min_gas": 21055,
-            "max_gas": 21055,
-            "calls": 1
-          },
-          {
-            "function": "memoryAlloc",
-            "avg_gas": 726,
-            "min_gas": 726,
-            "max_gas": 726,
-            "calls": 1
-          },
-          {
-            "function": "memoryCopy",
-            "avg_gas": 3154,
-            "min_gas": 3154,
-            "max_gas": 3154,
-            "calls": 1
-          },
-          {
-            "function": "setNestedMap",
-            "avg_gas": 22721,
-            "min_gas": 22721,
-            "max_gas": 22721,
-            "calls": 1
-          },
-          {
-            "function": "getNestedMap",
-            "avg_gas": 1191,
-            "min_gas": 1191,
-            "max_gas": 1191,
-            "calls": 1
-          },
-          {
-            "function": "setPackedAB",
-            "avg_gas": 22998,
-            "min_gas": 22998,
-            "max_gas": 22998,
-            "calls": 1
-          },
-          {
-            "function": "getPackedAB",
-            "avg_gas": 547,
-            "min_gas": 547,
-            "max_gas": 547,
-            "calls": 1
-          },
-          {
-            "function": "getStoredBool",
-            "avg_gas": 2507,
-            "min_gas": 2507,
-            "max_gas": 2507,
-            "calls": 1
-          },
-          {
-            "function": "setStoredBool",
-            "avg_gas": 20315,
-            "min_gas": 20315,
-            "max_gas": 20315,
-            "calls": 1
-          },
-          {
-            "function": "getStoredUint",
-            "avg_gas": 2802,
-            "min_gas": 2802,
-            "max_gas": 2802,
-            "calls": 1
-          },
-          {
-            "function": "setStoredUint",
-            "avg_gas": 20179,
-            "min_gas": 20179,
-            "max_gas": 20179,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "DataStructures": {
-      "transpiled": {
-        "success": true,
-        "size": 1546,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 1576,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 2031,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "bytesConcat",
-            "avg_gas": 669,
-            "min_gas": 669,
-            "max_gas": 669,
-            "calls": 1
-          },
-          {
-            "function": "bytesLength",
-            "avg_gas": 271,
-            "min_gas": 271,
-            "max_gas": 271,
-            "calls": 1
-          },
-          {
-            "function": "createArray",
-            "avg_gas": 1579,
-            "min_gas": 1579,
-            "max_gas": 1579,
-            "calls": 1
-          },
-          {
-            "function": "createStruct",
-            "avg_gas": 298,
-            "min_gas": 298,
-            "max_gas": 298,
-            "calls": 1
-          },
-          {
-            "function": "dynamicArraySum",
-            "avg_gas": 612,
-            "min_gas": 612,
-            "max_gas": 612,
-            "calls": 1
-          },
-          {
-            "function": "fixedArraySum",
-            "avg_gas": 706,
-            "min_gas": 706,
-            "max_gas": 706,
-            "calls": 1
-          },
-          {
-            "function": "processStruct",
-            "avg_gas": 230,
-            "min_gas": 230,
-            "max_gas": 230,
-            "calls": 1
-          },
-          {
-            "function": "processStructArray",
-            "avg_gas": 1680,
-            "min_gas": 1680,
-            "max_gas": 1680,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "bytesConcat",
-            "avg_gas": 851,
-            "min_gas": 851,
-            "max_gas": 851,
-            "calls": 1
-          },
-          {
-            "function": "bytesLength",
-            "avg_gas": 385,
-            "min_gas": 385,
-            "max_gas": 385,
-            "calls": 1
-          },
-          {
-            "function": "createArray",
-            "avg_gas": 2099,
-            "min_gas": 2099,
-            "max_gas": 2099,
-            "calls": 1
-          },
-          {
-            "function": "createStruct",
-            "avg_gas": 510,
-            "min_gas": 510,
-            "max_gas": 510,
-            "calls": 1
-          },
-          {
-            "function": "dynamicArraySum",
-            "avg_gas": 896,
-            "min_gas": 896,
-            "max_gas": 896,
-            "calls": 1
-          },
-          {
-            "function": "fixedArraySum",
-            "avg_gas": 964,
-            "min_gas": 964,
-            "max_gas": 964,
-            "calls": 1
-          },
-          {
-            "function": "processStruct",
-            "avg_gas": 235,
-            "min_gas": 235,
-            "max_gas": 235,
-            "calls": 1
-          },
-          {
-            "function": "processStructArray",
-            "avg_gas": 2463,
-            "min_gas": 2463,
-            "max_gas": 2463,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "Functions": {
-      "transpiled": {
-        "success": true,
-        "size": 2716,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 2452,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 3477,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "callInternal",
-            "avg_gas": 201,
-            "min_gas": 201,
-            "max_gas": 201,
-            "calls": 1
-          },
-          {
-            "function": "callSelf",
-            "avg_gas": 700,
-            "min_gas": 700,
-            "max_gas": 700,
-            "calls": 1
-          },
-          {
-            "function": "selfAdd",
-            "avg_gas": 178,
-            "min_gas": 178,
-            "max_gas": 178,
-            "calls": 1
-          },
-          {
-            "function": "factorial",
-            "avg_gas": 275,
-            "min_gas": 275,
-            "max_gas": 275,
-            "calls": 1
-          },
-          {
-            "function": "fibonacci",
-            "avg_gas": 269,
-            "min_gas": 269,
-            "max_gas": 269,
-            "calls": 1
-          },
-          {
-            "function": "interfaceFunc",
-            "avg_gas": 141,
-            "min_gas": 141,
-            "max_gas": 141,
-            "calls": 1
-          },
-          {
-            "function": "nestedInternal",
-            "avg_gas": 192,
-            "min_gas": 192,
-            "max_gas": 192,
-            "calls": 1
-          },
-          {
-            "function": "returnMultiple",
-            "avg_gas": 172,
-            "min_gas": 172,
-            "max_gas": 172,
-            "calls": 1
-          },
-          {
-            "function": "returnNothing",
-            "avg_gas": 136,
-            "min_gas": 136,
-            "max_gas": 136,
-            "calls": 1
-          },
-          {
-            "function": "returnSingle",
-            "avg_gas": 136,
-            "min_gas": 136,
-            "max_gas": 136,
-            "calls": 1
-          },
-          {
-            "function": "callVirtualA",
-            "avg_gas": 136,
-            "min_gas": 136,
-            "max_gas": 136,
-            "calls": 1
-          },
-          {
-            "function": "callVirtualB",
-            "avg_gas": 136,
-            "min_gas": 136,
-            "max_gas": 136,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "callInternal",
-            "avg_gas": 528,
-            "min_gas": 528,
-            "max_gas": 528,
-            "calls": 1
-          },
-          {
-            "function": "callSelf",
-            "avg_gas": 1171,
-            "min_gas": 1171,
-            "max_gas": 1171,
-            "calls": 1
-          },
-          {
-            "function": "selfAdd",
-            "avg_gas": 286,
-            "min_gas": 286,
-            "max_gas": 286,
-            "calls": 1
-          },
-          {
-            "function": "factorial",
-            "avg_gas": 487,
-            "min_gas": 487,
-            "max_gas": 487,
-            "calls": 1
-          },
-          {
-            "function": "fibonacci",
-            "avg_gas": 394,
-            "min_gas": 394,
-            "max_gas": 394,
-            "calls": 1
-          },
-          {
-            "function": "interfaceFunc",
-            "avg_gas": 506,
-            "min_gas": 506,
-            "max_gas": 506,
-            "calls": 1
-          },
-          {
-            "function": "nestedInternal",
-            "avg_gas": 302,
-            "min_gas": 302,
-            "max_gas": 302,
-            "calls": 1
-          },
-          {
-            "function": "returnMultiple",
-            "avg_gas": 736,
-            "min_gas": 736,
-            "max_gas": 736,
-            "calls": 1
-          },
-          {
-            "function": "returnNothing",
-            "avg_gas": 350,
-            "min_gas": 350,
-            "max_gas": 350,
-            "calls": 1
-          },
-          {
-            "function": "returnSingle",
-            "avg_gas": 462,
-            "min_gas": 462,
-            "max_gas": 462,
-            "calls": 1
-          },
-          {
-            "function": "callVirtualA",
-            "avg_gas": 594,
-            "min_gas": 594,
-            "max_gas": 594,
-            "calls": 1
-          },
-          {
-            "function": "callVirtualB",
-            "avg_gas": 142,
-            "min_gas": 142,
-            "max_gas": 142,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "Events": {
-      "transpiled": {
-        "success": true,
-        "size": 781,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 826,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 1163,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "emitBytes",
-            "avg_gas": 1899,
-            "min_gas": 1899,
-            "max_gas": 1899,
-            "calls": 1
-          },
-          {
-            "function": "emitComplex",
-            "avg_gas": 2954,
-            "min_gas": 2954,
-            "max_gas": 2954,
-            "calls": 1
-          },
-          {
-            "function": "emitIndexed",
-            "avg_gas": 1575,
-            "min_gas": 1575,
-            "max_gas": 1575,
-            "calls": 1
-          },
-          {
-            "function": "emitMultiIndexed",
-            "avg_gas": 2031,
-            "min_gas": 2031,
-            "max_gas": 2031,
-            "calls": 1
-          },
-          {
-            "function": "emitMultiple",
-            "avg_gas": 5577,
-            "min_gas": 5577,
-            "max_gas": 5577,
-            "calls": 1
-          },
-          {
-            "function": "emitSimple",
-            "avg_gas": 1162,
-            "min_gas": 1162,
-            "max_gas": 1162,
-            "calls": 1
-          },
-          {
-            "function": "emitString",
-            "avg_gas": 1869,
-            "min_gas": 1869,
-            "max_gas": 1869,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "emitBytes",
-            "avg_gas": 2068,
-            "min_gas": 2068,
-            "max_gas": 2068,
-            "calls": 1
-          },
-          {
-            "function": "emitComplex",
-            "avg_gas": 3059,
-            "min_gas": 3059,
-            "max_gas": 3059,
-            "calls": 1
-          },
-          {
-            "function": "emitIndexed",
-            "avg_gas": 1676,
-            "min_gas": 1676,
-            "max_gas": 1676,
-            "calls": 1
-          },
-          {
-            "function": "emitMultiIndexed",
-            "avg_gas": 2094,
-            "min_gas": 2094,
-            "max_gas": 2094,
-            "calls": 1
-          },
-          {
-            "function": "emitMultiple",
-            "avg_gas": 5564,
-            "min_gas": 5564,
-            "max_gas": 5564,
-            "calls": 1
-          },
-          {
-            "function": "emitSimple",
-            "avg_gas": 1273,
-            "min_gas": 1273,
-            "max_gas": 1273,
-            "calls": 1
-          },
-          {
-            "function": "emitString",
-            "avg_gas": 1969,
-            "min_gas": 1969,
-            "max_gas": 1969,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "Encoding": {
-      "transpiled": {
-        "success": true,
-        "size": 1069,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 976,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 1264,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "abiEncode",
-            "avg_gas": 375,
-            "min_gas": 375,
-            "max_gas": 375,
-            "calls": 1
-          },
-          {
-            "function": "abiEncodePacked",
-            "avg_gas": 398,
-            "min_gas": 398,
-            "max_gas": 398,
-            "calls": 1
-          },
-          {
-            "function": "abiEncodeWithSelector",
-            "avg_gas": 387,
-            "min_gas": 387,
-            "max_gas": 387,
-            "calls": 1
-          },
-          {
-            "function": "decodePair",
-            "avg_gas": 304,
-            "min_gas": 304,
-            "max_gas": 304,
-            "calls": 1
-          },
-          {
-            "function": "encodeMultiple",
-            "avg_gas": 689,
-            "min_gas": 689,
-            "max_gas": 689,
-            "calls": 1
-          },
-          {
-            "function": "encodePackedMixed",
-            "avg_gas": 427,
-            "min_gas": 427,
-            "max_gas": 427,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Encode",
-            "avg_gas": 304,
-            "min_gas": 304,
-            "max_gas": 304,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Hash",
-            "avg_gas": 509,
-            "min_gas": 509,
-            "max_gas": 509,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Packed",
-            "avg_gas": 304,
-            "min_gas": 304,
-            "max_gas": 304,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "abiEncode",
-            "avg_gas": 603,
-            "min_gas": 603,
-            "max_gas": 603,
-            "calls": 1
-          },
-          {
-            "function": "abiEncodePacked",
-            "avg_gas": 537,
-            "min_gas": 537,
-            "max_gas": 537,
-            "calls": 1
-          },
-          {
-            "function": "abiEncodeWithSelector",
-            "avg_gas": 557,
-            "min_gas": 557,
-            "max_gas": 557,
-            "calls": 1
-          },
-          {
-            "function": "decodePair",
-            "avg_gas": 393,
-            "min_gas": 393,
-            "max_gas": 393,
-            "calls": 1
-          },
-          {
-            "function": "encodeMultiple",
-            "avg_gas": 1005,
-            "min_gas": 1005,
-            "max_gas": 1005,
-            "calls": 1
-          },
-          {
-            "function": "encodePackedMixed",
-            "avg_gas": 696,
-            "min_gas": 696,
-            "max_gas": 696,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Encode",
-            "avg_gas": 483,
-            "min_gas": 483,
-            "max_gas": 483,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Hash",
-            "avg_gas": 747,
-            "min_gas": 747,
-            "max_gas": 747,
-            "calls": 1
-          },
-          {
-            "function": "keccak256Packed",
-            "avg_gas": 417,
-            "min_gas": 417,
-            "max_gas": 417,
-            "calls": 1
-          }
-        ]
-      }
-    },
-    "Edge": {
-      "transpiled": {
-        "success": true,
-        "size": 2816,
-        "error": null
-      },
-      "solc": {
-        "default_200": {
-          "success": true,
-          "size": 3112,
-          "error": null
-        },
-        "ir_optimized": {
-          "success": true,
-          "size": 3787,
-          "error": null
-        }
-      },
-      "gas": {
-        "transpiled": [
-          {
-            "function": "assertCondition",
-            "avg_gas": 221,
-            "min_gas": 221,
-            "max_gas": 221,
-            "calls": 1
-          },
-          {
-            "function": "checkGas",
-            "avg_gas": 146,
-            "min_gas": 146,
-            "max_gas": 146,
-            "calls": 1
-          },
-          {
-            "function": "CodeIsLawZ95677371",
-            "avg_gas": 183,
-            "min_gas": 183,
-            "max_gas": 183,
-            "calls": 1
-          },
-          {
-            "function": "getBlockInfo",
-            "avg_gas": 182,
-            "min_gas": 182,
-            "max_gas": 182,
-            "calls": 1
-          },
-          {
-            "function": "getMsgInfo",
-            "avg_gas": 215,
-            "min_gas": 215,
-            "max_gas": 215,
-            "calls": 1
-          },
-          {
-            "function": "requireTrue",
-            "avg_gas": 291,
-            "min_gas": 291,
-            "max_gas": 291,
-            "calls": 1
-          },
-          {
-            "function": "requireValue",
-            "avg_gas": 205,
-            "min_gas": 205,
-            "max_gas": 205,
-            "calls": 1
-          },
-          {
-            "function": "tryCall",
-            "avg_gas": 731,
-            "min_gas": 731,
-            "max_gas": 731,
-            "calls": 1
-          },
-          {
-            "function": "mayFail",
-            "avg_gas": 296,
-            "min_gas": 296,
-            "max_gas": 296,
-            "calls": 1
-          }
-        ],
-        "native": [
-          {
-            "function": "assertCondition",
-            "avg_gas": 565,
-            "min_gas": 565,
-            "max_gas": 565,
-            "calls": 1
-          },
-          {
-            "function": "checkGas",
-            "avg_gas": 728,
-            "min_gas": 728,
-            "max_gas": 728,
-            "calls": 1
-          },
-          {
-            "function": "fallback",
-            "avg_gas": 712,
-            "min_gas": 712,
-            "max_gas": 712,
-            "calls": 1
-          },
-          {
-            "function": "getBlockInfo",
-            "avg_gas": 175,
-            "min_gas": 175,
-            "max_gas": 175,
-            "calls": 1
-          },
-          {
-            "function": "getMsgInfo",
-            "avg_gas": 643,
-            "min_gas": 643,
-            "max_gas": 643,
-            "calls": 1
-          },
-          {
-            "function": "requireTrue",
-            "avg_gas": 598,
-            "min_gas": 598,
-            "max_gas": 598,
-            "calls": 1
-          },
-          {
-            "function": "requireValue",
-            "avg_gas": 433,
-            "min_gas": 433,
-            "max_gas": 433,
-            "calls": 1
-          },
-          {
-            "function": "tryCall",
-            "avg_gas": 1390,
-            "min_gas": 1390,
-            "max_gas": 1390,
-            "calls": 1
-          },
-          {
-            "function": "mayFail",
-            "avg_gas": 799,
-            "min_gas": 799,
-            "max_gas": 799,
-            "calls": 1
-          }
-        ]
-      }
-    },
     "AdvancedFeatures": {
       "transpiled": {
         "success": true,
-        "size": 4657,
+        "size": 2900,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 3270,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 3270,
           "error": null
@@ -1676,268 +40,268 @@
         "transpiled": [
           {
             "function": "addAmounts",
-            "avg_gas": 339,
-            "min_gas": 339,
-            "max_gas": 339,
+            "avg_gas": 254,
+            "min_gas": 254,
+            "max_gas": 254,
             "calls": 1
           },
           {
             "function": "addressToBytes20",
-            "avg_gas": 255,
-            "min_gas": 255,
-            "max_gas": 255,
+            "avg_gas": 172,
+            "min_gas": 172,
+            "max_gas": 172,
             "calls": 1
           },
           {
             "function": "andBytes4",
-            "avg_gas": 319,
-            "min_gas": 319,
-            "max_gas": 319,
+            "avg_gas": 206,
+            "min_gas": 206,
+            "max_gas": 206,
             "calls": 1
           },
           {
             "function": "setBytes1",
-            "avg_gas": 22391,
-            "min_gas": 22391,
-            "max_gas": 22391,
+            "avg_gas": 22298,
+            "min_gas": 22298,
+            "max_gas": 22298,
             "calls": 1
           },
           {
             "function": "storedBytes1",
-            "avg_gas": 349,
-            "min_gas": 349,
-            "max_gas": 349,
+            "avg_gas": 300,
+            "min_gas": 300,
+            "max_gas": 300,
             "calls": 1
           },
           {
             "function": "setBytes16",
-            "avg_gas": 22367,
-            "min_gas": 22367,
-            "max_gas": 22367,
+            "avg_gas": 22318,
+            "min_gas": 22318,
+            "max_gas": 22318,
             "calls": 1
           },
           {
             "function": "storedBytes16",
-            "avg_gas": 369,
-            "min_gas": 369,
-            "max_gas": 369,
+            "avg_gas": 320,
+            "min_gas": 320,
+            "max_gas": 320,
             "calls": 1
           },
           {
             "function": "setBytes2",
-            "avg_gas": 22358,
-            "min_gas": 22358,
-            "max_gas": 22358,
+            "avg_gas": 22315,
+            "min_gas": 22315,
+            "max_gas": 22315,
             "calls": 1
           },
           {
             "function": "storedBytes2",
-            "avg_gas": 326,
-            "min_gas": 326,
-            "max_gas": 326,
+            "avg_gas": 277,
+            "min_gas": 277,
+            "max_gas": 277,
             "calls": 1
           },
           {
             "function": "setBytes20",
-            "avg_gas": 22341,
-            "min_gas": 22341,
-            "max_gas": 22341,
+            "avg_gas": 22291,
+            "min_gas": 22291,
+            "max_gas": 22291,
             "calls": 1
           },
           {
             "function": "storedBytes20",
-            "avg_gas": 323,
-            "min_gas": 323,
-            "max_gas": 323,
+            "avg_gas": 274,
+            "min_gas": 274,
+            "max_gas": 274,
             "calls": 1
           },
           {
             "function": "bytes20ToAddress",
+            "avg_gas": 199,
+            "min_gas": 199,
+            "max_gas": 199,
+            "calls": 1
+          },
+          {
+            "function": "setBytes32",
+            "avg_gas": 22233,
+            "min_gas": 22233,
+            "max_gas": 22233,
+            "calls": 1
+          },
+          {
+            "function": "storedBytes32",
+            "avg_gas": 277,
+            "min_gas": 277,
+            "max_gas": 277,
+            "calls": 1
+          },
+          {
+            "function": "setBytes4",
+            "avg_gas": 22278,
+            "min_gas": 22278,
+            "max_gas": 22278,
+            "calls": 1
+          },
+          {
+            "function": "storedBytes4",
+            "avg_gas": 318,
+            "min_gas": 318,
+            "max_gas": 318,
+            "calls": 1
+          },
+          {
+            "function": "bytes4Selector",
+            "avg_gas": 165,
+            "min_gas": 165,
+            "max_gas": 165,
+            "calls": 1
+          },
+          {
+            "function": "setBytes8",
+            "avg_gas": 22312,
+            "min_gas": 22312,
+            "max_gas": 22312,
+            "calls": 1
+          },
+          {
+            "function": "storedBytes8",
+            "avg_gas": 272,
+            "min_gas": 272,
+            "max_gas": 272,
+            "calls": 1
+          },
+          {
+            "function": "concatBytes",
+            "avg_gas": 434,
+            "min_gas": 434,
+            "max_gas": 434,
+            "calls": 1
+          },
+          {
+            "function": "concatMultiple",
+            "avg_gas": 464,
+            "min_gas": 464,
+            "max_gas": 464,
+            "calls": 1
+          },
+          {
+            "function": "concatStrings",
+            "avg_gas": 590,
+            "min_gas": 590,
+            "max_gas": 590,
+            "calls": 1
+          },
+          {
+            "function": "concatThreeStrings",
+            "avg_gas": 710,
+            "min_gas": 710,
+            "max_gas": 710,
+            "calls": 1
+          },
+          {
+            "function": "encodeApprove",
+            "avg_gas": 461,
+            "min_gas": 461,
+            "max_gas": 461,
+            "calls": 1
+          },
+          {
+            "function": "encodeBalanceOf",
+            "avg_gas": 403,
+            "min_gas": 403,
+            "max_gas": 403,
+            "calls": 1
+          },
+          {
+            "function": "encodeTransfer",
+            "avg_gas": 466,
+            "min_gas": 466,
+            "max_gas": 466,
+            "calls": 1
+          },
+          {
+            "function": "encodeTransferManual",
+            "avg_gas": 461,
+            "min_gas": 461,
+            "max_gas": 461,
+            "calls": 1
+          },
+          {
+            "function": "extractBytes4FromBytes32",
+            "avg_gas": 238,
+            "min_gas": 238,
+            "max_gas": 238,
+            "calls": 1
+          },
+          {
+            "function": "extractBytes8FromBytes32",
+            "avg_gas": 215,
+            "min_gas": 215,
+            "max_gas": 215,
+            "calls": 1
+          },
+          {
+            "function": "getByteAt",
             "avg_gas": 249,
             "min_gas": 249,
             "max_gas": 249,
             "calls": 1
           },
           {
-            "function": "setBytes32",
-            "avg_gas": 22283,
-            "min_gas": 22283,
-            "max_gas": 22283,
-            "calls": 1
-          },
-          {
-            "function": "storedBytes32",
-            "avg_gas": 326,
-            "min_gas": 326,
-            "max_gas": 326,
-            "calls": 1
-          },
-          {
-            "function": "setBytes4",
-            "avg_gas": 22370,
-            "min_gas": 22370,
-            "max_gas": 22370,
-            "calls": 1
-          },
-          {
-            "function": "storedBytes4",
-            "avg_gas": 367,
-            "min_gas": 367,
-            "max_gas": 367,
-            "calls": 1
-          },
-          {
-            "function": "bytes4Selector",
-            "avg_gas": 214,
-            "min_gas": 214,
-            "max_gas": 214,
-            "calls": 1
-          },
-          {
-            "function": "setBytes8",
-            "avg_gas": 22365,
-            "min_gas": 22365,
-            "max_gas": 22365,
-            "calls": 1
-          },
-          {
-            "function": "storedBytes8",
-            "avg_gas": 321,
-            "min_gas": 321,
-            "max_gas": 321,
-            "calls": 1
-          },
-          {
-            "function": "concatBytes",
-            "avg_gas": 546,
-            "min_gas": 546,
-            "max_gas": 546,
-            "calls": 1
-          },
-          {
-            "function": "concatMultiple",
-            "avg_gas": 597,
-            "min_gas": 597,
-            "max_gas": 597,
-            "calls": 1
-          },
-          {
-            "function": "concatStrings",
-            "avg_gas": 862,
-            "min_gas": 862,
-            "max_gas": 862,
-            "calls": 1
-          },
-          {
-            "function": "concatThreeStrings",
-            "avg_gas": 1077,
-            "min_gas": 1077,
-            "max_gas": 1077,
-            "calls": 1
-          },
-          {
-            "function": "encodeApprove",
-            "avg_gas": 577,
-            "min_gas": 577,
-            "max_gas": 577,
-            "calls": 1
-          },
-          {
-            "function": "encodeBalanceOf",
-            "avg_gas": 519,
-            "min_gas": 519,
-            "max_gas": 519,
-            "calls": 1
-          },
-          {
-            "function": "encodeTransfer",
-            "avg_gas": 582,
-            "min_gas": 582,
-            "max_gas": 582,
-            "calls": 1
-          },
-          {
-            "function": "encodeTransferManual",
-            "avg_gas": 577,
-            "min_gas": 577,
-            "max_gas": 577,
-            "calls": 1
-          },
-          {
-            "function": "extractBytes4FromBytes32",
-            "avg_gas": 288,
-            "min_gas": 288,
-            "max_gas": 288,
-            "calls": 1
-          },
-          {
-            "function": "extractBytes8FromBytes32",
-            "avg_gas": 265,
-            "min_gas": 265,
-            "max_gas": 265,
-            "calls": 1
-          },
-          {
-            "function": "getByteAt",
-            "avg_gas": 295,
-            "min_gas": 295,
-            "max_gas": 295,
-            "calls": 1
-          },
-          {
             "function": "mintToken",
-            "avg_gas": 44564,
-            "min_gas": 44564,
-            "max_gas": 44564,
+            "avg_gas": 44507,
+            "min_gas": 44507,
+            "max_gas": 44507,
             "calls": 1
           },
           {
             "function": "getTokenOwner",
-            "avg_gas": 382,
-            "min_gas": 382,
-            "max_gas": 382,
+            "avg_gas": 340,
+            "min_gas": 340,
+            "max_gas": 340,
             "calls": 1
           },
           {
             "function": "notBytes4",
-            "avg_gas": 255,
-            "min_gas": 255,
-            "max_gas": 255,
+            "avg_gas": 172,
+            "min_gas": 172,
+            "max_gas": 172,
             "calls": 1
           },
           {
             "function": "orBytes4",
-            "avg_gas": 319,
-            "min_gas": 319,
-            "max_gas": 319,
+            "avg_gas": 206,
+            "min_gas": 206,
+            "max_gas": 206,
             "calls": 1
           },
           {
             "function": "percentageToUint",
-            "avg_gas": 283,
-            "min_gas": 283,
-            "max_gas": 283,
+            "avg_gas": 233,
+            "min_gas": 233,
+            "max_gas": 233,
             "calls": 1
           },
           {
             "function": "setAmount",
-            "avg_gas": 22429,
-            "min_gas": 22429,
-            "max_gas": 22429,
+            "avg_gas": 22341,
+            "min_gas": 22341,
+            "max_gas": 22341,
             "calls": 1
           },
           {
             "function": "getAmount",
-            "avg_gas": 432,
-            "min_gas": 432,
-            "max_gas": 432,
+            "avg_gas": 377,
+            "min_gas": 377,
+            "max_gas": 377,
             "calls": 1
           },
           {
             "function": "xorBytes4",
-            "avg_gas": 291,
-            "min_gas": 291,
-            "max_gas": 291,
+            "avg_gas": 178,
+            "min_gas": 178,
+            "max_gas": 178,
             "calls": 1
           }
         ],
@@ -2211,14 +575,1193 @@
         ]
       }
     },
-    "ExternalLibrary": {
+    "Arithmetic": {
       "transpiled": {
         "success": true,
-        "size": 1610,
+        "size": 1586,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1650,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "and_",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "eq",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          },
+          {
+            "function": "gt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "gte",
+            "avg_gas": 189,
+            "min_gas": 189,
+            "max_gas": 189,
+            "calls": 1
+          },
+          {
+            "function": "iszero",
+            "avg_gas": 160,
+            "min_gas": 160,
+            "max_gas": 160,
+            "calls": 1
+          },
+          {
+            "function": "lt",
+            "avg_gas": 195,
+            "min_gas": 195,
+            "max_gas": 195,
+            "calls": 1
+          },
+          {
+            "function": "lte",
+            "avg_gas": 189,
+            "min_gas": 189,
+            "max_gas": 189,
+            "calls": 1
+          },
+          {
+            "function": "not_",
+            "avg_gas": 160,
+            "min_gas": 160,
+            "max_gas": 160,
+            "calls": 1
+          },
+          {
+            "function": "or_",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          },
+          {
+            "function": "safeAdd",
+            "avg_gas": 244,
+            "min_gas": 244,
+            "max_gas": 244,
+            "calls": 1
+          },
+          {
+            "function": "safeDiv",
+            "avg_gas": 246,
+            "min_gas": 246,
+            "max_gas": 246,
+            "calls": 1
+          },
+          {
+            "function": "safeExp",
+            "avg_gas": 314,
+            "min_gas": 314,
+            "max_gas": 314,
+            "calls": 1
+          },
+          {
+            "function": "safeMod",
+            "avg_gas": 208,
+            "min_gas": 208,
+            "max_gas": 208,
+            "calls": 1
+          },
+          {
+            "function": "safeMul",
+            "avg_gas": 246,
+            "min_gas": 246,
+            "max_gas": 246,
+            "calls": 1
+          },
+          {
+            "function": "safeSub",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "sar",
+            "avg_gas": 166,
+            "min_gas": 166,
+            "max_gas": 166,
+            "calls": 1
+          },
+          {
+            "function": "sgt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "shl",
+            "avg_gas": 209,
+            "min_gas": 209,
+            "max_gas": 209,
+            "calls": 1
+          },
+          {
+            "function": "shr",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "signExtend16",
+            "avg_gas": 171,
+            "min_gas": 171,
+            "max_gas": 171,
+            "calls": 1
+          },
+          {
+            "function": "signExtend8",
+            "avg_gas": 193,
+            "min_gas": 193,
+            "max_gas": 193,
+            "calls": 1
+          },
+          {
+            "function": "slt",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "unsafeAdd",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "unsafeDiv",
+            "avg_gas": 208,
+            "min_gas": 208,
+            "max_gas": 208,
+            "calls": 1
+          },
+          {
+            "function": "unsafeExp",
+            "avg_gas": 243,
+            "min_gas": 243,
+            "max_gas": 243,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMod",
+            "avg_gas": 254,
+            "min_gas": 254,
+            "max_gas": 254,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMul",
+            "avg_gas": 188,
+            "min_gas": 188,
+            "max_gas": 188,
+            "calls": 1
+          },
+          {
+            "function": "unsafeSub",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
+            "function": "xor_",
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "and_",
+            "avg_gas": 485,
+            "min_gas": 485,
+            "max_gas": 485,
+            "calls": 1
+          },
+          {
+            "function": "eq",
+            "avg_gas": 287,
+            "min_gas": 287,
+            "max_gas": 287,
+            "calls": 1
+          },
+          {
+            "function": "gt",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "gte",
+            "avg_gas": 642,
+            "min_gas": 642,
+            "max_gas": 642,
+            "calls": 1
+          },
+          {
+            "function": "iszero",
+            "avg_gas": 770,
+            "min_gas": 770,
+            "max_gas": 770,
+            "calls": 1
+          },
+          {
+            "function": "lt",
+            "avg_gas": 191,
+            "min_gas": 191,
+            "max_gas": 191,
+            "calls": 1
+          },
+          {
+            "function": "lte",
+            "avg_gas": 796,
+            "min_gas": 796,
+            "max_gas": 796,
+            "calls": 1
+          },
+          {
+            "function": "not_",
+            "avg_gas": 707,
+            "min_gas": 707,
+            "max_gas": 707,
+            "calls": 1
+          },
+          {
+            "function": "or_",
+            "avg_gas": 331,
+            "min_gas": 331,
+            "max_gas": 331,
+            "calls": 1
+          },
+          {
+            "function": "safeAdd",
+            "avg_gas": 799,
+            "min_gas": 799,
+            "max_gas": 799,
+            "calls": 1
+          },
+          {
+            "function": "safeDiv",
+            "avg_gas": 697,
+            "min_gas": 697,
+            "max_gas": 697,
+            "calls": 1
+          },
+          {
+            "function": "safeExp",
+            "avg_gas": 524,
+            "min_gas": 524,
+            "max_gas": 524,
+            "calls": 1
+          },
+          {
+            "function": "safeMod",
+            "avg_gas": 477,
+            "min_gas": 477,
+            "max_gas": 477,
+            "calls": 1
+          },
+          {
+            "function": "safeMul",
+            "avg_gas": 783,
+            "min_gas": 783,
+            "max_gas": 783,
+            "calls": 1
+          },
+          {
+            "function": "safeSub",
+            "avg_gas": 601,
+            "min_gas": 601,
+            "max_gas": 601,
+            "calls": 1
+          },
+          {
+            "function": "sar",
+            "avg_gas": 559,
+            "min_gas": 559,
+            "max_gas": 559,
+            "calls": 1
+          },
+          {
+            "function": "sgt",
+            "avg_gas": 265,
+            "min_gas": 265,
+            "max_gas": 265,
+            "calls": 1
+          },
+          {
+            "function": "shl",
+            "avg_gas": 529,
+            "min_gas": 529,
+            "max_gas": 529,
+            "calls": 1
+          },
+          {
+            "function": "shr",
+            "avg_gas": 463,
+            "min_gas": 463,
+            "max_gas": 463,
+            "calls": 1
+          },
+          {
+            "function": "signExtend16",
+            "avg_gas": 652,
+            "min_gas": 652,
+            "max_gas": 652,
+            "calls": 1
+          },
+          {
+            "function": "signExtend8",
+            "avg_gas": 365,
+            "min_gas": 365,
+            "max_gas": 365,
+            "calls": 1
+          },
+          {
+            "function": "slt",
+            "avg_gas": 353,
+            "min_gas": 353,
+            "max_gas": 353,
+            "calls": 1
+          },
+          {
+            "function": "unsafeAdd",
+            "avg_gas": 309,
+            "min_gas": 309,
+            "max_gas": 309,
+            "calls": 1
+          },
+          {
+            "function": "unsafeDiv",
+            "avg_gas": 653,
+            "min_gas": 653,
+            "max_gas": 653,
+            "calls": 1
+          },
+          {
+            "function": "unsafeExp",
+            "avg_gas": 564,
+            "min_gas": 564,
+            "max_gas": 564,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMod",
+            "avg_gas": 741,
+            "min_gas": 741,
+            "max_gas": 741,
+            "calls": 1
+          },
+          {
+            "function": "unsafeMul",
+            "avg_gas": 421,
+            "min_gas": 421,
+            "max_gas": 421,
+            "calls": 1
+          },
+          {
+            "function": "unsafeSub",
+            "avg_gas": 551,
+            "min_gas": 551,
+            "max_gas": 551,
+            "calls": 1
+          },
+          {
+            "function": "xor_",
+            "avg_gas": 243,
+            "min_gas": 243,
+            "max_gas": 243,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "ControlFlow": {
+      "transpiled": {
+        "success": true,
+        "size": 1002,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1043,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "breakLoop",
+            "avg_gas": 1306,
+            "min_gas": 1306,
+            "max_gas": 1306,
+            "calls": 1
+          },
+          {
+            "function": "continueLoop",
+            "avg_gas": 1503,
+            "min_gas": 1503,
+            "max_gas": 1503,
+            "calls": 1
+          },
+          {
+            "function": "earlyReturn",
+            "avg_gas": 181,
+            "min_gas": 181,
+            "max_gas": 181,
+            "calls": 1
+          },
+          {
+            "function": "ifElse",
+            "avg_gas": 211,
+            "min_gas": 211,
+            "max_gas": 211,
+            "calls": 1
+          },
+          {
+            "function": "loopCount",
+            "avg_gas": 8120,
+            "min_gas": 8120,
+            "max_gas": 8120,
+            "calls": 1
+          },
+          {
+            "function": "loopSum",
+            "avg_gas": 683,
+            "min_gas": 683,
+            "max_gas": 683,
+            "calls": 1
+          },
+          {
+            "function": "nestedLoop",
+            "avg_gas": 1513,
+            "min_gas": 1513,
+            "max_gas": 1513,
+            "calls": 1
+          },
+          {
+            "function": "ternary",
+            "avg_gas": 229,
+            "min_gas": 229,
+            "max_gas": 229,
+            "calls": 1
+          },
+          {
+            "function": "whileLoop",
+            "avg_gas": 3421,
+            "min_gas": 3421,
+            "max_gas": 3421,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "breakLoop",
+            "avg_gas": 1858,
+            "min_gas": 1858,
+            "max_gas": 1858,
+            "calls": 1
+          },
+          {
+            "function": "continueLoop",
+            "avg_gas": 1678,
+            "min_gas": 1678,
+            "max_gas": 1678,
+            "calls": 1
+          },
+          {
+            "function": "earlyReturn",
+            "avg_gas": 354,
+            "min_gas": 354,
+            "max_gas": 354,
+            "calls": 1
+          },
+          {
+            "function": "ifElse",
+            "avg_gas": 294,
+            "min_gas": 294,
+            "max_gas": 294,
+            "calls": 1
+          },
+          {
+            "function": "loopCount",
+            "avg_gas": 11415,
+            "min_gas": 11415,
+            "max_gas": 11415,
+            "calls": 1
+          },
+          {
+            "function": "loopSum",
+            "avg_gas": 706,
+            "min_gas": 706,
+            "max_gas": 706,
+            "calls": 1
+          },
+          {
+            "function": "nestedLoop",
+            "avg_gas": 1778,
+            "min_gas": 1778,
+            "max_gas": 1778,
+            "calls": 1
+          },
+          {
+            "function": "ternary",
+            "avg_gas": 347,
+            "min_gas": 347,
+            "max_gas": 347,
+            "calls": 1
+          },
+          {
+            "function": "whileLoop",
+            "avg_gas": 4872,
+            "min_gas": 4872,
+            "max_gas": 4872,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "DataStructures": {
+      "transpiled": {
+        "success": true,
+        "size": 1392,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1576,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 1576,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 2031,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "bytesConcat",
+            "avg_gas": 572,
+            "min_gas": 572,
+            "max_gas": 572,
+            "calls": 1
+          },
+          {
+            "function": "bytesLength",
+            "avg_gas": 224,
+            "min_gas": 224,
+            "max_gas": 224,
+            "calls": 1
+          },
+          {
+            "function": "createArray",
+            "avg_gas": 1585,
+            "min_gas": 1585,
+            "max_gas": 1585,
+            "calls": 1
+          },
+          {
+            "function": "createStruct",
+            "avg_gas": 304,
+            "min_gas": 304,
+            "max_gas": 304,
+            "calls": 1
+          },
+          {
+            "function": "dynamicArraySum",
+            "avg_gas": 618,
+            "min_gas": 618,
+            "max_gas": 618,
+            "calls": 1
+          },
+          {
+            "function": "fixedArraySum",
+            "avg_gas": 712,
+            "min_gas": 712,
+            "max_gas": 712,
+            "calls": 1
+          },
+          {
+            "function": "processStruct",
+            "avg_gas": 236,
+            "min_gas": 236,
+            "max_gas": 236,
+            "calls": 1
+          },
+          {
+            "function": "processStructArray",
+            "avg_gas": 1448,
+            "min_gas": 1448,
+            "max_gas": 1448,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "bytesConcat",
+            "avg_gas": 851,
+            "min_gas": 851,
+            "max_gas": 851,
+            "calls": 1
+          },
+          {
+            "function": "bytesLength",
+            "avg_gas": 385,
+            "min_gas": 385,
+            "max_gas": 385,
+            "calls": 1
+          },
+          {
+            "function": "createArray",
+            "avg_gas": 2099,
+            "min_gas": 2099,
+            "max_gas": 2099,
+            "calls": 1
+          },
+          {
+            "function": "createStruct",
+            "avg_gas": 510,
+            "min_gas": 510,
+            "max_gas": 510,
+            "calls": 1
+          },
+          {
+            "function": "dynamicArraySum",
+            "avg_gas": 896,
+            "min_gas": 896,
+            "max_gas": 896,
+            "calls": 1
+          },
+          {
+            "function": "fixedArraySum",
+            "avg_gas": 964,
+            "min_gas": 964,
+            "max_gas": 964,
+            "calls": 1
+          },
+          {
+            "function": "processStruct",
+            "avg_gas": 235,
+            "min_gas": 235,
+            "max_gas": 235,
+            "calls": 1
+          },
+          {
+            "function": "processStructArray",
+            "avg_gas": 2463,
+            "min_gas": 2463,
+            "max_gas": 2463,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "Edge": {
+      "transpiled": {
+        "success": true,
+        "size": 2694,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 3112,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 3112,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 3787,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "assertCondition",
+            "avg_gas": 203,
+            "min_gas": 203,
+            "max_gas": 203,
+            "calls": 1
+          },
+          {
+            "function": "checkGas",
+            "avg_gas": 152,
+            "min_gas": 152,
+            "max_gas": 152,
+            "calls": 1
+          },
+          {
+            "function": "fallback",
+            "avg_gas": 189,
+            "min_gas": 189,
+            "max_gas": 189,
+            "calls": 1
+          },
+          {
+            "function": "getBlockInfo",
+            "avg_gas": 188,
+            "min_gas": 188,
+            "max_gas": 188,
+            "calls": 1
+          },
+          {
+            "function": "getMsgInfo",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "requireTrue",
+            "avg_gas": 273,
+            "min_gas": 273,
+            "max_gas": 273,
+            "calls": 1
+          },
+          {
+            "function": "requireValue",
+            "avg_gas": 211,
+            "min_gas": 211,
+            "max_gas": 211,
+            "calls": 1
+          },
+          {
+            "function": "tryCall",
+            "avg_gas": 766,
+            "min_gas": 766,
+            "max_gas": 766,
+            "calls": 1
+          },
+          {
+            "function": "mayFail",
+            "avg_gas": 302,
+            "min_gas": 302,
+            "max_gas": 302,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "assertCondition",
+            "avg_gas": 565,
+            "min_gas": 565,
+            "max_gas": 565,
+            "calls": 1
+          },
+          {
+            "function": "checkGas",
+            "avg_gas": 728,
+            "min_gas": 728,
+            "max_gas": 728,
+            "calls": 1
+          },
+          {
+            "function": "fallback",
+            "avg_gas": 712,
+            "min_gas": 712,
+            "max_gas": 712,
+            "calls": 1
+          },
+          {
+            "function": "getBlockInfo",
+            "avg_gas": 175,
+            "min_gas": 175,
+            "max_gas": 175,
+            "calls": 1
+          },
+          {
+            "function": "getMsgInfo",
+            "avg_gas": 643,
+            "min_gas": 643,
+            "max_gas": 643,
+            "calls": 1
+          },
+          {
+            "function": "requireTrue",
+            "avg_gas": 598,
+            "min_gas": 598,
+            "max_gas": 598,
+            "calls": 1
+          },
+          {
+            "function": "requireValue",
+            "avg_gas": 433,
+            "min_gas": 433,
+            "max_gas": 433,
+            "calls": 1
+          },
+          {
+            "function": "tryCall",
+            "avg_gas": 1390,
+            "min_gas": 1390,
+            "max_gas": 1390,
+            "calls": 1
+          },
+          {
+            "function": "mayFail",
+            "avg_gas": 799,
+            "min_gas": 799,
+            "max_gas": 799,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "Encoding": {
+      "transpiled": {
+        "success": true,
+        "size": 961,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 976,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 976,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1264,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "abiEncode",
+            "avg_gas": 371,
+            "min_gas": 371,
+            "max_gas": 371,
+            "calls": 1
+          },
+          {
+            "function": "abiEncodePacked",
+            "avg_gas": 394,
+            "min_gas": 394,
+            "max_gas": 394,
+            "calls": 1
+          },
+          {
+            "function": "abiEncodeWithSelector",
+            "avg_gas": 356,
+            "min_gas": 356,
+            "max_gas": 356,
+            "calls": 1
+          },
+          {
+            "function": "decodePair",
+            "avg_gas": 228,
+            "min_gas": 228,
+            "max_gas": 228,
+            "calls": 1
+          },
+          {
+            "function": "encodeMultiple",
+            "avg_gas": 655,
+            "min_gas": 655,
+            "max_gas": 655,
+            "calls": 1
+          },
+          {
+            "function": "encodePackedMixed",
+            "avg_gas": 433,
+            "min_gas": 433,
+            "max_gas": 433,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Encode",
+            "avg_gas": 300,
+            "min_gas": 300,
+            "max_gas": 300,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Hash",
+            "avg_gas": 462,
+            "min_gas": 462,
+            "max_gas": 462,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Packed",
+            "avg_gas": 300,
+            "min_gas": 300,
+            "max_gas": 300,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "abiEncode",
+            "avg_gas": 603,
+            "min_gas": 603,
+            "max_gas": 603,
+            "calls": 1
+          },
+          {
+            "function": "abiEncodePacked",
+            "avg_gas": 537,
+            "min_gas": 537,
+            "max_gas": 537,
+            "calls": 1
+          },
+          {
+            "function": "abiEncodeWithSelector",
+            "avg_gas": 557,
+            "min_gas": 557,
+            "max_gas": 557,
+            "calls": 1
+          },
+          {
+            "function": "decodePair",
+            "avg_gas": 393,
+            "min_gas": 393,
+            "max_gas": 393,
+            "calls": 1
+          },
+          {
+            "function": "encodeMultiple",
+            "avg_gas": 1005,
+            "min_gas": 1005,
+            "max_gas": 1005,
+            "calls": 1
+          },
+          {
+            "function": "encodePackedMixed",
+            "avg_gas": 696,
+            "min_gas": 696,
+            "max_gas": 696,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Encode",
+            "avg_gas": 483,
+            "min_gas": 483,
+            "max_gas": 483,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Hash",
+            "avg_gas": 747,
+            "min_gas": 747,
+            "max_gas": 747,
+            "calls": 1
+          },
+          {
+            "function": "keccak256Packed",
+            "avg_gas": 417,
+            "min_gas": 417,
+            "max_gas": 417,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "Events": {
+      "transpiled": {
+        "success": true,
+        "size": 735,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 826,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 826,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1163,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "emitBytes",
+            "avg_gas": 1852,
+            "min_gas": 1852,
+            "max_gas": 1852,
+            "calls": 1
+          },
+          {
+            "function": "emitComplex",
+            "avg_gas": 2920,
+            "min_gas": 2920,
+            "max_gas": 2920,
+            "calls": 1
+          },
+          {
+            "function": "emitIndexed",
+            "avg_gas": 1581,
+            "min_gas": 1581,
+            "max_gas": 1581,
+            "calls": 1
+          },
+          {
+            "function": "emitMultiIndexed",
+            "avg_gas": 2037,
+            "min_gas": 2037,
+            "max_gas": 2037,
+            "calls": 1
+          },
+          {
+            "function": "emitMultiple",
+            "avg_gas": 5583,
+            "min_gas": 5583,
+            "max_gas": 5583,
+            "calls": 1
+          },
+          {
+            "function": "emitSimple",
+            "avg_gas": 1168,
+            "min_gas": 1168,
+            "max_gas": 1168,
+            "calls": 1
+          },
+          {
+            "function": "emitString",
+            "avg_gas": 1822,
+            "min_gas": 1822,
+            "max_gas": 1822,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "emitBytes",
+            "avg_gas": 2068,
+            "min_gas": 2068,
+            "max_gas": 2068,
+            "calls": 1
+          },
+          {
+            "function": "emitComplex",
+            "avg_gas": 3059,
+            "min_gas": 3059,
+            "max_gas": 3059,
+            "calls": 1
+          },
+          {
+            "function": "emitIndexed",
+            "avg_gas": 1676,
+            "min_gas": 1676,
+            "max_gas": 1676,
+            "calls": 1
+          },
+          {
+            "function": "emitMultiIndexed",
+            "avg_gas": 2094,
+            "min_gas": 2094,
+            "max_gas": 2094,
+            "calls": 1
+          },
+          {
+            "function": "emitMultiple",
+            "avg_gas": 5564,
+            "min_gas": 5564,
+            "max_gas": 5564,
+            "calls": 1
+          },
+          {
+            "function": "emitSimple",
+            "avg_gas": 1273,
+            "min_gas": 1273,
+            "max_gas": 1273,
+            "calls": 1
+          },
+          {
+            "function": "emitString",
+            "avg_gas": 1969,
+            "min_gas": 1969,
+            "max_gas": 1969,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "ExternalLibrary": {
+      "transpiled": {
+        "success": true,
+        "size": 273,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": false,
+          "size": 0,
+          "error": "No bytecode in artifact"
+        },
+        "via_ir_200": {
           "success": false,
           "size": 0,
           "error": "No bytecode in artifact"
@@ -2233,23 +1776,226 @@
         "transpiled": [
           {
             "function": "testAddInternal",
-            "avg_gas": 307,
-            "min_gas": 307,
-            "max_gas": 307,
+            "avg_gas": 120,
+            "min_gas": 120,
+            "max_gas": 120,
             "calls": 1
           }
         ],
         "native": []
       }
     },
-    "Libraries": {
+    "Functions": {
       "transpiled": {
         "success": true,
-        "size": 5310,
+        "size": 2051,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 2452,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 2452,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 3477,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "callInternal",
+            "avg_gas": 207,
+            "min_gas": 207,
+            "max_gas": 207,
+            "calls": 1
+          },
+          {
+            "function": "callSelf",
+            "avg_gas": 692,
+            "min_gas": 692,
+            "max_gas": 692,
+            "calls": 1
+          },
+          {
+            "function": "selfAdd",
+            "avg_gas": 184,
+            "min_gas": 184,
+            "max_gas": 184,
+            "calls": 1
+          },
+          {
+            "function": "factorial",
+            "avg_gas": 281,
+            "min_gas": 281,
+            "max_gas": 281,
+            "calls": 1
+          },
+          {
+            "function": "fibonacci",
+            "avg_gas": 275,
+            "min_gas": 275,
+            "max_gas": 275,
+            "calls": 1
+          },
+          {
+            "function": "interfaceFunc",
+            "avg_gas": 147,
+            "min_gas": 147,
+            "max_gas": 147,
+            "calls": 1
+          },
+          {
+            "function": "nestedInternal",
+            "avg_gas": 198,
+            "min_gas": 198,
+            "max_gas": 198,
+            "calls": 1
+          },
+          {
+            "function": "returnMultiple",
+            "avg_gas": 178,
+            "min_gas": 178,
+            "max_gas": 178,
+            "calls": 1
+          },
+          {
+            "function": "returnNothing",
+            "avg_gas": 142,
+            "min_gas": 142,
+            "max_gas": 142,
+            "calls": 1
+          },
+          {
+            "function": "returnSingle",
+            "avg_gas": 142,
+            "min_gas": 142,
+            "max_gas": 142,
+            "calls": 1
+          },
+          {
+            "function": "callVirtualA",
+            "avg_gas": 142,
+            "min_gas": 142,
+            "max_gas": 142,
+            "calls": 1
+          },
+          {
+            "function": "callVirtualB",
+            "avg_gas": 142,
+            "min_gas": 142,
+            "max_gas": 142,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "callInternal",
+            "avg_gas": 528,
+            "min_gas": 528,
+            "max_gas": 528,
+            "calls": 1
+          },
+          {
+            "function": "callSelf",
+            "avg_gas": 1171,
+            "min_gas": 1171,
+            "max_gas": 1171,
+            "calls": 1
+          },
+          {
+            "function": "selfAdd",
+            "avg_gas": 286,
+            "min_gas": 286,
+            "max_gas": 286,
+            "calls": 1
+          },
+          {
+            "function": "factorial",
+            "avg_gas": 487,
+            "min_gas": 487,
+            "max_gas": 487,
+            "calls": 1
+          },
+          {
+            "function": "fibonacci",
+            "avg_gas": 394,
+            "min_gas": 394,
+            "max_gas": 394,
+            "calls": 1
+          },
+          {
+            "function": "interfaceFunc",
+            "avg_gas": 506,
+            "min_gas": 506,
+            "max_gas": 506,
+            "calls": 1
+          },
+          {
+            "function": "nestedInternal",
+            "avg_gas": 302,
+            "min_gas": 302,
+            "max_gas": 302,
+            "calls": 1
+          },
+          {
+            "function": "returnMultiple",
+            "avg_gas": 736,
+            "min_gas": 736,
+            "max_gas": 736,
+            "calls": 1
+          },
+          {
+            "function": "returnNothing",
+            "avg_gas": 350,
+            "min_gas": 350,
+            "max_gas": 350,
+            "calls": 1
+          },
+          {
+            "function": "returnSingle",
+            "avg_gas": 462,
+            "min_gas": 462,
+            "max_gas": 462,
+            "calls": 1
+          },
+          {
+            "function": "callVirtualA",
+            "avg_gas": 594,
+            "min_gas": 594,
+            "max_gas": 594,
+            "calls": 1
+          },
+          {
+            "function": "callVirtualB",
+            "avg_gas": 142,
+            "min_gas": 142,
+            "max_gas": 142,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "Libraries": {
+      "transpiled": {
+        "success": true,
+        "size": 4166,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 3080,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 3080,
           "error": null
@@ -2264,163 +2010,163 @@
         "transpiled": [
           {
             "function": "testAdd",
-            "avg_gas": 274,
-            "min_gas": 274,
-            "max_gas": 274,
+            "avg_gas": 336,
+            "min_gas": 336,
+            "max_gas": 336,
             "calls": 1
           },
           {
             "function": "testAddressToBytes",
-            "avg_gas": 345,
-            "min_gas": 345,
-            "max_gas": 345,
+            "avg_gas": 351,
+            "min_gas": 351,
+            "max_gas": 351,
             "calls": 1
           },
           {
             "function": "testArrayContains",
-            "avg_gas": 911,
-            "min_gas": 911,
-            "max_gas": 911,
+            "avg_gas": 972,
+            "min_gas": 972,
+            "max_gas": 972,
             "calls": 1
           },
           {
             "function": "testArrayMax",
-            "avg_gas": 1240,
-            "min_gas": 1240,
-            "max_gas": 1240,
+            "avg_gas": 1368,
+            "min_gas": 1368,
+            "max_gas": 1368,
             "calls": 1
           },
           {
             "function": "testArrayMin",
-            "avg_gas": 1286,
-            "min_gas": 1286,
-            "max_gas": 1286,
+            "avg_gas": 1414,
+            "min_gas": 1414,
+            "max_gas": 1414,
             "calls": 1
           },
           {
             "function": "testArraySum",
-            "avg_gas": 1042,
-            "min_gas": 1042,
-            "max_gas": 1042,
+            "avg_gas": 1230,
+            "min_gas": 1230,
+            "max_gas": 1230,
             "calls": 1
           },
           {
             "function": "testChainedMath",
-            "avg_gas": 349,
-            "min_gas": 349,
-            "max_gas": 349,
+            "avg_gas": 474,
+            "min_gas": 474,
+            "max_gas": 474,
             "calls": 1
           },
           {
             "function": "testComplexMath",
-            "avg_gas": 376,
-            "min_gas": 376,
-            "max_gas": 376,
+            "avg_gas": 426,
+            "min_gas": 426,
+            "max_gas": 426,
             "calls": 1
           },
           {
             "function": "setStoredValue",
-            "avg_gas": 22221,
-            "min_gas": 22221,
-            "max_gas": 22221,
+            "avg_gas": 22227,
+            "min_gas": 22227,
+            "max_gas": 22227,
             "calls": 1
           },
           {
             "function": "decrementBy",
-            "avg_gas": 422,
-            "min_gas": 422,
-            "max_gas": 422,
+            "avg_gas": 428,
+            "min_gas": 428,
+            "max_gas": 428,
             "calls": 1
           },
           {
             "function": "getStoredValue",
-            "avg_gas": 247,
-            "min_gas": 247,
-            "max_gas": 247,
+            "avg_gas": 253,
+            "min_gas": 253,
+            "max_gas": 253,
             "calls": 1
           },
           {
             "function": "directLibraryCall",
-            "avg_gas": 251,
-            "min_gas": 251,
-            "max_gas": 251,
+            "avg_gas": 313,
+            "min_gas": 313,
+            "max_gas": 313,
             "calls": 1
           },
           {
             "function": "testDiv",
-            "avg_gas": 229,
-            "min_gas": 229,
-            "max_gas": 229,
+            "avg_gas": 255,
+            "min_gas": 255,
+            "max_gas": 255,
             "calls": 1
           },
           {
             "function": "incrementBy",
-            "avg_gas": 422,
-            "min_gas": 422,
-            "max_gas": 422,
+            "avg_gas": 494,
+            "min_gas": 494,
+            "max_gas": 494,
             "calls": 1
           },
           {
             "function": "testIsContract",
-            "avg_gas": 262,
-            "min_gas": 262,
-            "max_gas": 262,
+            "avg_gas": 268,
+            "min_gas": 268,
+            "max_gas": 268,
             "calls": 1
           },
           {
             "function": "testMod",
-            "avg_gas": 217,
-            "min_gas": 217,
-            "max_gas": 217,
+            "avg_gas": 223,
+            "min_gas": 223,
+            "max_gas": 223,
             "calls": 1
           },
           {
             "function": "testMul",
-            "avg_gas": 297,
-            "min_gas": 297,
-            "max_gas": 297,
+            "avg_gas": 350,
+            "min_gas": 350,
+            "max_gas": 350,
             "calls": 1
           },
           {
             "function": "multiplyBy",
-            "avg_gas": 486,
-            "min_gas": 486,
-            "max_gas": 486,
+            "avg_gas": 539,
+            "min_gas": 539,
+            "max_gas": 539,
             "calls": 1
           },
           {
             "function": "processData",
-            "avg_gas": 2730,
-            "min_gas": 2730,
-            "max_gas": 2730,
+            "avg_gas": 3271,
+            "min_gas": 3271,
+            "max_gas": 3271,
             "calls": 1
           },
           {
             "function": "testStringEmpty",
-            "avg_gas": 429,
-            "min_gas": 429,
-            "max_gas": 429,
+            "avg_gas": 377,
+            "min_gas": 377,
+            "max_gas": 377,
             "calls": 1
           },
           {
             "function": "testStringEquals",
-            "avg_gas": 793,
-            "min_gas": 793,
-            "max_gas": 793,
+            "avg_gas": 690,
+            "min_gas": 690,
+            "max_gas": 690,
             "calls": 1
           },
           {
             "function": "testStringLength",
-            "avg_gas": 478,
-            "min_gas": 478,
-            "max_gas": 478,
+            "avg_gas": 426,
+            "min_gas": 426,
+            "max_gas": 426,
             "calls": 1
           },
           {
             "function": "testSub",
-            "avg_gas": 274,
-            "min_gas": 274,
-            "max_gas": 274,
+            "avg_gas": 270,
+            "min_gas": 270,
+            "max_gas": 270,
             "calls": 1
           }
         ],
@@ -2592,11 +2338,16 @@
     "Modifiers": {
       "transpiled": {
         "success": true,
-        "size": 3443,
+        "size": 2534,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 2446,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 2446,
           "error": null
@@ -2611,163 +2362,163 @@
         "transpiled": [
           {
             "function": "addAdmin",
-            "avg_gas": 24560,
-            "min_gas": 24560,
-            "max_gas": 24560,
+            "avg_gas": 24527,
+            "min_gas": 24527,
+            "max_gas": 24527,
             "calls": 1
           },
           {
             "function": "admins",
-            "avg_gas": 410,
-            "min_gas": 410,
-            "max_gas": 410,
+            "avg_gas": 368,
+            "min_gas": 368,
+            "max_gas": 368,
             "calls": 1
           },
           {
             "function": "adminAction",
-            "avg_gas": 26645,
-            "min_gas": 26645,
-            "max_gas": 26645,
+            "avg_gas": 26596,
+            "min_gas": 26596,
+            "max_gas": 26596,
             "calls": 1
           },
           {
             "function": "counter",
-            "avg_gas": 303,
-            "min_gas": 303,
-            "max_gas": 303,
+            "avg_gas": 254,
+            "min_gas": 254,
+            "max_gas": 254,
             "calls": 1
           },
           {
             "function": "setPaused",
-            "avg_gas": 5287,
-            "min_gas": 5287,
-            "max_gas": 5287,
+            "avg_gas": 5249,
+            "min_gas": 5249,
+            "max_gas": 5249,
             "calls": 1
           },
           {
             "function": "incrementWithAfterMod",
-            "avg_gas": 22352,
-            "min_gas": 22352,
-            "max_gas": 22352,
+            "avg_gas": 22303,
+            "min_gas": 22303,
+            "max_gas": 22303,
             "calls": 1
           },
           {
             "function": "blockedFunction",
-            "avg_gas": 274,
-            "min_gas": 274,
-            "max_gas": 274,
+            "avg_gas": 225,
+            "min_gas": 225,
+            "max_gas": 225,
             "calls": 1
           },
           {
             "function": "wrappedIncrement",
-            "avg_gas": 22382,
-            "min_gas": 22382,
-            "max_gas": 22382,
+            "avg_gas": 22333,
+            "min_gas": 22333,
+            "max_gas": 22333,
             "calls": 1
           },
           {
             "function": "conditionalIncrement",
-            "avg_gas": 213,
-            "min_gas": 213,
-            "max_gas": 213,
+            "avg_gas": 139,
+            "min_gas": 139,
+            "max_gas": 139,
             "calls": 1
           },
           {
             "function": "fullProtection",
-            "avg_gas": 2340,
-            "min_gas": 2340,
-            "max_gas": 2340,
+            "avg_gas": 2299,
+            "min_gas": 2299,
+            "max_gas": 2299,
             "calls": 1
           },
           {
             "function": "getCounter",
-            "avg_gas": 4509,
-            "min_gas": 4509,
-            "max_gas": 4509,
+            "avg_gas": 4460,
+            "min_gas": 4460,
+            "max_gas": 4460,
             "calls": 1
           },
           {
             "function": "getState",
-            "avg_gas": 4462,
-            "min_gas": 4462,
-            "max_gas": 4462,
+            "avg_gas": 4421,
+            "min_gas": 4421,
+            "max_gas": 4421,
             "calls": 1
           },
           {
             "function": "loggedIncrement",
-            "avg_gas": 26141,
-            "min_gas": 26141,
-            "max_gas": 26141,
+            "avg_gas": 26051,
+            "min_gas": 26051,
+            "max_gas": 26051,
             "calls": 1
           },
           {
             "function": "incrementWithMiddleMod",
-            "avg_gas": 22334,
-            "min_gas": 22334,
-            "max_gas": 22334,
+            "avg_gas": 22265,
+            "min_gas": 22265,
+            "max_gas": 22265,
             "calls": 1
           },
           {
             "function": "multiEdgeCase",
-            "avg_gas": 22370,
-            "min_gas": 22370,
-            "max_gas": 22370,
+            "avg_gas": 22298,
+            "min_gas": 22298,
+            "max_gas": 22298,
             "calls": 1
           },
           {
             "function": "ownerAction",
-            "avg_gas": 24510,
-            "min_gas": 24510,
-            "max_gas": 24510,
+            "avg_gas": 24469,
+            "min_gas": 24469,
+            "max_gas": 24469,
             "calls": 1
           },
           {
             "function": "setOwner",
-            "avg_gas": 5252,
-            "min_gas": 5252,
-            "max_gas": 5252,
+            "avg_gas": 5222,
+            "min_gas": 5222,
+            "max_gas": 5222,
             "calls": 1
           },
           {
             "function": "owner",
-            "avg_gas": 331,
-            "min_gas": 331,
-            "max_gas": 331,
+            "avg_gas": 290,
+            "min_gas": 290,
+            "max_gas": 290,
             "calls": 1
           },
           {
             "function": "pureAdd",
-            "avg_gas": 251,
-            "min_gas": 251,
-            "max_gas": 251,
+            "avg_gas": 201,
+            "min_gas": 201,
+            "max_gas": 201,
             "calls": 1
           },
           {
             "function": "removeAdmin",
-            "avg_gas": 608,
-            "min_gas": 608,
-            "max_gas": 608,
+            "avg_gas": 575,
+            "min_gas": 575,
+            "max_gas": 575,
             "calls": 1
           },
           {
             "function": "restrictedAction",
-            "avg_gas": 26673,
-            "min_gas": 26673,
-            "max_gas": 26673,
+            "avg_gas": 26632,
+            "min_gas": 26632,
+            "max_gas": 26632,
             "calls": 1
           },
           {
             "function": "safeIncrement",
-            "avg_gas": 22356,
-            "min_gas": 22356,
-            "max_gas": 22356,
+            "avg_gas": 22281,
+            "min_gas": 22281,
+            "max_gas": 22281,
             "calls": 1
           },
           {
             "function": "paused",
-            "avg_gas": 348,
-            "min_gas": 348,
-            "max_gas": 348,
+            "avg_gas": 299,
+            "min_gas": 299,
+            "max_gas": 299,
             "calls": 1
           }
         ],
@@ -2939,11 +2690,16 @@
     "SoladyToken": {
       "transpiled": {
         "success": true,
-        "size": 4094,
+        "size": 3635,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 3299,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 3299,
           "error": null
@@ -2958,107 +2714,107 @@
         "transpiled": [
           {
             "function": "approve",
-            "avg_gas": 24234,
-            "min_gas": 24234,
-            "max_gas": 24234,
+            "avg_gas": 24237,
+            "min_gas": 24237,
+            "max_gas": 24237,
             "calls": 1
           },
           {
             "function": "allowance",
-            "avg_gas": 887,
-            "min_gas": 887,
-            "max_gas": 887,
+            "avg_gas": 406,
+            "min_gas": 406,
+            "max_gas": 406,
             "calls": 1
           },
           {
             "function": "mint",
-            "avg_gas": 48595,
-            "min_gas": 48595,
-            "max_gas": 48595,
+            "avg_gas": 46260,
+            "min_gas": 46260,
+            "max_gas": 46260,
             "calls": 1
           },
           {
             "function": "burn",
-            "avg_gas": 2648,
-            "min_gas": 2648,
-            "max_gas": 2648,
+            "avg_gas": 2431,
+            "min_gas": 2431,
+            "max_gas": 2431,
             "calls": 1
           },
           {
             "function": "balanceOf",
-            "avg_gas": 580,
-            "min_gas": 580,
-            "max_gas": 580,
+            "avg_gas": 316,
+            "min_gas": 316,
+            "max_gas": 316,
             "calls": 1
           },
           {
             "function": "totalSupply",
-            "avg_gas": 289,
-            "min_gas": 289,
-            "max_gas": 289,
+            "avg_gas": 259,
+            "min_gas": 259,
+            "max_gas": 259,
             "calls": 1
           },
           {
             "function": "burnFrom",
-            "avg_gas": 3139,
-            "min_gas": 3139,
-            "max_gas": 3139,
+            "avg_gas": 2814,
+            "min_gas": 2814,
+            "max_gas": 2814,
             "calls": 1
           },
           {
             "function": "decimals",
-            "avg_gas": 2339,
-            "min_gas": 2339,
-            "max_gas": 2339,
+            "avg_gas": 2265,
+            "min_gas": 2265,
+            "max_gas": 2265,
             "calls": 1
           },
           {
             "function": "mintBatch",
-            "avg_gas": 98182,
-            "min_gas": 98182,
-            "max_gas": 98182,
+            "avg_gas": 95210,
+            "min_gas": 95210,
+            "max_gas": 95210,
             "calls": 1
           },
           {
             "function": "name",
-            "avg_gas": 2702,
-            "min_gas": 2702,
-            "max_gas": 2702,
+            "avg_gas": 2586,
+            "min_gas": 2586,
+            "max_gas": 2586,
             "calls": 1
           },
           {
             "function": "safeTransfer",
-            "avg_gas": 24650,
-            "min_gas": 24650,
-            "max_gas": 24650,
+            "avg_gas": 24470,
+            "min_gas": 24470,
+            "max_gas": 24470,
             "calls": 1
           },
           {
             "function": "safeTransferFrom",
-            "avg_gas": 25098,
-            "min_gas": 25098,
-            "max_gas": 25098,
+            "avg_gas": 24845,
+            "min_gas": 24845,
+            "max_gas": 24845,
             "calls": 1
           },
           {
             "function": "symbol",
-            "avg_gas": 3020,
-            "min_gas": 3020,
-            "max_gas": 3020,
+            "avg_gas": 2605,
+            "min_gas": 2605,
+            "max_gas": 2605,
             "calls": 1
           },
           {
             "function": "transfer",
-            "avg_gas": 24804,
-            "min_gas": 24804,
-            "max_gas": 24804,
+            "avg_gas": 24429,
+            "min_gas": 24429,
+            "max_gas": 24429,
             "calls": 1
           },
           {
             "function": "transferFrom",
-            "avg_gas": 24966,
-            "min_gas": 24966,
-            "max_gas": 24966,
+            "avg_gas": 24848,
+            "min_gas": 24848,
+            "max_gas": 24848,
             "calls": 1
           }
         ],
@@ -3171,14 +2927,329 @@
         ]
       }
     },
-    "TransientStorage": {
+    "StateManagement": {
       "transpiled": {
         "success": true,
-        "size": 1389,
+        "size": 2234,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 2686,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 2686,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 2981,
+          "error": null
+        }
+      },
+      "gas": {
+        "transpiled": [
+          {
+            "function": "CONST_VALUE",
+            "avg_gas": 154,
+            "min_gas": 154,
+            "max_gas": 154,
+            "calls": 1
+          },
+          {
+            "function": "CONST_HASH",
+            "avg_gas": 154,
+            "min_gas": 154,
+            "max_gas": 154,
+            "calls": 1
+          },
+          {
+            "function": "getArrayLength",
+            "avg_gas": 2253,
+            "min_gas": 2253,
+            "max_gas": 2253,
+            "calls": 1
+          },
+          {
+            "function": "pushArray",
+            "avg_gas": 42450,
+            "min_gas": 42450,
+            "max_gas": 42450,
+            "calls": 1
+          },
+          {
+            "function": "getArrayElement",
+            "avg_gas": 443,
+            "min_gas": 443,
+            "max_gas": 443,
+            "calls": 1
+          },
+          {
+            "function": "popArray",
+            "avg_gas": 538,
+            "min_gas": 538,
+            "max_gas": 538,
+            "calls": 1
+          },
+          {
+            "function": "balances",
+            "avg_gas": 2358,
+            "min_gas": 2358,
+            "max_gas": 2358,
+            "calls": 1
+          },
+          {
+            "function": "incrementBalance",
+            "avg_gas": 20315,
+            "min_gas": 20315,
+            "max_gas": 20315,
+            "calls": 1
+          },
+          {
+            "function": "getMappingValue",
+            "avg_gas": 2321,
+            "min_gas": 2321,
+            "max_gas": 2321,
+            "calls": 1
+          },
+          {
+            "function": "setMappingValue",
+            "avg_gas": 20235,
+            "min_gas": 20235,
+            "max_gas": 20235,
+            "calls": 1
+          },
+          {
+            "function": "memoryAlloc",
+            "avg_gas": 349,
+            "min_gas": 349,
+            "max_gas": 349,
+            "calls": 1
+          },
+          {
+            "function": "memoryCopy",
+            "avg_gas": 1768,
+            "min_gas": 1768,
+            "max_gas": 1768,
+            "calls": 1
+          },
+          {
+            "function": "setNestedMap",
+            "avg_gas": 22379,
+            "min_gas": 22379,
+            "max_gas": 22379,
+            "calls": 1
+          },
+          {
+            "function": "getNestedMap",
+            "avg_gas": 428,
+            "min_gas": 428,
+            "max_gas": 428,
+            "calls": 1
+          },
+          {
+            "function": "setPackedAB",
+            "avg_gas": 22333,
+            "min_gas": 22333,
+            "max_gas": 22333,
+            "calls": 1
+          },
+          {
+            "function": "getPackedAB",
+            "avg_gas": 292,
+            "min_gas": 292,
+            "max_gas": 292,
+            "calls": 1
+          },
+          {
+            "function": "getStoredBool",
+            "avg_gas": 2266,
+            "min_gas": 2266,
+            "max_gas": 2266,
+            "calls": 1
+          },
+          {
+            "function": "setStoredBool",
+            "avg_gas": 20294,
+            "min_gas": 20294,
+            "max_gas": 20294,
+            "calls": 1
+          },
+          {
+            "function": "getStoredUint",
+            "avg_gas": 2281,
+            "min_gas": 2281,
+            "max_gas": 2281,
+            "calls": 1
+          },
+          {
+            "function": "setStoredUint",
+            "avg_gas": 20132,
+            "min_gas": 20132,
+            "max_gas": 20132,
+            "calls": 1
+          }
+        ],
+        "native": [
+          {
+            "function": "CONST_VALUE",
+            "avg_gas": 876,
+            "min_gas": 876,
+            "max_gas": 876,
+            "calls": 1
+          },
+          {
+            "function": "CONST_HASH",
+            "avg_gas": 986,
+            "min_gas": 986,
+            "max_gas": 986,
+            "calls": 1
+          },
+          {
+            "function": "getArrayLength",
+            "avg_gas": 2245,
+            "min_gas": 2245,
+            "max_gas": 2245,
+            "calls": 1
+          },
+          {
+            "function": "pushArray",
+            "avg_gas": 42720,
+            "min_gas": 42720,
+            "max_gas": 42720,
+            "calls": 1
+          },
+          {
+            "function": "getArrayElement",
+            "avg_gas": 547,
+            "min_gas": 547,
+            "max_gas": 547,
+            "calls": 1
+          },
+          {
+            "function": "popArray",
+            "avg_gas": 1329,
+            "min_gas": 1329,
+            "max_gas": 1329,
+            "calls": 1
+          },
+          {
+            "function": "balances",
+            "avg_gas": 2533,
+            "min_gas": 2533,
+            "max_gas": 2533,
+            "calls": 1
+          },
+          {
+            "function": "incrementBalance",
+            "avg_gas": 20593,
+            "min_gas": 20593,
+            "max_gas": 20593,
+            "calls": 1
+          },
+          {
+            "function": "getMappingValue",
+            "avg_gas": 2912,
+            "min_gas": 2912,
+            "max_gas": 2912,
+            "calls": 1
+          },
+          {
+            "function": "setMappingValue",
+            "avg_gas": 21055,
+            "min_gas": 21055,
+            "max_gas": 21055,
+            "calls": 1
+          },
+          {
+            "function": "memoryAlloc",
+            "avg_gas": 726,
+            "min_gas": 726,
+            "max_gas": 726,
+            "calls": 1
+          },
+          {
+            "function": "memoryCopy",
+            "avg_gas": 3154,
+            "min_gas": 3154,
+            "max_gas": 3154,
+            "calls": 1
+          },
+          {
+            "function": "setNestedMap",
+            "avg_gas": 22721,
+            "min_gas": 22721,
+            "max_gas": 22721,
+            "calls": 1
+          },
+          {
+            "function": "getNestedMap",
+            "avg_gas": 1191,
+            "min_gas": 1191,
+            "max_gas": 1191,
+            "calls": 1
+          },
+          {
+            "function": "setPackedAB",
+            "avg_gas": 22998,
+            "min_gas": 22998,
+            "max_gas": 22998,
+            "calls": 1
+          },
+          {
+            "function": "getPackedAB",
+            "avg_gas": 547,
+            "min_gas": 547,
+            "max_gas": 547,
+            "calls": 1
+          },
+          {
+            "function": "getStoredBool",
+            "avg_gas": 2507,
+            "min_gas": 2507,
+            "max_gas": 2507,
+            "calls": 1
+          },
+          {
+            "function": "setStoredBool",
+            "avg_gas": 20315,
+            "min_gas": 20315,
+            "max_gas": 20315,
+            "calls": 1
+          },
+          {
+            "function": "getStoredUint",
+            "avg_gas": 2802,
+            "min_gas": 2802,
+            "max_gas": 2802,
+            "calls": 1
+          },
+          {
+            "function": "setStoredUint",
+            "avg_gas": 20179,
+            "min_gas": 20179,
+            "max_gas": 20179,
+            "calls": 1
+          }
+        ]
+      }
+    },
+    "TransientStorage": {
+      "transpiled": {
+        "success": true,
+        "size": 1293,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1760,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 1760,
           "error": null
@@ -3193,142 +3264,142 @@
         "transpiled": [
           {
             "function": "setLock",
-            "avg_gas": 219,
-            "min_gas": 219,
-            "max_gas": 219,
+            "avg_gas": 225,
+            "min_gas": 225,
+            "max_gas": 225,
             "calls": 1
           },
           {
             "function": "isLocked",
+            "avg_gas": 265,
+            "min_gas": 265,
+            "max_gas": 265,
+            "calls": 1
+          },
+          {
+            "function": "clearLock",
+            "avg_gas": 224,
+            "min_gas": 224,
+            "max_gas": 224,
+            "calls": 1
+          },
+          {
+            "function": "getCallbackSender",
+            "avg_gas": 268,
+            "min_gas": 268,
+            "max_gas": 268,
+            "calls": 1
+          },
+          {
+            "function": "protectedFunction",
+            "avg_gas": 375,
+            "min_gas": 375,
+            "max_gas": 375,
+            "calls": 1
+          },
+          {
+            "function": "tstore",
+            "avg_gas": 266,
+            "min_gas": 266,
+            "max_gas": 266,
+            "calls": 1
+          },
+          {
+            "function": "tloadMultiple",
+            "avg_gas": 1062,
+            "min_gas": 1062,
+            "max_gas": 1062,
+            "calls": 1
+          },
+          {
+            "function": "getTransientCounter",
             "avg_gas": 259,
             "min_gas": 259,
             "max_gas": 259,
             "calls": 1
           },
           {
-            "function": "clearLock",
-            "avg_gas": 218,
-            "min_gas": 218,
-            "max_gas": 218,
+            "function": "incrementTransientCounter",
+            "avg_gas": 374,
+            "min_gas": 374,
+            "max_gas": 374,
             "calls": 1
           },
           {
-            "function": "getCallbackSender",
+            "function": "resetTransientCounter",
+            "avg_gas": 224,
+            "min_gas": 224,
+            "max_gas": 224,
+            "calls": 1
+          },
+          {
+            "function": "storeRegular",
+            "avg_gas": 22255,
+            "min_gas": 22255,
+            "max_gas": 22255,
+            "calls": 1
+          },
+          {
+            "function": "storeTransient",
+            "avg_gas": 273,
+            "min_gas": 273,
+            "max_gas": 273,
+            "calls": 1
+          },
+          {
+            "function": "getBoth",
+            "avg_gas": 393,
+            "min_gas": 393,
+            "max_gas": 393,
+            "calls": 1
+          },
+          {
+            "function": "tstoreAddress",
             "avg_gas": 254,
             "min_gas": 254,
             "max_gas": 254,
             "calls": 1
           },
           {
-            "function": "protectedFunction",
-            "avg_gas": 369,
-            "min_gas": 369,
-            "max_gas": 369,
-            "calls": 1
-          },
-          {
-            "function": "tstore",
-            "avg_gas": 260,
-            "min_gas": 260,
-            "max_gas": 260,
-            "calls": 1
-          },
-          {
-            "function": "tloadMultiple",
-            "avg_gas": 1099,
-            "min_gas": 1099,
-            "max_gas": 1099,
-            "calls": 1
-          },
-          {
-            "function": "getTransientCounter",
-            "avg_gas": 253,
-            "min_gas": 253,
-            "max_gas": 253,
-            "calls": 1
-          },
-          {
-            "function": "incrementTransientCounter",
-            "avg_gas": 368,
-            "min_gas": 368,
-            "max_gas": 368,
-            "calls": 1
-          },
-          {
-            "function": "resetTransientCounter",
-            "avg_gas": 218,
-            "min_gas": 218,
-            "max_gas": 218,
-            "calls": 1
-          },
-          {
-            "function": "storeRegular",
-            "avg_gas": 22249,
-            "min_gas": 22249,
-            "max_gas": 22249,
-            "calls": 1
-          },
-          {
-            "function": "storeTransient",
-            "avg_gas": 267,
-            "min_gas": 267,
-            "max_gas": 267,
-            "calls": 1
-          },
-          {
-            "function": "getBoth",
-            "avg_gas": 387,
-            "min_gas": 387,
-            "max_gas": 387,
-            "calls": 1
-          },
-          {
-            "function": "tstoreAddress",
-            "avg_gas": 248,
-            "min_gas": 248,
-            "max_gas": 248,
-            "calls": 1
-          },
-          {
             "function": "tloadAddress",
-            "avg_gas": 257,
-            "min_gas": 257,
-            "max_gas": 257,
+            "avg_gas": 271,
+            "min_gas": 271,
+            "max_gas": 271,
             "calls": 1
           },
           {
             "function": "tstoreAndLoad",
-            "avg_gas": 316,
-            "min_gas": 316,
-            "max_gas": 316,
+            "avg_gas": 312,
+            "min_gas": 312,
+            "max_gas": 312,
             "calls": 1
           },
           {
             "function": "tstoreBytes32",
-            "avg_gas": 248,
-            "min_gas": 248,
-            "max_gas": 248,
+            "avg_gas": 254,
+            "min_gas": 254,
+            "max_gas": 254,
             "calls": 1
           },
           {
             "function": "tloadBytes32",
-            "avg_gas": 297,
-            "min_gas": 297,
-            "max_gas": 297,
+            "avg_gas": 303,
+            "min_gas": 303,
+            "max_gas": 303,
             "calls": 1
           },
           {
             "function": "tstoreMultiple",
-            "avg_gas": 968,
-            "min_gas": 968,
-            "max_gas": 968,
+            "avg_gas": 865,
+            "min_gas": 865,
+            "max_gas": 865,
             "calls": 1
           },
           {
             "function": "tload",
-            "avg_gas": 256,
-            "min_gas": 256,
-            "max_gas": 256,
+            "avg_gas": 262,
+            "min_gas": 262,
+            "max_gas": 262,
             "calls": 1
           }
         ],
@@ -3479,11 +3550,16 @@
     "TypeLimits": {
       "transpiled": {
         "success": true,
-        "size": 1495,
+        "size": 1344,
         "error": null
       },
       "solc": {
         "default_200": {
+          "success": true,
+          "size": 1722,
+          "error": null
+        },
+        "via_ir_200": {
           "success": true,
           "size": 1722,
           "error": null
@@ -3498,170 +3574,170 @@
         "transpiled": [
           {
             "function": "clampToInt128",
-            "avg_gas": 228,
-            "min_gas": 228,
-            "max_gas": 228,
+            "avg_gas": 220,
+            "min_gas": 220,
+            "max_gas": 220,
             "calls": 1
           },
           {
             "function": "clampToUint8",
-            "avg_gas": 204,
-            "min_gas": 204,
-            "max_gas": 204,
-            "calls": 1
-          },
-          {
-            "function": "fitsInInt64",
-            "avg_gas": 209,
-            "min_gas": 209,
-            "max_gas": 209,
-            "calls": 1
-          },
-          {
-            "function": "fitsInUint128",
-            "avg_gas": 186,
-            "min_gas": 186,
-            "max_gas": 186,
-            "calls": 1
-          },
-          {
-            "function": "getConstants",
             "avg_gas": 210,
             "min_gas": 210,
             "max_gas": 210,
             "calls": 1
           },
           {
-            "function": "getInterfaceId",
-            "avg_gas": 154,
-            "min_gas": 154,
-            "max_gas": 154,
-            "calls": 1
-          },
-          {
-            "function": "int128Limits",
+            "function": "fitsInInt64",
             "avg_gas": 215,
             "min_gas": 215,
             "max_gas": 215,
             "calls": 1
           },
           {
-            "function": "int16Limits",
-            "avg_gas": 174,
-            "min_gas": 174,
-            "max_gas": 174,
-            "calls": 1
-          },
-          {
-            "function": "int256Limits",
-            "avg_gas": 165,
-            "min_gas": 165,
-            "max_gas": 165,
-            "calls": 1
-          },
-          {
-            "function": "int32Limits",
-            "avg_gas": 174,
-            "min_gas": 174,
-            "max_gas": 174,
-            "calls": 1
-          },
-          {
-            "function": "int64Limits",
+            "function": "fitsInUint128",
             "avg_gas": 192,
             "min_gas": 192,
             "max_gas": 192,
             "calls": 1
           },
           {
-            "function": "int8Limits",
-            "avg_gas": 215,
-            "min_gas": 215,
-            "max_gas": 215,
+            "function": "getConstants",
+            "avg_gas": 232,
+            "min_gas": 232,
+            "max_gas": 232,
             "calls": 1
           },
           {
-            "function": "isMaxUint256",
+            "function": "getInterfaceId",
+            "avg_gas": 160,
+            "min_gas": 160,
+            "max_gas": 160,
+            "calls": 1
+          },
+          {
+            "function": "int128Limits",
+            "avg_gas": 229,
+            "min_gas": 229,
+            "max_gas": 229,
+            "calls": 1
+          },
+          {
+            "function": "int16Limits",
             "avg_gas": 180,
             "min_gas": 180,
             "max_gas": 180,
             "calls": 1
           },
           {
+            "function": "int256Limits",
+            "avg_gas": 179,
+            "min_gas": 179,
+            "max_gas": 179,
+            "calls": 1
+          },
+          {
+            "function": "int32Limits",
+            "avg_gas": 180,
+            "min_gas": 180,
+            "max_gas": 180,
+            "calls": 1
+          },
+          {
+            "function": "int64Limits",
+            "avg_gas": 198,
+            "min_gas": 198,
+            "max_gas": 198,
+            "calls": 1
+          },
+          {
+            "function": "int8Limits",
+            "avg_gas": 221,
+            "min_gas": 221,
+            "max_gas": 221,
+            "calls": 1
+          },
+          {
+            "function": "isMaxUint256",
+            "avg_gas": 186,
+            "min_gas": 186,
+            "max_gas": 186,
+            "calls": 1
+          },
+          {
             "function": "isMinInt256",
-            "avg_gas": 168,
-            "min_gas": 168,
-            "max_gas": 168,
+            "avg_gas": 174,
+            "min_gas": 174,
+            "max_gas": 174,
             "calls": 1
           },
           {
             "function": "maxForBits",
-            "avg_gas": 277,
-            "min_gas": 277,
-            "max_gas": 277,
+            "avg_gas": 283,
+            "min_gas": 283,
+            "max_gas": 283,
             "calls": 1
           },
           {
             "function": "safeAdd",
-            "avg_gas": 285,
-            "min_gas": 285,
-            "max_gas": 285,
+            "avg_gas": 291,
+            "min_gas": 291,
+            "max_gas": 291,
             "calls": 1
           },
           {
             "function": "uint128Limits",
-            "avg_gas": 170,
-            "min_gas": 170,
-            "max_gas": 170,
+            "avg_gas": 184,
+            "min_gas": 184,
+            "max_gas": 184,
             "calls": 1
           },
           {
             "function": "uint16Limits",
-            "avg_gas": 165,
-            "min_gas": 165,
-            "max_gas": 165,
+            "avg_gas": 171,
+            "min_gas": 171,
+            "max_gas": 171,
             "calls": 1
           },
           {
             "function": "uint256Limits",
-            "avg_gas": 172,
-            "min_gas": 172,
-            "max_gas": 172,
+            "avg_gas": 178,
+            "min_gas": 178,
+            "max_gas": 178,
             "calls": 1
           },
           {
             "function": "uint32Limits",
-            "avg_gas": 170,
-            "min_gas": 170,
-            "max_gas": 170,
+            "avg_gas": 176,
+            "min_gas": 176,
+            "max_gas": 176,
             "calls": 1
           },
           {
             "function": "uint64Limits",
-            "avg_gas": 193,
-            "min_gas": 193,
-            "max_gas": 193,
+            "avg_gas": 199,
+            "min_gas": 199,
+            "max_gas": 199,
             "calls": 1
           },
           {
             "function": "uint8Limits",
-            "avg_gas": 165,
-            "min_gas": 165,
-            "max_gas": 165,
+            "avg_gas": 171,
+            "min_gas": 171,
+            "max_gas": 171,
             "calls": 1
           },
           {
             "function": "wouldOverflow",
-            "avg_gas": 216,
-            "min_gas": 216,
-            "max_gas": 216,
+            "avg_gas": 212,
+            "min_gas": 212,
+            "max_gas": 212,
             "calls": 1
           },
           {
             "function": "wouldUnderflow",
-            "avg_gas": 213,
-            "min_gas": 213,
-            "max_gas": 213,
+            "avg_gas": 209,
+            "min_gas": 209,
+            "max_gas": 209,
             "calls": 1
           }
         ],
