@@ -14,7 +14,7 @@ Usage:
 """
 
 import sys
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Any
 
@@ -47,8 +47,14 @@ except ImportError:
 @dataclass
 class InliningConfig:
     """Configuration for function inlining heuristics."""
-    stmt_threshold: int = 1   # Functions with >N statements may be emitted
-    call_threshold: int = 2   # Functions called >N times may be emitted
+    # Tuned profile:
+    # - smaller runtime bytecode for large contracts
+    # - preserves or slightly improves hot-path gas in current regression suite
+    stmt_threshold: int = 4   # Functions with >N statements may be emitted
+    call_threshold: int = 0   # Emit non-trivial helpers once they are reused
+    # Keep very small helpers inlined even when hot to reduce invoke/ret overhead.
+    # Set to 0 to disable this behavior.
+    always_inline_max_statements: int = 3
     enabled: bool = True      # Enable inlining heuristic
 
 
@@ -62,14 +68,19 @@ class YulOptimizerConfig:
 @dataclass
 class OptimizationConfig:
     """Configuration for Venom IR optimization passes."""
-    level: str = "yul-o2"  # none, O0, O2, O3, Os, native, debug, yul-o2
+    level: str = "native"  # none, O0, O2, O3, Os, native, debug, yul-o2
     # DJMP threshold: minimum case count to use O(1) jump table dispatch.
     # Trade-off analysis:
     #   - DJMP overhead: codecopy + mload + djmp ≈ 20 gas setup + 8 gas/jump
     #   - JNZ chain: ~9 gas per comparison (eq + jnz)
-    # Break-even point is ~3-4 cases. Default 4 is conservative.
+    # Break-even point is ~3-4 cases. Default 6 biases toward smaller init/deploy
+    # code while keeping runtime profile stable on current corpora.
     # Lower = more aggressive O(1) dispatch, Higher = more linear search.
-    djmp_threshold: int = 4
+    djmp_threshold: int = 6
+    # Native pipeline defaults (used when level == native and no env override).
+    native_level: str = "codesize"  # gas, codesize, O3, Os
+    native_disable_mem2var: bool = True
+    native_disable_load_elimination: bool = False
 
 
 @dataclass
@@ -118,8 +129,12 @@ class SafetyConfig:
     strict_intrinsics: If True, dataoffset/datasize/loadimmutable failures
                        raise exceptions instead of returning 0 with a warning.
                        Default is False for backward compatibility.
+    memoryguard_parity: If True, honor Yul memoryguard argument as lower bound
+                        for FMP initialization (max(memoryguard, venom_start)).
+                        Default False keeps current venom-native behavior.
     """
     strict_intrinsics: bool = False
+    memoryguard_parity: bool = False
 
 
 @dataclass
@@ -146,41 +161,57 @@ class TranspilerConfig:
     @classmethod
     def from_dict(cls, data: dict) -> "TranspilerConfig":
         """Create config from dictionary, overlaying on defaults."""
-        config = cls()  # Start with defaults
-        
-        if "inlining" in data:
-            d = data["inlining"]
+        config = cls()
+
+        def section(name: str) -> dict:
+            value = data.get(name, {})
+            return value if isinstance(value, dict) else {}
+
+        d = section("inlining")
+        if d:
             config.inlining = InliningConfig(
                 stmt_threshold=d.get("stmt_threshold", config.inlining.stmt_threshold),
                 call_threshold=d.get("call_threshold", config.inlining.call_threshold),
+                always_inline_max_statements=d.get(
+                    "always_inline_max_statements",
+                    config.inlining.always_inline_max_statements,
+                ),
                 enabled=d.get("enabled", config.inlining.enabled),
             )
-        
-        if "yul_optimizer" in data:
-            d = data["yul_optimizer"]
+
+        d = section("yul_optimizer")
+        if d:
             config.yul_optimizer = YulOptimizerConfig(
                 level=d.get("level", config.yul_optimizer.level),
                 max_passes=d.get("max_passes", config.yul_optimizer.max_passes),
             )
-        
-        if "optimization" in data:
-            d = data["optimization"]
+
+        d = section("optimization")
+        if d:
             config.optimization = OptimizationConfig(
                 level=d.get("level", config.optimization.level),
                 djmp_threshold=d.get("djmp_threshold", config.optimization.djmp_threshold),
+                native_level=d.get("native_level", config.optimization.native_level),
+                native_disable_mem2var=d.get(
+                    "native_disable_mem2var", config.optimization.native_disable_mem2var
+                ),
+                native_disable_load_elimination=d.get(
+                    "native_disable_load_elimination",
+                    config.optimization.native_disable_load_elimination,
+                ),
             )
-        
-        if "memory" in data:
-            d = data["memory"]
+
+        d = section("memory")
+        if d:
             config.memory = MemoryConfig(
                 venom_start=d.get("venom_start", config.memory.venom_start),
                 spill_offset=d.get("spill_offset", config.memory.spill_offset),
                 fmp_slot=d.get("fmp_slot", config.memory.fmp_slot),
                 heap_start=d.get("heap_start", config.memory.heap_start),
             )
-        
-        if "debug" in data:
-            d = data["debug"]
+
+        d = section("debug")
+        if d:
             config.debug = DebugConfig(
                 save_raw_ir=d.get("save_raw_ir", config.debug.save_raw_ir),
                 save_opt_ir=d.get("save_opt_ir", config.debug.save_opt_ir),
@@ -188,40 +219,41 @@ class TranspilerConfig:
                 verbose_inlining=d.get("verbose_inlining", config.debug.verbose_inlining),
                 output_dir=d.get("output_dir", config.debug.output_dir),
             )
-        
-        if "output" in data:
-            d = data["output"]
+
+        d = section("output")
+        if d:
             config.output = OutputConfig(
                 dir=d.get("dir", config.output.dir),
                 suffix=d.get("suffix", config.output.suffix),
             )
-        
-        if "parser" in data:
-            d = data["parser"]
+
+        d = section("parser")
+        if d:
             config.parser = ParserConfig(
                 recursion_limit=d.get("recursion_limit", config.parser.recursion_limit),
             )
-        
-        if "backend" in data:
-            d = data["backend"]
+
+        d = section("backend")
+        if d:
             config.backend = BackendConfig(
                 evm_version=d.get("evm_version", config.backend.evm_version),
                 experimental=d.get("experimental", config.backend.experimental),
             )
-        
-        if "paths" in data:
-            d = data["paths"]
+
+        d = section("paths")
+        if d:
             config.paths = PathsConfig(
                 configs=d.get("configs", config.paths.configs),
                 sol_dir=d.get("sol_dir", config.paths.sol_dir),
             )
-        
-        if "safety" in data:
-            d = data["safety"]
+
+        d = section("safety")
+        if d:
             config.safety = SafetyConfig(
                 strict_intrinsics=d.get("strict_intrinsics", config.safety.strict_intrinsics),
+                memoryguard_parity=d.get("memoryguard_parity", config.safety.memoryguard_parity),
             )
-        
+
         return config
 
 

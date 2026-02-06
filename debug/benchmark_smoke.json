@@ -1,0 +1,67 @@
+{
+  "generated": "2026-02-06T11:50:47.022807",
+  "config": {
+    "baseline": "default_200",
+    "optimization_runs": [
+      200
+    ],
+    "solc_modes": [
+      "default",
+      "via_ir",
+      "ir_optimized"
+    ],
+    "transpiler_opt_level": "yul-o2"
+  },
+  "results": {
+    "Arithmetic": {
+      "transpiled": {
+        "success": true,
+        "size": 1689,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1650,
+          "error": null
+        }
+      },
+      "gas": {}
+    },
+    "ControlFlow": {
+      "transpiled": {
+        "success": true,
+        "size": 1068,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "via_ir_200": {
+          "success": true,
+          "size": 962,
+          "error": null
+        },
+        "ir_optimized": {
+          "success": true,
+          "size": 1043,
+          "error": null
+        }
+      },
+      "gas": {}
+    }
+  }
+}

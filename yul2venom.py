@@ -23,6 +23,26 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 try:
+    from yul2venom.utils.env import env_bool, env_bool_opt, env_int_opt, env_str
+except ImportError:
+    from utils.env import env_bool, env_bool_opt, env_int_opt, env_str
+
+
+def _ensure_deterministic_hashseed() -> None:
+    """
+    Re-exec with a fixed hash seed for deterministic transpilation output.
+
+    Python's randomized hash seed can change set/dict iteration order in deep
+    optimization passes, which in turn can perturb final bytecode layout.
+    """
+    if not env_bool("Y2V_DETERMINISTIC_HASHSEED", True):
+        return
+    if os.getenv("PYTHONHASHSEED") is None:
+        env = os.environ.copy()
+        env["PYTHONHASHSEED"] = "0"
+        os.execvpe(sys.executable, [sys.executable, *sys.argv], env)
+
+try:
     from yul2venom.optimizer.yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
     from yul2venom.utils.constants import (
         SPILL_OFFSET, RLP_SHORT_STRING, RLP_SHORT_LIST,
@@ -56,6 +76,40 @@ except ImportError:
 SCRIPT_DIR = Path(__file__).parent.absolute()
 VYPER_PATH = SCRIPT_DIR / "vyper"
 sys.path.insert(0, str(VYPER_PATH))
+
+
+def _config_project_root(config_path: str) -> str:
+    """Infer project root from config path."""
+    config_dir = os.path.dirname(os.path.abspath(config_path))
+    if os.path.basename(config_dir).lower() in {"configs", "config"}:
+        return os.path.dirname(config_dir)
+    return config_dir
+
+
+def _resolve_config_path(config_path: str, path_value: str) -> str:
+    """
+    Resolve config-relative paths with compatibility fallbacks:
+      1) config directory
+      2) project root (for configs/output style)
+      3) yul2venom SCRIPT_DIR (legacy)
+    """
+    if os.path.isabs(path_value):
+        return os.path.normpath(path_value)
+
+    config_dir = os.path.dirname(os.path.abspath(config_path))
+    project_root = _config_project_root(config_path)
+
+    config_relative = os.path.normpath(os.path.join(config_dir, path_value))
+    project_relative = os.path.normpath(os.path.join(project_root, path_value))
+    script_relative = os.path.normpath(os.path.join(str(SCRIPT_DIR), path_value))
+
+    for candidate in (config_relative, project_relative, script_relative):
+        if os.path.exists(candidate):
+            return candidate
+
+    if os.path.basename(config_dir).lower() in {"configs", "config"}:
+        return project_relative
+    return config_relative
 
 
 # ============================================================================
@@ -257,7 +311,6 @@ def compute_sidecar_addresses(yul_code: str, config: dict) -> dict:
                 # Check if next char exists and is lowercase (end of acronym)
                 if i + 1 < len(base) and base[i + 1].islower():
                     # This is the last uppercase before lowercase, keep as uppercase
-                    # for CamelCase like "CurvePath" -> "curvePath"
                     result.append(c.lower())
                     found_lower = True
                 else:
@@ -314,6 +367,179 @@ def compute_sidecar_addresses(yul_code: str, config: dict) -> dict:
             nonce_updates[actual_key] = sidecar_nonce
     
     return {'computed': computed, 'nonce_updates': nonce_updates, 'main_addr': main_addr, 'full_order': full_order}
+
+
+def sort_subobjects_for_transpile(all_subobjects: list) -> list:
+    """Sort sub-objects by dependency order.
+
+    Deeper objects are compiled first so parents can resolve their datasize/dataoffset.
+    Within the same depth, `_deployed` objects are prioritized before init objects.
+    """
+    return sorted(
+        all_subobjects,
+        key=lambda x: (-x[2], 0 if "_deployed" in x[1] else 1, x[1]),
+    )
+
+
+def reorder_sidecar_bytecodes(sidecar_bytecodes: list, yul_order: list) -> list:
+    """Reorder generated sidecar blobs to match Yul CREATE order."""
+    if not sidecar_bytecodes or not yul_order:
+        return sidecar_bytecodes
+
+    sidecar_map = {name: bc for name, bc in sidecar_bytecodes}
+    reordered = []
+    for name in yul_order:
+        if name in sidecar_map:
+            reordered.append((name, sidecar_map.pop(name)))
+    reordered.extend(sidecar_map.items())
+    return reordered
+
+
+def _collect_data_intrinsic_refs(yul_obj) -> Dict[str, set]:
+    """
+    Collect object names referenced by datasize()/dataoffset() in an object tree.
+
+    The parser emits light AST dataclasses; we intentionally use duck-typing here
+    so this helper remains robust to parser import paths.
+    """
+    refs = {"datasize": set(), "dataoffset": set()}
+
+    def _literal_value(node):
+        if node is None:
+            return None
+        if hasattr(node, "value"):
+            return getattr(node, "value")
+        wrapped = getattr(node, "node", None)
+        if wrapped is not None and hasattr(wrapped, "value"):
+            return getattr(wrapped, "value")
+        return None
+
+    def walk_expr(expr):
+        if expr is None:
+            return
+        node = getattr(expr, "node", expr)
+        fn = getattr(node, "function", None)
+        args = getattr(node, "args", None) or []
+
+        if fn in refs and args:
+            raw = _literal_value(args[0])
+            if isinstance(raw, str):
+                obj_name = raw.strip('"')
+                if obj_name:
+                    refs[fn].add(obj_name)
+
+        for arg in args:
+            walk_expr(arg)
+
+    def walk_block(block):
+        if block is None:
+            return
+        for stmt in getattr(block, "statements", []) or []:
+            walk_stmt(stmt)
+
+    def walk_stmt(stmt):
+        if stmt is None:
+            return
+
+        if hasattr(stmt, "statements"):
+            walk_block(stmt)
+            return
+
+        walk_expr(getattr(stmt, "expr", None))
+        walk_expr(getattr(stmt, "value", None))
+        walk_expr(getattr(stmt, "condition", None))
+
+        walk_block(getattr(stmt, "body", None))
+        walk_block(getattr(stmt, "init", None))
+        walk_block(getattr(stmt, "post", None))
+
+        cases = getattr(stmt, "cases", None) or []
+        for case in cases:
+            walk_block(getattr(case, "body", None))
+
+    walk_block(getattr(yul_obj, "code", None))
+    for fn in getattr(yul_obj, "functions", []) or []:
+        walk_block(getattr(fn, "body", None))
+    return refs
+
+
+def _discover_required_top_level_objects(target_obj, all_objects: List) -> List[str]:
+    """
+    Find sibling top-level objects reachable via datasize/dataoffset references.
+
+    This prevents unresolved references when constructor code creates top-level
+    helper objects that are not nested under the selected main object.
+    """
+    by_name = {obj.name.strip('"'): obj for obj in all_objects}
+    target_name = target_obj.name.strip('"')
+    required = []
+    seen = set()
+    queue = [target_name]
+
+    def resolve_root(ref_name: str) -> Optional[str]:
+        if ref_name in by_name:
+            return ref_name
+        if ref_name.endswith("_deployed"):
+            candidate = ref_name[:-9]
+            if candidate in by_name:
+                return candidate
+        return None
+
+    while queue:
+        cur = queue.pop(0)
+        if cur in seen:
+            continue
+        seen.add(cur)
+        obj = by_name.get(cur)
+        if obj is None:
+            continue
+
+        refs = _collect_data_intrinsic_refs(obj)
+        for ref_name in sorted(refs["datasize"] | refs["dataoffset"]):
+            root = resolve_root(ref_name)
+            if root is None or root == target_name:
+                continue
+            if root not in required:
+                required.append(root)
+                queue.append(root)
+
+    return required
+
+
+def _validate_data_intrinsic_resolution(
+    yul_obj,
+    data_map: Dict[str, bytes],
+    offset_map: Optional[Dict[str, int]] = None,
+    require_explicit_offsets: bool = False,
+    context: str = "object",
+) -> None:
+    """
+    Fail fast when datasize/dataoffset references are unresolved.
+    """
+    refs = _collect_data_intrinsic_refs(yul_obj)
+    data_keys = set(data_map.keys())
+    offset_keys = set((offset_map or {}).keys())
+
+    missing_datasize = sorted(name for name in refs["datasize"] if name not in data_keys)
+    if require_explicit_offsets:
+        missing_dataoffset = sorted(name for name in refs["dataoffset"] if name not in offset_keys)
+    else:
+        known = data_keys | offset_keys
+        missing_dataoffset = sorted(name for name in refs["dataoffset"] if name not in known)
+
+    if not missing_datasize and not missing_dataoffset:
+        return
+
+    details = []
+    if missing_datasize:
+        details.append(f"missing datasize refs: {missing_datasize}")
+    if missing_dataoffset:
+        details.append(f"missing dataoffset refs: {missing_dataoffset}")
+    available = (
+        f"available data_map keys={sorted(data_keys)[:12]}, "
+        f"offset_map keys={sorted(offset_keys)[:12]}"
+    )
+    raise RuntimeError(f"{context}: unresolved data intrinsic references ({'; '.join(details)}). {available}")
 
 
 def generate_init_stub(runtime_size: int) -> bytes:
@@ -523,6 +749,10 @@ def cmd_prepare(args):
     else:
         contract_name = Path(contract_path).stem
         config_path = f"configs/{contract_name}.yul2venom.json"
+
+    config_path_abs = os.path.abspath(config_path)
+    config_dir = os.path.dirname(config_path_abs)
+    project_root = _config_project_root(config_path_abs)
     
     print(f"Analyzing: {contract_path}")
     print()
@@ -541,23 +771,18 @@ def cmd_prepare(args):
     created_immutables = analysis['created_immutables']
     
     # Step 1: Generate Yul from Solidity
-    # Output Yul to output/ directory (SCRIPT_DIR-relative for consistency)
+    # Prefer config-project-local output paths. This avoids leaking project
+    # artifacts into the yul2venom repository when used as a dependency.
     contract_name = Path(contract_path).stem
-    
-    # Use existing yul path from config if available
-    if existing_config.get("yul"):
-        existing_yul = existing_config["yul"]
-        # Resolve relative to SCRIPT_DIR (backward compatibility with existing configs)
-        if not os.path.isabs(existing_yul):
-            yul_output_path = os.path.normpath(os.path.join(str(SCRIPT_DIR), existing_yul))
-        else:
-            yul_output_path = existing_yul
+
+    if getattr(args, "yul_out", None):
+        yul_output_path = os.path.abspath(args.yul_out)
+    elif existing_config.get("yul"):
+        yul_output_path = _resolve_config_path(config_path_abs, existing_config["yul"])
     else:
-        # Default: output/ directory relative to SCRIPT_DIR
-        yul_output_path = os.path.join(str(SCRIPT_DIR), "output", f"{contract_name}.yul")
-        yul_output_path = os.path.normpath(yul_output_path)
-    
-    os.makedirs(os.path.dirname(yul_output_path), exist_ok=True)
+        yul_output_path = os.path.normpath(os.path.join(project_root, "output", f"{contract_name}.yul"))
+
+    os.makedirs(os.path.dirname(yul_output_path) or ".", exist_ok=True)
     
     # Check if Yul already exists - solc generates different IDs each time!
     # If Yul exists, we should use it rather than regenerating
@@ -694,9 +919,13 @@ def cmd_prepare(args):
                  # Just verify it exists, don't extract it.
                  pass
                 
-            # Determine output filename
-            out_filename = f"{obj_name}.yul"
-            out_path = os.path.join(output_dir, out_filename)
+            # Determine output filename. Respect caller-provided main Yul path.
+            if obj_name == contract_name:
+                out_path = yul_output_path
+                out_filename = os.path.basename(out_path)
+            else:
+                out_filename = f"{obj_name}.yul"
+                out_path = os.path.join(output_dir, out_filename)
             
             with open(out_path, 'w') as f:
                 f.write(final_code)
@@ -716,10 +945,7 @@ def cmd_prepare(args):
             with open(yul_output_path, 'w') as f:
                 f.write(raw_yul)
 
-    # CRITICAL FIX: Extract actual immutable IDs from FULL Yul output (before extraction)
-    # The Solidity AST IDs don't match the IDs generated by solc in Yul output
-    # We scan for setimmutable patterns and map by memory offset
-    # IMPORTANT: Use raw_yul (full output), not extracted main contract, to capture sidecar IDs
+    # Discover immutable IDs from full Yul output before object extraction.
     print()
     print("  Analyzing immutables from Yul output...")
     
@@ -804,12 +1030,12 @@ def cmd_prepare(args):
         print("    No external libraries detected")
     
     # Build config - merge with existing
-    # Use relative paths (relative to SCRIPT_DIR for portability)
-    def make_relative(p, base_dir=SCRIPT_DIR):
+    # Use project-local relative paths (relative to config directory).
+    def make_relative(p, base_dir=project_root):
         try:
-            return str(Path(p).relative_to(base_dir))
+            return str(Path(p).resolve().relative_to(Path(base_dir).resolve()))
         except ValueError:
-            return p  # Return as-is if not under base_dir
+            return os.path.abspath(p)  # Keep absolute if outside project root
     
     config = {
         "version": "1.0",
@@ -819,16 +1045,14 @@ def cmd_prepare(args):
             "deployer": existing_config.get("deployment", {}).get("deployer", "0x1234567890123456789012345678901234567890"),
             "nonce": existing_config.get("deployment", {}).get("nonce", 0)
         },
-        # sidecar_nonce_start is ALWAYS 1 for contracts deployed from constructor
-        # (a newly created contract starts at nonce 1 for its first CREATE)
+        # A newly created contract starts CREATE nonces at 1.
         "sidecar_nonce_start": 1,
         "constructor_args": {},
         "auto_predicted": {},
         "library_addresses": {}
     }
     
-    # Add constructor args - preserve existing values
-    # NOTE: IDs are optional - transpiler discovers actual IDs from Yul
+    # Add constructor args and preserve existing values.
     existing_args = existing_config.get("constructor_args", {})
     for name, info in constructor_args.items():
         config["constructor_args"][name] = {
@@ -842,8 +1066,7 @@ def cmd_prepare(args):
         if info.get('id'):
             config["constructor_args"][name]["id"] = info['id']
     
-    # Add auto-predicted immutables - preserve existing values
-    # NOTE: IDs are optional - transpiler discovers actual IDs from Yul
+    # Add auto-predicted immutables and preserve existing values.
     existing_auto = existing_config.get("auto_predicted", {})
     for name, info in created_immutables.items():
         existing_val = existing_auto.get(name, {})
@@ -948,26 +1171,13 @@ def cmd_transpile(args):
     
     # Resolve relative paths to absolute
     # CLI paths: relative to CWD
-    # Config paths: try SCRIPT_DIR first (canonical), then config-relative (for external projects)
+    # Config paths: config-dir / project-root / SCRIPT_DIR fallback.
     if yul_path and not os.path.isabs(yul_path):
         if args.yul:
             # CLI argument - relative to CWD
             yul_path = os.path.abspath(yul_path)
         else:
-            # From config - try SCRIPT_DIR first (canonical for internal configs)
-            script_relative_path = os.path.normpath(os.path.join(str(SCRIPT_DIR), yul_path))
-            
-            if os.path.exists(script_relative_path):
-                yul_path = script_relative_path
-            else:
-                # Fallback: config-relative (for external projects)
-                config_dir = os.path.dirname(os.path.abspath(config_path))
-                config_relative_path = os.path.normpath(os.path.join(config_dir, yul_path))
-                if os.path.exists(config_relative_path):
-                    yul_path = config_relative_path
-                else:
-                    # Neither exists - use SCRIPT_DIR path for error message
-                    yul_path = script_relative_path
+            yul_path = _resolve_config_path(config_path, yul_path)
     
     if not yul_path or not os.path.exists(yul_path):
         print(f"✗ Yul file not found: {yul_path}", file=sys.stderr)
@@ -1035,10 +1245,7 @@ def cmd_transpile(args):
     print(f"│ Main Contract: {main_contract}")
     print("│")
     
-    # NOTE: We don't build immutables_map here anymore.
-    # Config IDs are unreliable (solc generates different IDs each run).
-    # Instead, we scan Yul during transpilation to discover actual IDs.
-    # Here we just collect name -> value for use later.
+    # Collect name->value here; immutable IDs are resolved from Yul later.
     
     # Print constructor args (values will be mapped to IDs later from Yul)
     print("│ Constructor Args:")
@@ -1084,13 +1291,16 @@ def cmd_transpile(args):
     
     # Step 0: Read Yul and discover immutable IDs
     print(f"Optimizing Yul: {yul_path}")
+    # Keep these initialized so fallback paths remain usable even when
+    # immutable discovery / source optimization is skipped or fails.
+    immutables_map = {}
+    name_to_value = {}
+    raw_yul = ""
     try:
         with open(yul_path, 'r') as f:
             raw_yul = f.read()
         
-        # CRITICAL FIX: Auto-detect sidecar order from Yul and recalculate addresses
-        # This handles cases where storage-slot sidecars (e.g., ApprovePath) are created
-        # before immutable sidecars, shifting all nonces.
+        # Auto-detect sidecar CREATE order from Yul and refresh predicted addresses.
         sidecar_addr_info = compute_sidecar_addresses(raw_yul, config)
         if sidecar_addr_info and sidecar_addr_info.get('computed'):
             print(f"  [INFO] Auto-detected sidecar order from Yul:")
@@ -1123,15 +1333,13 @@ def cmd_transpile(args):
                 print(f"         ✓ Config refreshed (no changes)")
             config_updated = True
         
-        # CRITICAL: Scan Yul to discover actual immutable IDs
-        # solc generates different IDs each compile - we can't rely on config IDs
-        # We map by memory offset (stable based on declaration order in StorageLayout)
+        # Discover immutable IDs from Yul; config IDs may drift between builds.
         
         # Strip Yul comments first (/** @src ... */ breaks regex matching)
         # Reuse pattern from optimizer/yul_source_optimizer.py
         yul_no_comments = re.sub(r'/\*[\s\S]*?\*/', '', raw_yul)
         
-        # IMPORTANT: First scan RAW Yul (with @src comments) for name→ID mapping
+        # First scan raw Yul (@src comments) for direct name->ID mapping.
         # Pattern: setimmutable(_X, "ID", mload(/** @src ... "varname = ..." */ OFFSET))
         setimm_with_src_pattern = re.compile(
             r'setimmutable\s*\(\s*\w+\s*,\s*"(\d+)"\s*,\s*mload\s*\(\s*/\*\*\s*@src[^"]*"(\w+)\s*=\s*[^"]*"\s*\*/\s*(\d+)\s*\)\s*\)'
@@ -1162,9 +1370,7 @@ def cmd_transpile(args):
             if imm_id not in offset_to_ids[offset]:
                 offset_to_ids[offset].append(imm_id)
         
-        # DIRECT ID MAPPING: Use 'id' field from config if present
-        # This is more reliable than positional matching since solc IDs are stable per compile
-        # Fallback to positional matching only if 'id' fields are missing
+        # Prefer explicit IDs from config, then fallback to positional matching.
         
         # Build immutables_map: ID -> value
         immutables_map = {}
@@ -1204,6 +1410,7 @@ def cmd_transpile(args):
         
         # Second pass: Positional fallback for entries without 'id' field
         # Collect unmapped config entries and unmapped Yul IDs
+        discovered_ids = {}  # name -> id discovered via positional fallback
         if offset_to_ids:
             yul_ids_used = set(immutables_map.keys())
             unmapped_offsets = []
@@ -1238,7 +1445,6 @@ def cmd_transpile(args):
             unmapped_configs.sort(key=lambda x: x[2])
             
             # Match positionally AND track discovered IDs by name
-            discovered_ids = {}  # name -> id for config update
             for i, (offset, imm_id) in enumerate(unmapped_offsets):
                 if i < len(unmapped_configs):
                     name, value, order = unmapped_configs[i]
@@ -1248,13 +1454,8 @@ def cmd_transpile(args):
         
         print(f"│ Total: {len(immutables_map)} immutable IDs mapped")
         
-        # =========================================================================
-        # CRITICAL FIX: Update config with discovered IDs
-        # solc generates different IDs each compile, so we need to sync config
-        # Merge IDs from @src comments (name_to_yul_id) + positional matching (discovered_ids)
-        # =========================================================================
-        
-        # Merge: prefer @src-based IDs (direct name mapping) over positional
+        # Sync config IDs from discovered mappings.
+        # Prefer @src-based IDs over positional fallback.
         all_discovered_ids = dict(name_to_yul_id)  # Start with @src-based
         all_discovered_ids.update(discovered_ids)  # Add positional (won't override @src)
         
@@ -1390,6 +1591,37 @@ def cmd_transpile(args):
     print(f"Selected Main Contract Object: {target_obj.name}")
     top_obj = target_obj
 
+    # Guardrail: parser now captures Yul `data` sections explicitly.
+    # This pipeline does not yet materialize object-local data blobs in a way
+    # that guarantees correct multi-item dataoffset semantics. Fail fast instead
+    # of silently miscompiling.
+    def collect_objects_with_data(obj):
+        items = []
+        data_items = getattr(obj, "data_items", [])
+        if data_items:
+            clean_name = obj.name.strip('"')
+            item_names = [d.name.strip('"') for d in data_items]
+            items.append((clean_name, item_names))
+        for sub in obj.sub_objects:
+            items.extend(collect_objects_with_data(sub))
+        return items
+
+    objects_with_data = collect_objects_with_data(top_obj)
+    referenced_data = []
+    for obj_name, item_names in objects_with_data:
+        for item_name in item_names:
+            pat = rf'data(?:size|offset)\s*\(\s*"{re.escape(item_name)}"\s*\)'
+            if re.search(pat, yul_source):
+                referenced_data.append((obj_name, item_name))
+    allow_unsupported_data = env_bool("Y2V_ALLOW_UNSUPPORTED_DATA", False)
+    if referenced_data and not allow_unsupported_data:
+        details = ", ".join([f"{obj}:{item}" for obj, item in referenced_data])
+        raise RuntimeError(
+            "Yul data sections detected but robust dataoffset/datasize blob layout is not implemented "
+            f"in this pipeline. Referenced items: {details}. "
+            "Set Y2V_ALLOW_UNSUPPORTED_DATA=1 to bypass (unsafe)."
+        )
+
     # Helper function to transpile a single YulObject to bytecode
     def transpile_object(obj, data_map=None, vnm_output_path=None, immutables=None, offset_map=None):
         # 1. Build IR
@@ -1403,36 +1635,29 @@ def cmd_transpile(args):
         # Serialize to text and parse back into Vyper Venom Context
         # This bridges yul2venom.ir -> vyper.venom types
         
-        # NOTE: No monkey patches - using native Venom behavior
-
         from vyper.venom.parser import parse_venom
+
+        resolved_immutables = immutables if immutables is not None else immutables_map
+
+        def _build_ctx_from_raw_ir(raw_ir_text: str):
+            ctx_local = parse_venom(raw_ir_text)
+            ctx_local.immutables = resolved_immutables
+            if library_addresses:
+                ctx_local.library_addresses = library_addresses
+            return ctx_local
+
         try:
             raw_ir = str(ir_vnm)
             os.makedirs("debug", exist_ok=True)
             with open("debug/raw_ir.vnm", "w") as f:
                 f.write(raw_ir)
             print(f"DEBUG: Saved raw IR to debug/raw_ir.vnm ({len(raw_ir)} bytes)")
-            
-            # Debug inspection passed - ir_vnm is clean.
-            # Continue to transpilation w/ monkey-patched pipeline
-            raw_ir = str(ir_vnm) 
-            with open("debug/raw_ir.vnm", "w") as f:
-                f.write(raw_ir)
-            print(f"DEBUG: Saved raw IR to debug/raw_ir.vnm ({len(raw_ir)} bytes)")
-
-            ctx = parse_venom(raw_ir)
-            # VENOM PATCH: Inject immutables from config
-            ctx.immutables = immutables_map
-            print(f"DEBUG: Injected {len(immutables_map)} immutables into context")
-            
-            # Inject library addresses if present
+            ctx = _build_ctx_from_raw_ir(raw_ir)
+            print(f"DEBUG: Injected {len(resolved_immutables)} immutables into context")
             if library_addresses:
-                ctx.library_addresses = library_addresses
                 print(f"DEBUG: Injected {len(library_addresses)} library addresses into context")
-
-
         except Exception as e:
-            print(f"CRITICAL ERROR parsing IR: {e}")
+            print(f"ERROR parsing IR: {e}")
             raise e
 
         # Save Venom IR to .vnm file for debugging
@@ -1459,8 +1684,7 @@ def cmd_transpile(args):
                 
             print(f"    ✓ Saved Venom IR: {os.path.abspath(vnm_file)}")
         
-        # 2. Apply Fixes (Memory Layout, etc)
-        # CRITICAL: Initialize fn_eom for all functions.
+        # Initialize spill allocator end markers for every function.
         for fn in ctx.functions.values():
             ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
             
@@ -1472,110 +1696,279 @@ def cmd_transpile(args):
             MemMergePass, LowerDloadPass, ConcretizeMemLocPass,
             BranchOptimizationPass, CSE, LoadElimination,
             SCCP, AlgebraicOptimizationPass, DeadStoreElimination,
-            SingleUseExpansion, DFTPass, AssertEliminationPass,
+            SingleUseExpansion, LiteralAliasPass, DFTPass, AssertEliminationPass,
             AssertCombinerPass, ReduceLiteralsCodesize, MemoryCopyElisionPass
         )
-        from vyper.venom.analysis import IRAnalysesCache
+        from vyper.venom.analysis import IRAnalysesCache, CFGAnalysis
         from vyper.venom.check_venom import check_calling_convention, check_venom_ctx
         from vyper.evm.address_space import MEMORY, STORAGE, TRANSIENT
         import traceback
         
         # VALIDATION: Check IR before optimization
+        venom_ctx_ok = True
+        calling_convention_ok = True
         print("DEBUG: Validating Venom IR before optimization...", file=sys.stderr)
         try:
             check_venom_ctx(ctx)
             print("DEBUG: check_venom_ctx PASSED", file=sys.stderr)
         except Exception as e:
+            venom_ctx_ok = False
             print(f"ERROR: check_venom_ctx FAILED: {e}", file=sys.stderr)
             # Print sub-exceptions if any
             if hasattr(e, 'exceptions'):
                 for i, sub_e in enumerate(e.exceptions):
                     print(f"  Sub-exception {i+1}: {sub_e}", file=sys.stderr)
-            # Continue anyway to see what assembler produces
         
         try:
             check_calling_convention(ctx)
             print("DEBUG: check_calling_convention PASSED", file=sys.stderr)
         except Exception as e:
+            calling_convention_ok = False
             print(f"ERROR: check_calling_convention FAILED: {e}", file=sys.stderr)
         
-        # Define Safe O2 Pipeline for Yul (Validated 2026-02-01)
-        # NOTE: SCCP disabled - increases bytecode due to single-use expansion conflicts
+        # Define Yul-tuned O2 pipeline.
+        # Start from native O3 ordering for better canonicalization and let
+        # yul source optimizer own the "aggressive" semantic transforms.
         PASSES_YUL_O2 = [
             FloatAllocas,
             SimplifyCFGPass,
+            MakeSSA,
+            PhiEliminationPass,
+            AlgebraicOptimizationPass,
+            SCCP,
+            SimplifyCFGPass,
+            AssignElimination,
             Mem2Var,
             MakeSSA,
             PhiEliminationPass,
-            SCCP,  # Early constant propagation
+            SCCP,
             SimplifyCFGPass,
             AssignElimination,
-            AlgebraicOptimizationPass,  # Enable early algebraic optimizations
+            AlgebraicOptimizationPass,
+            AssertEliminationPass,
             LoadElimination,
             PhiEliminationPass,
             AssignElimination,
-            SCCP,  # Third SCCP after LoadElimination/AssignElimination
+            SCCP,
             AssignElimination,
             RevertToAssert,
-            AssertEliminationPass,  # Remove provably-true assertions
-            AssertCombinerPass,     # Combine consecutive assert statements
+            SimplifyCFGPass,
+            # run memmerge before LowerDload
             MemMergePass,
+            MemoryCopyElisionPass,
             LowerDloadPass,
             RemoveUnusedVariablesPass,
-            (DeadStoreElimination, {'addr_space': MEMORY}),  # Eliminate dead memory stores
+            (DeadStoreElimination, {'addr_space': MEMORY}),
+            (DeadStoreElimination, {'addr_space': STORAGE}),
+            (DeadStoreElimination, {'addr_space': TRANSIENT}),
             AssignElimination,
             RemoveUnusedVariablesPass,
             ConcretizeMemLocPass,
-            SCCP,  # Re-enabled: constant propagation after other passes
+            SCCP,
             SimplifyCFGPass,
             MemMergePass,
-            MemoryCopyElisionPass,  # Eliminate redundant memory copies
             RemoveUnusedVariablesPass,
             BranchOptimizationPass,
-            AlgebraicOptimizationPass,  # div→shr, mul→shl, iszero chains, range-based elimination
-            (DeadStoreElimination, {'addr_space': STORAGE}),  # Eliminate dead storage writes
-            (DeadStoreElimination, {'addr_space': TRANSIENT}),  # Eliminate dead transient writes
+            AlgebraicOptimizationPass,
+            AssertCombinerPass,
+            # This improves CSE
             RemoveUnusedVariablesPass,
             PhiEliminationPass,
             AssignElimination,
-            CSE, 
-            AssignElimination,
+            CSE,
             AssignElimination,
             RemoveUnusedVariablesPass,
             SingleUseExpansion,
-            ReduceLiteralsCodesize,  # Transform large literals to smaller forms (not, shl)
+            LiteralAliasPass,
             DFTPass,
+            ReduceLiteralsCodesize,
+            RemoveUnusedVariablesPass,
+            SimplifyCFGPass,
             CFGNormalization,
         ]
 
 
-        opt_level = getattr(args, 'optimize', 'O2')
+        cfg_opt = None
+        cfg_opt_level = None
+        try:
+            from config import get_config
+
+            cfg_opt = get_config().optimization
+            cfg_opt_level = cfg_opt.level
+        except Exception:
+            cfg_opt = None
+            cfg_opt_level = None
+
+        opt_level = env_str("Y2V_OPT_LEVEL") or getattr(args, "optimize", None) or cfg_opt_level or "O2"
         print(f"DEBUG: Optimization Level: {opt_level}", file=sys.stderr)
         
+        def _run_o0_pipeline(ctx_local):
+            print("DEBUG: Running minimal O0 pipeline...", file=sys.stderr)
+            for fn in ctx_local.functions.values():
+                ac = IRAnalysesCache(fn)
+                try:
+                    SimplifyCFGPass(ac, fn).run_pass()
+                    CFGNormalization(ac, fn).run_pass()
+                except Exception as e:
+                    print(f"WARNING: O0 pass failed for {fn.name}: {e}", file=sys.stderr)
+                    traceback.print_exc()
+
+        def _run_safe_yul_pipeline(ctx_local):
+            # For O2/O3/Os/yul-o2 path, use safe Yul O2 pass pipeline.
+            print(f"DEBUG: Running Safe Yul Pipeline (Equivalent to {opt_level})...", file=sys.stderr)
+            allow_pass_failure = env_bool("Y2V_ALLOW_PASS_FAILURE", False)
+
+            for fn in ctx_local.functions.values():
+                ac = IRAnalysesCache(fn)
+                for i, p_config in enumerate(PASSES_YUL_O2):
+                    try:
+                        if isinstance(p_config, tuple):
+                            cls, kwargs = p_config
+                        else:
+                            cls = p_config
+                            kwargs = {}
+                        cls(ac, fn).run_pass(**kwargs)
+                    except Exception as e:
+                        if allow_pass_failure:
+                            print(f"WARNING: Pass {i} ({p_config}) failed: {e}", file=sys.stderr)
+                            continue
+                        raise RuntimeError(
+                            f"Optimization pass failed for function {fn.name}: pass {i} ({p_config})"
+                        ) from e
+
         if opt_level == 'native':
             # Use native vyper O2 pipeline via run_passes_on
             print("DEBUG: Running Native Venom O2 Pipeline (run_passes_on)...", file=sys.stderr)
             from vyper.venom import run_passes_on
             from vyper.compiler.settings import OptimizationLevel, VenomOptimizationFlags
-            # Enable mem2var (disable_mem2var=False) for better optimization
+            # Enable mem2var by default; individual native passes can be toggled
+            # via env vars for compatibility tuning:
+            #   Y2V_NATIVE_LEVEL=gas|codesize|O3|Os
+            #   Y2V_NATIVE_DISABLE_<FLAG>=1
+            # where FLAG is one of:
+            #   INLINING CSE SCCP LOAD_ELIMINATION DEAD_STORE_ELIMINATION
+            #   ALGEBRAIC_OPTIMIZATION BRANCH_OPTIMIZATION ASSERT_ELIMINATION
+            #   MEM2VAR SIMPLIFY_CFG REMOVE_UNUSED_VARIABLES
             flags = VenomOptimizationFlags(level=OptimizationLevel.default(), disable_mem2var=False)
-            run_passes_on(ctx, flags)
+
+            # Tuned default profile for yul2venom (config-driven, env overrideable):
+            # - native_level=codesize
+            # - native_disable_mem2var=true
+            # - native_disable_load_elimination=false
+            native_level_default = "codesize"
+            disable_mem2var_default = True
+            disable_load_elim_default = False
+            if cfg_opt is not None:
+                native_level_default = getattr(cfg_opt, "native_level", native_level_default)
+                disable_mem2var_default = bool(
+                    getattr(cfg_opt, "native_disable_mem2var", disable_mem2var_default)
+                )
+                disable_load_elim_default = bool(
+                    getattr(cfg_opt, "native_disable_load_elimination", disable_load_elim_default)
+                )
+
+            native_level = env_str("Y2V_NATIVE_LEVEL", native_level_default)
+            if native_level:
+                try:
+                    flags.set_level(OptimizationLevel.from_string(native_level))
+                except Exception as e:
+                    print(f"WARNING: invalid Y2V_NATIVE_LEVEL={native_level}: {e}", file=sys.stderr)
+
+            disable_mem2var_env = env_bool_opt("Y2V_NATIVE_DISABLE_MEM2VAR")
+            flags.disable_mem2var = (
+                disable_mem2var_default if disable_mem2var_env is None else disable_mem2var_env
+            )
+
+            disable_load_elim_env = env_bool_opt("Y2V_NATIVE_DISABLE_LOAD_ELIMINATION")
+            flags.disable_load_elimination = (
+                disable_load_elim_default
+                if disable_load_elim_env is None
+                else disable_load_elim_env
+            )
+
+            env_flag_map = {
+                "Y2V_NATIVE_DISABLE_INLINING": "disable_inlining",
+                "Y2V_NATIVE_DISABLE_CSE": "disable_cse",
+                "Y2V_NATIVE_DISABLE_SCCP": "disable_sccp",
+                "Y2V_NATIVE_DISABLE_DEAD_STORE_ELIMINATION": "disable_dead_store_elimination",
+                "Y2V_NATIVE_DISABLE_ALGEBRAIC_OPTIMIZATION": "disable_algebraic_optimization",
+                "Y2V_NATIVE_DISABLE_BRANCH_OPTIMIZATION": "disable_branch_optimization",
+                "Y2V_NATIVE_DISABLE_ASSERT_ELIMINATION": "disable_assert_elimination",
+                "Y2V_NATIVE_DISABLE_SIMPLIFY_CFG": "disable_simplify_cfg",
+                "Y2V_NATIVE_DISABLE_REMOVE_UNUSED_VARIABLES": "disable_remove_unused_variables",
+            }
+            for env_name, attr_name in env_flag_map.items():
+                if env_bool(env_name, False):
+                    setattr(flags, attr_name, True)
+
+            native_fallback_o2 = env_bool("Y2V_NATIVE_FALLBACK_O2", True)
+            safe_fallback_o0 = env_bool("Y2V_SAFE_FALLBACK_O0", True)
+            native_require_valid_ir = env_bool("Y2V_NATIVE_REQUIRE_VALID_IR", True)
+            raw_ir_is_valid = venom_ctx_ok and calling_convention_ok
+            if native_require_valid_ir and not raw_ir_is_valid:
+                if not native_fallback_o2:
+                    raise RuntimeError(
+                        "Native pipeline skipped: raw IR failed semantic validation and "
+                        "Y2V_NATIVE_FALLBACK_O2 is disabled."
+                    )
+                print(
+                    "WARNING: Native pipeline skipped because raw IR failed semantic validation; "
+                    "falling back to safe Yul O2 pipeline for this object.",
+                    file=sys.stderr,
+                )
+                ctx = _build_ctx_from_raw_ir(raw_ir)
+                for fn in ctx.functions.values():
+                    ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+                try:
+                    _run_safe_yul_pipeline(ctx)
+                except Exception as safe_exc:
+                    if not safe_fallback_o0:
+                        raise
+                    print(
+                        f"WARNING: Safe Yul O2 fallback failed ({safe_exc}); "
+                        "falling back to O0 pipeline for this object.",
+                        file=sys.stderr,
+                    )
+                    ctx = _build_ctx_from_raw_ir(raw_ir)
+                    for fn in ctx.functions.values():
+                        ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+                    _run_o0_pipeline(ctx)
+            else:
+                try:
+                    run_passes_on(ctx, flags)
+                except Exception as native_exc:
+                    if not native_fallback_o2:
+                        raise
+
+                    print(
+                        f"WARNING: Native pipeline failed ({native_exc}); "
+                        "falling back to safe Yul O2 pipeline for this object.",
+                        file=sys.stderr,
+                    )
+                    ctx = _build_ctx_from_raw_ir(raw_ir)
+                    for fn in ctx.functions.values():
+                        ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+                    try:
+                        _run_safe_yul_pipeline(ctx)
+                    except Exception as safe_exc:
+                        if not safe_fallback_o0:
+                            raise
+                        print(
+                            f"WARNING: Safe Yul O2 fallback failed ({safe_exc}); "
+                            "falling back to O0 pipeline for this object.",
+                            file=sys.stderr,
+                        )
+                        ctx = _build_ctx_from_raw_ir(raw_ir)
+                        for fn in ctx.functions.values():
+                            ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+                        _run_o0_pipeline(ctx)
         elif opt_level == 'none':
             # NO passes at all - raw IR straight to assembly (for debugging)
             print("DEBUG: Running NO PASSES (raw IR to assembly)...", file=sys.stderr)
             # Skip all passes
         elif opt_level == 'O0':
             # Minimal passes - only what's required for assembly
-            print("DEBUG: Running minimal O0 pipeline...", file=sys.stderr)
-            for fn in ctx.functions.values():
-                ac = IRAnalysesCache(fn)
-                try:
-                    # SimplifyCFG merges single-predecessor blocks - required before CFGNormalization
-                    SimplifyCFGPass(ac, fn).run_pass()
-                    CFGNormalization(ac, fn).run_pass()
-                except Exception as e:
-                    print(f"WARNING: O0 pass failed for {fn.name}: {e}", file=sys.stderr)
-                    traceback.print_exc()
+            _run_o0_pipeline(ctx)
         elif opt_level == 'debug':
             print("DEBUG: Running Custom Native Pipeline (Legacy/Debug)...", file=sys.stderr)
             # ... (Legacy debug pipeline code) ...
@@ -1593,52 +1986,158 @@ def cmd_transpile(args):
                     print(f"WARNING: Optimization pipeline failed for {fn.name}: {e}", file=sys.stderr)
                     traceback.print_exc()
         else:
-             # For O2, O3, Os -> Use Safe Yul O2 Pipeline
-             print(f"DEBUG: Running Safe Yul Pipeline (Equivalent to {opt_level})...", file=sys.stderr)
-             from vyper.venom.optimization_levels.types import PassConfig
-             
-             for fn in ctx.functions.values():
-                 ac = IRAnalysesCache(fn)
-                 for i, p_config in enumerate(PASSES_YUL_O2):
-                     try:
-                         if isinstance(p_config, tuple):
-                             cls, kwargs = p_config
-                         else:
-                             cls = p_config
-                             kwargs = {}
-                         cls(ac, fn).run_pass(**kwargs)
-                     except Exception as e:
-                         print(f"WARNING: Pass {i} ({p_config}) failed: {e}", file=sys.stderr)
+             safe_fallback_o0 = env_bool("Y2V_SAFE_FALLBACK_O0", True)
+             try:
+                 _run_safe_yul_pipeline(ctx)
+             except Exception as safe_exc:
+                 if not safe_fallback_o0:
+                     raise
+                 print(
+                     f"WARNING: Safe Yul O2 pipeline failed ({safe_exc}); "
+                     "falling back to O0 pipeline for this object.",
+                     file=sys.stderr,
+                 )
+                 ctx = _build_ctx_from_raw_ir(raw_ir)
+                 for fn in ctx.functions.values():
+                     ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+                 _run_o0_pipeline(ctx)
         
-        # CLEANUP: Remove redundant phis created by MakeSSA
-        # These include: (1) self-referential phis where all operand values are the output itself
-        #                (2) duplicate phi definitions for the same variable in the same block
-        for fn in ctx.functions.values():
-            for bb in list(fn.get_basic_blocks()):
-                seen_outputs = {}  # Track which outputs have been defined
-                instructions_to_remove = []
-                
-                for inst in list(bb.instructions):
-                    if inst.opcode == "phi":
+        # CLEANUP: normalize PHIs after optimization passes.
+        # Conservative goals:
+        #   1) remove PHI operands that reference non-predecessor labels
+        #   2) deduplicate repeated predecessor labels inside one PHI
+        #   3) remove clearly redundant PHIs:
+        #      - self-referential PHI (all incoming values are its output)
+        #      - duplicate PHI definitions for same output in one block
+        #
+        # We intentionally avoid aggressive PHI->assign rewrites here because
+        # backend PHI handling expects join-value availability at block entry.
+        def _normalize_phis() -> int:
+            removed = 0
+            for fn in ctx.functions.values():
+                ac = IRAnalysesCache(fn)
+                cfg = ac.request_analysis(CFGAnalysis)
+                for bb in list(fn.get_basic_blocks()):
+                    preds = list(cfg.cfg_in(bb))
+                    pred_labels = {pred.label for pred in preds}
+                    seen_outputs = set()
+                    idx = 0
+                    while idx < len(bb.instructions):
+                        inst = bb.instructions[idx]
+                        if inst.opcode != "phi":
+                            idx += 1
+                            continue
+
                         output = inst.output
-                        # Check if phi is self-referential (all values are the output itself)
                         operands = inst.operands
-                        values = [op for i, op in enumerate(operands) if i % 2 == 1]  # Every second operand is a value
-                        is_self_ref = all(v == output for v in values)
-                        
-                        if is_self_ref:
-                            # Self-referential phi - mark for removal
-                            instructions_to_remove.append(inst)
-                        elif output in seen_outputs:
-                            # Duplicate phi for same output - mark for removal
-                            instructions_to_remove.append(inst)
-                        else:
-                            seen_outputs[output] = inst
-                
-                # Remove marked instructions
-                for inst in instructions_to_remove:
-                    if inst in bb.instructions:
-                        bb.instructions.remove(inst)
+
+                        # PHI operands should be [label0, value0, label1, value1, ...].
+                        # If malformed, keep as-is and let backend checks catch it.
+                        if len(operands) % 2 == 0:
+                            # Filter to actual predecessors and deduplicate repeated labels.
+                            pairs = []
+                            seen_labels = set()
+                            for i in range(0, len(operands), 2):
+                                label = operands[i]
+                                value = operands[i + 1]
+                                if pred_labels and label not in pred_labels:
+                                    continue
+                                if label in seen_labels:
+                                    continue
+                                seen_labels.add(label)
+                                pairs.append((label, value))
+
+                            # Canonicalize operand order for stable VNM output.
+                            # PHI semantics are label-based, so pair order is irrelevant.
+                            pairs.sort(key=lambda p: p[0].value if hasattr(p[0], "value") else str(p[0]))
+                            filtered = []
+                            for label, value in pairs:
+                                filtered.extend([label, value])
+
+                            # Keep original operands if filtering would drop all edges;
+                            # this avoids introducing undefined outputs in unusual CFGs.
+                            if filtered and filtered != operands:
+                                inst.operands = filtered
+                                operands = filtered
+
+                        values = [operands[i] for i in range(1, len(operands), 2)]
+                        # Degenerate PHIs: if every incoming value is identical, collapse
+                        # to assign. This improves readability and reduces PHI pressure.
+                        if values:
+                            first_val = values[0]
+                            if all(v == first_val for v in values) and first_val != output:
+                                inst.opcode = "assign"
+                                inst.operands = [first_val]
+                                seen_outputs.add(output)
+                                idx += 1
+                                continue
+
+                        is_self_ref = len(values) > 0 and all(v == output for v in values)
+                        if is_self_ref or output in seen_outputs:
+                            bb.instructions.pop(idx)
+                            removed += 1
+                            continue
+
+                        seen_outputs.add(output)
+                        idx += 1
+            return removed
+
+        removed_phi_count = _normalize_phis()
+        if removed_phi_count:
+            print(f"INFO: Normalized/removed {removed_phi_count} PHI node(s)", file=sys.stderr)
+
+        # POST-PASS HARDENING: ensure consumed operands are unique per instruction.
+        # Some optimization passes can synthesize duplicate consumed operands
+        # (especially equal literals). Backend stack reorder assumes uniqueness.
+        # Materialize only duplicate occurrences to keep codegen robust.
+        def _harden_duplicate_consumed_operands() -> int:
+            from vyper.venom.basicblock import IRInstruction, IRLabel
+
+            inserted = 0
+            for fn in ctx.functions.values():
+                for bb in fn.get_basic_blocks():
+                    idx = 0
+                    while idx < len(bb.instructions):
+                        inst = bb.instructions[idx]
+                        if inst.opcode in ("phi", "param", "nop"):
+                            idx += 1
+                            continue
+
+                        seen = set()
+                        dup_positions = []
+                        for pos, op in enumerate(inst.operands):
+                            if isinstance(op, IRLabel):
+                                continue
+                            if op in seen:
+                                dup_positions.append(pos)
+                            else:
+                                seen.add(op)
+
+                        if not dup_positions:
+                            idx += 1
+                            continue
+
+                        for pos in dup_positions:
+                            op = inst.operands[pos]
+                            out = fn.get_next_variable()
+                            # Prefer assign materialization: it creates a distinct
+                            # SSA name with minimal codegen overhead (often just DUP
+                            # for variables or PUSH for literals), unlike add/iszero
+                            # which always emit arithmetic opcodes.
+                            mat = IRInstruction("assign", [op], outputs=[out])
+
+                            bb.insert_instruction(mat, idx)
+                            idx += 1
+                            inserted += 1
+                            inst.operands[pos] = out
+
+                        idx += 1
+
+            return inserted
+
+        hardened_count = _harden_duplicate_consumed_operands()
+        if hardened_count:
+            print(f"INFO: Hardened {hardened_count} duplicate consumed operand(s)", file=sys.stderr)
         
         print(f"DEBUG: Functions after optimization: {list(ctx.functions.keys())}", file=sys.stderr)
 
@@ -1707,6 +2206,14 @@ def cmd_transpile(args):
             # Recursively collect nested sub-objects (e.g., sidecars inside _deployed)
             result.extend(collect_all_subobjects(sub, depth + 1))
         return result
+
+    def collect_object_tree(obj, depth=0):
+        """Collect object itself and all nested sub-objects (for sibling roots)."""
+        clean_name = obj.name.strip('"')
+        result = [(obj, clean_name, depth)]
+        for sub in obj.sub_objects:
+            result.extend(collect_object_tree(sub, depth + 1))
+        return result
     
     # Determine output path immediately so it can be used for .vnm generation
     if not output_path:
@@ -1717,16 +2224,37 @@ def cmd_transpile(args):
     
     # Collect ALL sub-objects recursively (runtime + sidecars)
     all_subobjects = collect_all_subobjects(top_obj)
+    # Some contracts reference sibling top-level objects via datasize/dataoffset.
+    # Pull those roots in explicitly so offsets/sizes resolve deterministically.
+    required_top_level = _discover_required_top_level_objects(top_obj, all_objects)
+    if required_top_level:
+        print(f"Detected top-level object dependencies: {required_top_level}")
+        top_level_by_name = {obj.name.strip('"'): obj for obj in all_objects}
+        for dep_name in required_top_level:
+            dep_obj = top_level_by_name.get(dep_name)
+            if dep_obj is None:
+                continue
+            # Compile sibling roots as sidecars (depth >= 1) to avoid clobbering
+            # the main runtime selection logic (depth == 0).
+            all_subobjects.extend(collect_object_tree(dep_obj, depth=1))
+
+    # Deduplicate by object name while preserving deepest occurrence.
+    dedup = {}
+    for sub, clean_name, depth in all_subobjects:
+        prev = dedup.get(clean_name)
+        if prev is None or depth > prev[2]:
+            dedup[clean_name] = (sub, clean_name, depth)
+    all_subobjects = list(dedup.values())
+
     runtime_bytecode = None
     sidecar_bytecodes = []  # List of (name, bytecode) for sidecars
+    subobject_failures = []
     
     if all_subobjects:
         print(f"Found {len(all_subobjects)} sub-objects (including nested sidecars). Compiling...")
         
-        # CRITICAL: Process deepest objects FIRST so their bytecode is available for parents
-        # Sort by depth descending (deepest first), then by _deployed suffix (deployed FIRST), then by name
-        # CRITICAL: _deployed must come BEFORE init at same depth so runtime bytecode is available for datasize/dataoffset
-        sorted_subobjects = sorted(all_subobjects, key=lambda x: (-x[2], 0 if "_deployed" in x[1] else 1, x[1]))
+        # Compile in dependency order so parent objects can resolve child offsets.
+        sorted_subobjects = sort_subobjects_for_transpile(all_subobjects)
         
         for sub, clean_name, depth in sorted_subobjects:
             indent = "  " * (depth + 1)
@@ -1740,66 +2268,74 @@ def cmd_transpile(args):
                 elif args.dump_ir:
                     ir_path = output_path
                 
-                # SIDECAR IMMUTABLE RESOLUTION: Discover sidecar's own IDs
-                # Sidecars have DIFFERENT IDs but SAME semantic names (weth, owner)
-                # Use original (non-optimized) Yul to find @src comments with variable names
+                # Sidecars may use different immutable IDs than the parent object.
                 sidecar_immutables = discover_sidecar_immutables(raw_yul, name_to_value)
                 
-                # Merge: sidecar-specific IDs take precedence, fallback to parent's
+                # Sidecar-specific IDs override parent mappings.
                 merged_immutables = immutables_map.copy()
                 merged_immutables.update(sidecar_immutables)
                 
                 if sidecar_immutables:
                     print(f"{indent}    [Sidecar] Discovered {len(sidecar_immutables)} immutable IDs")
                 
-                # For sidecar INIT objects, we need TWO-PASS approach
-                # because the init code calls datasize("SidecarName") which is init + runtime
-                # AND needs literal offset for dataoffset("SidecarName_deployed")
+                # Sidecar init objects need a two-pass size convergence flow.
                 if "_deployed" not in clean_name:
                     sidecar_runtime_name = f"{clean_name}_deployed"
                     if sidecar_runtime_name in data_map:
                         sidecar_runtime = data_map[sidecar_runtime_name]
                         runtime_size = len(sidecar_runtime)
                         
-                        # PASS 1: Estimate with placeholder (runtime_size + typical init overhead)
-                        # Sidecar init is typically small (~100-200 bytes)
-                        estimated_init_size = 200  # Conservative estimate
+                        # Pass 1: estimate init size with a placeholder.
+                        estimated_init_size = 200
                         estimated_total = estimated_init_size + runtime_size
                         data_map[clean_name] = bytes(estimated_total)
                         
-                        # Create offset_map for sidecar transpilation
-                        # Layout: [sidecar_init][sidecar_runtime]
-                        # dataoffset("X_deployed") = init_size (where runtime starts)
                         sidecar_offset_map = {
                             sidecar_runtime_name: estimated_init_size
                         }
                         
+                        _validate_data_intrinsic_resolution(
+                            sub,
+                            data_map=data_map,
+                            offset_map=sidecar_offset_map,
+                            context=f"sub-object {clean_name} pass1",
+                        )
                         sub_bytecode_p1 = transpile_object(sub, data_map=data_map, vnm_output_path=None, 
                                                            immutables=merged_immutables,
                                                            offset_map=sidecar_offset_map)
                         init_size = len(sub_bytecode_p1)
                         
-                        # PASS 2: Re-transpile with actual init + runtime size
+                        # Pass 2: re-transpile using measured init size.
                         actual_size = init_size + runtime_size
                         data_map[clean_name] = bytes(actual_size)
                         sidecar_offset_map[sidecar_runtime_name] = init_size
                         
+                        _validate_data_intrinsic_resolution(
+                            sub,
+                            data_map=data_map,
+                            offset_map=sidecar_offset_map,
+                            context=f"sub-object {clean_name} pass2",
+                        )
                         sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, 
                                                         immutables=merged_immutables,
                                                         offset_map=sidecar_offset_map)
                         
-                        # Convergence check
+                        # One extra iteration for size convergence if needed.
                         if len(sub_bytecode) != init_size:
-                            # One more pass for convergence
                             init_size = len(sub_bytecode)
                             actual_size = init_size + runtime_size
                             data_map[clean_name] = bytes(actual_size)
                             sidecar_offset_map[sidecar_runtime_name] = init_size
+                            _validate_data_intrinsic_resolution(
+                                sub,
+                                data_map=data_map,
+                                offset_map=sidecar_offset_map,
+                                context=f"sub-object {clean_name} pass3",
+                            )
                             sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, 
                                                             immutables=merged_immutables,
                                                             offset_map=sidecar_offset_map)
                         
-                        # Full sidecar = init + runtime
                         full_sidecar = sub_bytecode + sidecar_runtime
                         sidecar_bytecodes.append((clean_name, full_sidecar))
                         data_map[clean_name] = full_sidecar
@@ -1807,18 +2343,27 @@ def cmd_transpile(args):
                         continue
                     else:
                         # No runtime found, transpile as-is
+                        _validate_data_intrinsic_resolution(
+                            sub,
+                            data_map=data_map,
+                            context=f"sub-object {clean_name}",
+                        )
                         sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, immutables=merged_immutables)
                         data_map[clean_name] = sub_bytecode
                         sidecar_bytecodes.append((clean_name, sub_bytecode))
                         print(f"{indent}    ✓ Success ({len(sub_bytecode)} bytes)")
                         continue
                 
-                # For _deployed objects, just transpile normally
+                _validate_data_intrinsic_resolution(
+                    sub,
+                    data_map=data_map,
+                    context=f"sub-object {clean_name}",
+                )
                 sub_bytecode = transpile_object(sub, data_map=data_map, vnm_output_path=ir_path, immutables=merged_immutables)
                 data_map[clean_name] = sub_bytecode
                 print(f"{indent}    ✓ Success ({len(sub_bytecode)} bytes)")
                 
-                # Handle main contract runtime (depth 0)
+                # Main runtime object lives at depth 0.
                 if "_deployed" in clean_name and depth == 0:
                     runtime_bytecode = sub_bytecode
                     
@@ -1826,6 +2371,15 @@ def cmd_transpile(args):
                 import traceback
                 traceback.print_exc()
                 print(f"{indent}    ✗ Failed: {e}", file=sys.stderr)
+                subobject_failures.append((clean_name, depth, str(e)))
+
+        # Never continue with partial output when any sub-object failed.
+        # Silent fallback can emit tiny/invalid bytecode and mask real regressions.
+        if subobject_failures:
+            print("✗ Sub-object compilation failed:", file=sys.stderr)
+            for name, depth, err in subobject_failures:
+                print(f"    • {name} (depth {depth}): {err}", file=sys.stderr)
+            return 1
 
 
     # Step 3: Generate Init Code
@@ -1833,10 +2387,7 @@ def cmd_transpile(args):
     
     if runtime_bytecode:
         if with_init:
-            # FULL INIT SUPPORT: Transpile the outer object (constructor code)
-            # Uses TWO-PASS APPROACH to resolve datasize("OuterObject") correctly:
-            #   Pass 1: Estimate init size with placeholder outer object entry
-            #   Pass 2: Re-transpile with correct init+runtime size
+            # Transpile outer init code with a two-pass size convergence flow.
             print(f"Transpiling Init Code (--with-init mode)")
             try:
                 # Determine IR Dump Path for init
@@ -1850,66 +2401,45 @@ def cmd_transpile(args):
                 outer_obj_name = top_obj.name.strip('"')
                 runtime_size = len(runtime_bytecode)
                 
-                # PASS 1: Estimate init size with zero outer entry
-                # This makes datasize("OuterObj") return 0, which is wrong for arg parsing
-                # but gives us a size estimate for the init code
+                # Pass 1: estimate init size.
                 print(f"    Pass 1: Estimating init code size...")
                 data_map_pass1 = data_map.copy()
-                # Add outer object with just runtime size as placeholder
                 data_map_pass1[outer_obj_name] = runtime_bytecode
-                
+                _validate_data_intrinsic_resolution(
+                    top_obj,
+                    data_map=data_map_pass1,
+                    context=f"top init {outer_obj_name} pass1",
+                )
                 init_bytecode_pass1 = transpile_object(top_obj, data_map=data_map_pass1, 
                                                         vnm_output_path=None, 
                                                         immutables=immutables_map)
                 init_size_estimate = len(init_bytecode_pass1)
                 print(f"        Init size estimate: {init_size_estimate} bytes")
                 
-                # PASS 2: Re-transpile with correct outer object size (init + runtime)
-                # datasize("OuterObj") should return init_size + runtime_size  
-                # so that: codesize() - datasize("Outer") = constructor_args_size
+                # Pass 2: re-transpile with corrected datasize entries.
                 print(f"    Pass 2: Finalizing with correct datasize...")
                 
-                # CRITICAL FIX: Reorder sidecars to match Yul init code's CREATE order
-                # The order of datasize() calls in Yul matches the Solidity constructor's CREATE order
-                # We must embed sidecars in this order for dataoffset() to resolve correctly
+                # Match sidecar ordering to Yul CREATE order.
                 if sidecar_bytecodes:
                     yul_order = extract_sidecar_order_from_yul(yul_source)
                     if yul_order:
-                        # Build a lookup for bytecode by sidecar name
-                        sidecar_map = {name: bc for name, bc in sidecar_bytecodes}
-                        # Reorder according to Yul order, keeping any not found at end
-                        reordered = []
-                        for name in yul_order:
-                            if name in sidecar_map:
-                                reordered.append((name, sidecar_map.pop(name)))
-                        # Append any remaining sidecars (shouldn't happen, but be safe)
-                        for name, bc in sidecar_map.items():
-                            reordered.append((name, bc))
-                        sidecar_bytecodes = reordered
+                        sidecar_bytecodes = reorder_sidecar_bytecodes(sidecar_bytecodes, yul_order)
                         print(f"        Sidecar order from Yul: {[n for n, _ in sidecar_bytecodes]}")
                 
-                # Calculate sidecar total size FIRST since we need it for datasize("OuterObj")
                 sidecar_total_size = sum(len(bc) for _, bc in sidecar_bytecodes)
                 
-                # Total program size includes: init + runtime + all sidecars
-                # This is what datasize("OuterObj") should return for constructor args calculation
                 total_program_size = init_size_estimate + runtime_size + sidecar_total_size
                 data_map_pass2 = data_map.copy()
-                data_map_pass2[outer_obj_name] = bytes(total_program_size)  # Fake entry with correct size
+                data_map_pass2[outer_obj_name] = bytes(total_program_size)
                 
-                # CRITICAL FIX: Build offset_map for dataoffset() resolution
-                # Bytecode layout: [init][runtime][sidecar_1][sidecar_2]...[constructor_args]
-                # Runtime is at offset = init_size
-                # Sidecars are at offset = init_size + runtime_size + cumulative_sidecar_sizes
+                # Build dataoffset lookup for runtime and sidecar sections.
                 offset_map = {}
                 
-                # Runtime object starts at init code offset
                 for obj_name in data_map.keys():
                     if "_deployed" in obj_name:
                         offset_map[obj_name] = init_size_estimate
                         print(f"        dataoffset({obj_name}) = {init_size_estimate} (runtime)")
                 
-                # Sidecar offsets: init_size + runtime_size + cumulative offsets
                 sidecar_offset = init_size_estimate + runtime_size
                 for sidecar_name, sidecar_bc in sidecar_bytecodes:
                     offset_map[sidecar_name] = sidecar_offset
@@ -1917,32 +2447,41 @@ def cmd_transpile(args):
                     sidecar_offset += len(sidecar_bc)
                 
                 print(f"        DEBUG: offset_map before first pass = {list(offset_map.keys())}")
-                
+                _validate_data_intrinsic_resolution(
+                    top_obj,
+                    data_map=data_map_pass2,
+                    offset_map=offset_map,
+                    require_explicit_offsets=True,
+                    context=f"top init {outer_obj_name} pass2",
+                )
                 final_bytecode = transpile_object(top_obj, data_map=data_map_pass2, 
                                                    vnm_output_path=init_ir_path, 
                                                    immutables=immutables_map,
                                                    offset_map=offset_map)
                 
-                # Convergence loop: iterate until init size stabilizes
-                # Using literal offsets changes bytecode size, so we need to iterate
+                # Iterate until init size stabilizes with literal offsets.
                 max_iterations = 5
                 for iteration in range(max_iterations):
                     if len(final_bytecode) == init_size_estimate:
-                        break  # Converged
+                        break
                     print(f"        Size changed ({init_size_estimate} -> {len(final_bytecode)}), re-converging...")
                     init_size_estimate = len(final_bytecode)
                     total_program_size = init_size_estimate + runtime_size + sidecar_total_size
                     data_map_pass2[outer_obj_name] = bytes(total_program_size)
-                    # Update offset_map with new init size
-                    # Runtime offset
                     for obj_name in list(offset_map.keys()):
                         if "_deployed" in obj_name:
                             offset_map[obj_name] = init_size_estimate
-                    # Sidecar offsets: recalculate based on new init size
                     sidecar_offset = init_size_estimate + runtime_size
                     for sidecar_name, sidecar_bc in sidecar_bytecodes:
                         offset_map[sidecar_name] = sidecar_offset
                         sidecar_offset += len(sidecar_bc)
+                    _validate_data_intrinsic_resolution(
+                        top_obj,
+                        data_map=data_map_pass2,
+                        offset_map=offset_map,
+                        require_explicit_offsets=True,
+                        context=f"top init {outer_obj_name} reconverge",
+                    )
                     final_bytecode = transpile_object(top_obj, data_map=data_map_pass2,
                                                        vnm_output_path=init_ir_path,
                                                        immutables=immutables_map,
@@ -2060,6 +2599,8 @@ def cmd_transpile(args):
 # ============================================================================
 
 def main():
+    _ensure_deterministic_hashseed()
+
     if sys.version_info < (3, 11):
         print("✗ Error: Yul2Venom requires Python 3.11 or later.", file=sys.stderr)
         print("  Please run with: python3.11 yul2venom.py ...", file=sys.stderr)
@@ -2088,6 +2629,8 @@ Examples:
     prep.add_argument("contract", help="Solidity contract (.sol)")
     prep.add_argument("-c", "--config", help="Output config path (default: yul2venom.config.json)")
     prep.add_argument("-r", "--remappings", default="remappings.txt", help="Remappings file")
+    prep.add_argument("--yul-out", help="Custom output path for generated Yul file")
+    prep.add_argument("--force", action="store_true", help="Regenerate Yul even if output already exists")
     
     # transpile
     trans = subparsers.add_parser("transpile", help="Transpile to bytecode with address prediction")

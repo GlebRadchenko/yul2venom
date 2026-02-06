@@ -8,8 +8,7 @@ import yaml
 import json
 import re
 from pathlib import Path
-from dataclasses import dataclass
-from typing import List, Dict, Tuple
+from typing import Any, Dict, Tuple
 
 # Key configs to test (representative samples)
 TEST_CONFIGS = [
@@ -37,16 +36,23 @@ CONFIG_PATH = Path(__file__).parent.parent / "yul2venom.config.yaml"
 YUL2VENOM_DIR = Path(__file__).parent.parent
 
 
-def update_config(stmt_threshold: int, call_threshold: int):
-    """Update the config file with new inlining thresholds."""
-    with open(CONFIG_PATH, 'r') as f:
-        config = yaml.safe_load(f)
-    
-    config['inlining']['stmt_threshold'] = stmt_threshold
-    config['inlining']['call_threshold'] = call_threshold
-    
-    with open(CONFIG_PATH, 'w') as f:
+def load_config() -> Dict[str, Any]:
+    with open(CONFIG_PATH, "r") as f:
+        return yaml.safe_load(f)
+
+
+def save_config(config: Dict[str, Any]) -> None:
+    with open(CONFIG_PATH, "w") as f:
         yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+
+
+def update_config(stmt_threshold: int, call_threshold: int):
+    """Update inlining thresholds in the shared transpiler config."""
+    config = load_config()
+    config.setdefault("inlining", {})
+    config["inlining"]["stmt_threshold"] = stmt_threshold
+    config["inlining"]["call_threshold"] = call_threshold
+    save_config(config)
 
 
 def transpile_and_get_size(config_path: str) -> Tuple[bool, int]:
@@ -107,7 +113,7 @@ def run_benchmark():
     return results
 
 
-def print_report(results: Dict):
+def print_report(results: Dict[str, Dict[str, Any]]):
     """Print a nice comparison report."""
     print("\n")
     print("=" * 80)
@@ -177,6 +183,7 @@ def print_report(results: Dict):
 
 
 def main():
+    original_config = load_config()
     try:
         results = run_benchmark()
         print_report(results)
@@ -188,9 +195,8 @@ def main():
         print(f"\nResults saved to: {output_path}")
         
     finally:
-        # Restore default config
-        print("\nRestoring default config...")
-        update_config(1, 2)
+        print("\nRestoring original config...")
+        save_config(original_config)
         print("Done!")
 
 

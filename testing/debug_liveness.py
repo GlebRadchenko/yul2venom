@@ -1,13 +1,5 @@
 #!/usr/bin/env python3
-"""
-Debug Liveness Analysis - Analyze variable liveness for Venom IR debugging.
-
-Usage:
-    python3 debug_liveness.py <vnm_file> [--function FUNC_NAME]
-    
-Example:
-    python3 debug_liveness.py debug/raw_ir.vnm --function fun_checkConfig
-"""
+"""Inspect block-level liveness information for a Venom IR function."""
 
 import sys
 import os
@@ -22,6 +14,26 @@ from vyper.venom.analysis.analysis import IRAnalysesCache
 from vyper.venom.analysis.liveness import LivenessAnalysis
 from vyper.venom.analysis.cfg import CFGAnalysis
 from vyper.venom.parser import parse_venom
+
+
+def _label_to_str(label) -> str:
+    return label.value if hasattr(label, "value") else str(label)
+
+
+def _find_target_function(module, function_name: str | None):
+    available = []
+    selected = None
+
+    for fn in module.functions.values():
+        fn_name = _label_to_str(fn.name)
+        available.append(fn_name)
+        if function_name and fn_name == function_name:
+            selected = fn
+            break
+        if selected is None and function_name is None:
+            selected = fn
+
+    return selected, available
 
 
 def analyze_liveness(vnm_path: str, function_name: str = None, verbose: bool = True):
@@ -41,28 +53,14 @@ def analyze_liveness(vnm_path: str, function_name: str = None, verbose: bool = T
     
     module = parse_venom(code)
     
-    # Find target function
-    fn = None
-    available_functions = []
-    
-    for f in module.functions.values():
-        func_name = f.name.value if hasattr(f.name, 'value') else str(f.name)
-        available_functions.append(func_name)
-        
-        if function_name:
-            if func_name == function_name:
-                fn = f
-                break
-        elif fn is None:
-            fn = f  # Default to first function
-    
+    fn, available_functions = _find_target_function(module, function_name)
     if fn is None:
         print(f"Error: Function '{function_name}' not found.")
         print(f"Available functions: {available_functions}")
         return None
     
     if verbose:
-        func_name = fn.name.value if hasattr(fn.name, 'value') else str(fn.name)
+        func_name = _label_to_str(fn.name)
         print(f"Analyzing function: {func_name}")
         print("=" * 60)
     
@@ -78,10 +76,10 @@ def analyze_liveness(vnm_path: str, function_name: str = None, verbose: bool = T
     }
     
     for bb in fn.get_basic_blocks():
-        block_label = bb.label.value if hasattr(bb.label, 'value') else str(bb.label)
+        block_label = _label_to_str(bb.label)
         
-        live_in = liveness.live_in.get(bb, set())
-        live_out = liveness.live_out.get(bb, set())
+        live_in = liveness.liveness_in_vars(bb)
+        live_out = liveness.out_vars(bb)
         
         block_info = {
             "label": block_label,
@@ -97,8 +95,8 @@ def analyze_liveness(vnm_path: str, function_name: str = None, verbose: bool = T
             print(f"  Live Out: {[str(v) for v in live_out]}")
             
             # Show edge-specific liveness
-            for pred in cfg._cfg_in.get(bb, []):
-                pred_label = pred.label.value if hasattr(pred.label, 'value') else str(pred.label)
+            for pred in cfg.cfg_in(bb):
+                pred_label = _label_to_str(pred.label)
                 input_vars = liveness.input_vars_from(pred, bb)
                 print(f"  From {pred_label}: {[str(v) for v in input_vars]}")
     

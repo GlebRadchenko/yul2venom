@@ -1,0 +1,30 @@
+{
+  "generated": "2026-02-06T12:20:20.492243",
+  "config": {
+    "baseline": "default_200",
+    "optimization_runs": [
+      200
+    ],
+    "solc_modes": [
+      "default"
+    ],
+    "transpiler_opt_level": "yul-o2"
+  },
+  "results": {
+    "Arithmetic": {
+      "transpiled": {
+        "success": true,
+        "size": 1586,
+        "error": null
+      },
+      "solc": {
+        "default_200": {
+          "success": true,
+          "size": 1368,
+          "error": null
+        }
+      },
+      "gas": {}
+    }
+  }
+}

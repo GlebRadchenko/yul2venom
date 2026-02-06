@@ -20,6 +20,7 @@ interface IOpcodeBasics {
     function test_lt_literal(uint256 b) external pure returns (uint256);
     function test_mul(uint256 a, uint256 b) external pure returns (uint256);
     function test_loop_lt(uint256 limit) external pure returns (uint256);
+    function test_invalid() external pure;
 }
 
 contract OpcodeTest is Test {
@@ -92,6 +93,15 @@ contract OpcodeTest is Test {
     function test_Opcodes_Loop_Lt() public {
         if (!checkDeployed()) return;
         assertEq(opcodeTarget.test_loop_lt(2), 2, "loop(2) != 2");
+    }
+
+    function test_Opcodes_Invalid() public {
+        if (!checkDeployed()) return;
+        (bool success, bytes memory data) = address(opcodeTarget).call(
+            abi.encodeWithSelector(IOpcodeBasics.test_invalid.selector)
+        );
+        assertFalse(success, "invalid() must halt exceptionally");
+        assertEq(data.length, 0, "invalid() should not return ABI error payload");
     }
 }
 

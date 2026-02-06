@@ -1,54 +1,14 @@
 #!/usr/bin/env python3
-"""
-Venom Debugger - Production-Grade Debugging Toolkit for Yul2Venom
-
-A comprehensive toolkit for debugging transpiled bytecode, analyzing panics,
-tracing execution, and comparing Solidity vs Venom IR behavior.
-
-COMMANDS:
-    trace       Trace EVM bytecode execution step-by-step
-    panic       Detect and analyze panic conditions (0x32, 0x11, etc.)
-    disasm      Disassemble bytecode to human-readable assembly
-    compare     Compare execution of two bytecode files
-    memory      Analyze memory layout at a specific execution step
-    ir          Analyze Venom IR for stack/memory patterns
-    compile     Compile Yul to bytecode via solc
-    layout      Calculate memory layout for struct arrays
-
-EXAMPLES:
-    # Trace execution with calldata
-    python3 venom_debugger.py trace bytecode.bin deadbeef1234 --max-steps 500
-
-    # Analyze a panic
-    python3 venom_debugger.py panic bytecode.bin calldata_hex
-
-    # Disassemble bytecode
-    python3 venom_debugger.py disasm bytecode.bin --limit 100
-
-    # Analyze Venom IR
-    python3 venom_debugger.py ir debug/opt_ir.vnm --blocks loop,then
-
-    # Calculate memory layout
-    python3 venom_debugger.py layout 3
-
-For AI agents: All commands return structured JSON with --json flag.
-Exit codes: 0=success, 1=error, 2=panic_detected
-"""
+"""CLI utilities for tracing/disassembling bytecode and inspecting panic paths."""
 
 import sys
-import os
 import json
 import argparse
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Any
 from dataclasses import dataclass, asdict
-from datetime import datetime
 
-# =============================================================================
-# Configuration
-# =============================================================================
 
 VERSION = "1.0.0"
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Panic code definitions
 PANIC_CODES = {
@@ -669,7 +629,7 @@ def cmd_panic(args):
     
     if panic.detected:
         print("=" * 60)
-        print(f"🚨 PANIC DETECTED: {panic.panic_name}")
+        print(f"PANIC DETECTED: {panic.panic_name}")
         print("=" * 60)
         print(f"Type:        {panic.panic_type}")
         print(f"Description: {panic.description}")
@@ -685,7 +645,7 @@ def cmd_panic(args):
             print(f"  • {cause}")
         return 2
     else:
-        print("✓ No panic detected")
+        print("No panic detected")
         return 0
 
 

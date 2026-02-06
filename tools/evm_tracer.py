@@ -1,19 +1,7 @@
 #!/usr/bin/env python3
-"""
-Minimal EVM Tracer for Debugging Yul2Venom Bytecode
+"""Step-by-step EVM tracer for debugging transpiled bytecode behavior."""
 
-This tracer executes EVM bytecode step-by-step, logging:
-- Program counter
-- Opcode name
-- Stack state (before and after)
-- Memory writes
-
-Usage:
-    python3 evm_tracer.py <bytecode_hex_file> [calldata_hex]
-"""
-
-import sys
-from typing import List, Dict, Optional, Tuple
+from typing import Dict, List, Tuple
 
 # EVM Opcodes
 OPCODES: Dict[int, Tuple[str, int, int]] = {
@@ -132,6 +120,22 @@ for i in range(1, 33):
 for i in range(5):
     OPCODES[0xA0 + i] = (f"LOG{i}", 2 + i, 0)
 
+MASK_256 = (1 << 256) - 1
+
+
+def parse_hex_int(value: str) -> int:
+    return int(value, 16)
+
+
+def load_bytecode(path: str) -> bytes:
+    """Load binary or hex-encoded bytecode file."""
+    with open(path, "rb") as f:
+        content = f.read()
+    try:
+        return bytes.fromhex(content.decode("ascii").strip())
+    except Exception:
+        return content
+
 
 class EVMTracer:
     def __init__(self, bytecode: bytes, calldata: bytes = b"", max_steps: int = 10000,
@@ -159,9 +163,15 @@ class EVMTracer:
         # Tracing
         self.step_count = 0
         self.trace_log: List[str] = []
-        self.jumpdests: set = self._find_jumpdests()
+        self.jumpdests: set[int] = self._find_jumpdests()
         
-    def _find_jumpdests(self) -> set:
+    @staticmethod
+    def _as_signed_256(value: int) -> int:
+        if value >= (1 << 255):
+            return value - (1 << 256)
+        return value
+
+    def _find_jumpdests(self) -> set[int]:
         """Find all valid JUMPDEST positions"""
         dests = set()
         pc = 0
@@ -206,13 +216,11 @@ class EVMTracer:
         op = self.code[self.pc]
         
         if op in OPCODES:
-            name, pops, pushes = OPCODES[op]
+            name = OPCODES[op][0]
         elif 0x60 <= op <= 0x7F:
             name = f"PUSH{op - 0x60 + 1}"
-            pops, pushes = 0, 1
         else:
             name = f"UNKNOWN(0x{op:02x})"
-            pops, pushes = 0, 0
         
         # Log before execution
         stack_before = self._stack_top(8)
@@ -273,15 +281,15 @@ class EVMTracer:
         # Arithmetic
         if op == 0x01:  # ADD
             a, b = self.stack.pop(), self.stack.pop()
-            self.stack.append((a + b) & ((1 << 256) - 1))
+            self.stack.append((a + b) & MASK_256)
             self.pc += 1
         elif op == 0x02:  # MUL
             a, b = self.stack.pop(), self.stack.pop()
-            self.stack.append((a * b) & ((1 << 256) - 1))
+            self.stack.append((a * b) & MASK_256)
             self.pc += 1
         elif op == 0x03:  # SUB
             a, b = self.stack.pop(), self.stack.pop()
-            self.stack.append((a - b) & ((1 << 256) - 1))
+            self.stack.append((a - b) & MASK_256)
             self.pc += 1
         elif op == 0x04:  # DIV
             a, b = self.stack.pop(), self.stack.pop()
@@ -303,19 +311,14 @@ class EVMTracer:
             self.pc += 1
         elif op == 0x12:  # SLT
             a, b = self.stack.pop(), self.stack.pop()
-            # Signed comparison
-            if a >= (1 << 255):
-                a -= (1 << 256)
-            if b >= (1 << 255):
-                b -= (1 << 256)
+            a = self._as_signed_256(a)
+            b = self._as_signed_256(b)
             self.stack.append(1 if a < b else 0)
             self.pc += 1
         elif op == 0x13:  # SGT
             a, b = self.stack.pop(), self.stack.pop()
-            if a >= (1 << 255):
-                a -= (1 << 256)
-            if b >= (1 << 255):
-                b -= (1 << 256)
+            a = self._as_signed_256(a)
+            b = self._as_signed_256(b)
             self.stack.append(1 if a > b else 0)
             self.pc += 1
         elif op == 0x14:  # EQ
@@ -342,11 +345,11 @@ class EVMTracer:
             self.pc += 1
         elif op == 0x19:  # NOT
             a = self.stack.pop()
-            self.stack.append(((1 << 256) - 1) ^ a)
+            self.stack.append(MASK_256 ^ a)
             self.pc += 1
         elif op == 0x1B:  # SHL
             shift, val = self.stack.pop(), self.stack.pop()
-            self.stack.append((val << shift) & ((1 << 256) - 1) if shift < 256 else 0)
+            self.stack.append((val << shift) & MASK_256 if shift < 256 else 0)
             self.pc += 1
         elif op == 0x1C:  # SHR
             shift, val = self.stack.pop(), self.stack.pop()
@@ -538,53 +541,46 @@ class EVMTracer:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description='EVM Bytecode Tracer')
-    parser.add_argument('bytecode_file', nargs='?', help='Path to bytecode file')
-    parser.add_argument('calldata', nargs='?', default='', help='Hex-encoded calldata')
-    parser.add_argument('--address', type=lambda x: int(x, 16), default=0xDEADBEEF,
-                        help='Contract address (hex, default: 0xDEADBEEF)')
-    parser.add_argument('--caller', type=lambda x: int(x, 16), default=0xBEEF,
-                        help='msg.sender (hex, default: 0xBEEF)')
-    parser.add_argument('--origin', type=lambda x: int(x, 16), default=0xCAFE,
-                        help='tx.origin (hex, default: 0xCAFE)')
-    parser.add_argument('--eoa', action='store_true',
-                        help='Simulate EOA call (sets origin=caller)')
-    parser.add_argument('--max-steps', type=int, default=500,
-                        help='Maximum execution steps (default: 500)')
+    parser = argparse.ArgumentParser(description="EVM Bytecode Tracer")
+    parser.add_argument("bytecode_file", help="Path to bytecode file")
+    parser.add_argument("calldata", nargs="?", default="", help="Hex-encoded calldata")
+    parser.add_argument(
+        "--address",
+        type=parse_hex_int,
+        default=0xDEADBEEF,
+        help="Contract address (hex, default: 0xDEADBEEF)",
+    )
+    parser.add_argument(
+        "--caller",
+        type=parse_hex_int,
+        default=0xBEEF,
+        help="msg.sender (hex, default: 0xBEEF)",
+    )
+    parser.add_argument(
+        "--origin",
+        type=parse_hex_int,
+        default=0xCAFE,
+        help="tx.origin (hex, default: 0xCAFE)",
+    )
+    parser.add_argument(
+        "--eoa", action="store_true", help="Simulate EOA call (sets origin=caller)"
+    )
+    parser.add_argument(
+        "--max-steps", type=int, default=500, help="Maximum execution steps (default: 500)"
+    )
     args = parser.parse_args()
     
-    if not args.bytecode_file:
-        # Default: load the LoopCheckCalldata bytecode
-        bytecode_file = "output/LoopCheckCalldata_opt_runtime.bin"
-        # Calldata for processStructs with 1 element:
-        # selector (4 bytes) + offset (32 bytes) + length (32 bytes) + element (64 bytes)
-        # Element: id=10, value=100
-        selector = bytes.fromhex("e296f284")  # processStructs selector
-        offset = (32).to_bytes(32, 'big')  # offset to array
-        length = (1).to_bytes(32, 'big')  # 1 element
-        elem_id = (10).to_bytes(32, 'big')
-        elem_value = (100).to_bytes(32, 'big')
-        calldata = selector + offset + length + elem_id + elem_value
-    else:
-        bytecode_file = args.bytecode_file
-        calldata = bytes.fromhex(args.calldata) if args.calldata else b""
+    bytecode_file = args.bytecode_file
+    calldata = bytes.fromhex(args.calldata) if args.calldata else b""
     
     # Handle --eoa flag  
     caller = args.caller
     origin = args.origin
     if args.eoa:
-        # EOA call: same address for both
         origin = caller
         print(f"EOA mode: caller=origin=0x{caller:x}")
     
-    # Load bytecode
-    with open(bytecode_file, 'rb') as f:
-        content = f.read()
-        # Handle hex-encoded files
-        try:
-            bytecode = bytes.fromhex(content.decode('ascii').strip())
-        except:
-            bytecode = content
+    bytecode = load_bytecode(bytecode_file)
     
     print(f"Loaded {len(bytecode)} bytes of bytecode")
     print(f"Calldata: {len(calldata)} bytes: {calldata.hex() if calldata else 'empty'}")

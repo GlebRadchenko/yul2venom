@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""
-Yul2Venom Benchmark Tool
-
-Production-grade benchmarking comparing transpiled bytecode against various Solc configurations.
-
-Usage:
-    python3.11 tools/benchmark.py [--config config.yaml] [--output report.md]
-"""
+"""Benchmark transpiled output against selected solc configurations."""
 
 import argparse
 import json
@@ -21,14 +14,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-# Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-# Import path sanitization utility
 from utils.constants import sanitize_paths
 
-# ANSI escape sequence pattern (includes mouse tracking, cursor movement, etc)
 ANSI_ESCAPE = re.compile(r'''
     \x1b       # ESC
     (?:        # Start non-capturing group
@@ -41,16 +31,12 @@ ANSI_ESCAPE = re.compile(r'''
     )
 ''', re.VERBOSE)
 
-# Also match caret-notation like ^[[A
 CARET_ESCAPE = re.compile(r'\^?\[\[[0-9;?<>=]*[A-Za-z~]')
 
 def strip_ansi(text: str) -> str:
     """Remove all ANSI escape sequences from text."""
-    # Remove real escape sequences
     text = ANSI_ESCAPE.sub('', text)
-    # Remove caret-notation escape sequences (^[[A style)
     text = CARET_ESCAPE.sub('', text)
-    # Also remove raw ^[ representations
     text = text.replace('\x1b', '')
     return text
 
@@ -58,20 +44,35 @@ def strip_ansi(text: str) -> str:
 # Configuration
 # ============================================================================
 
+_LEGACY_DEFAULT_CONTRACTS = [
+    "Arithmetic",
+    "ControlFlow",
+    "StateManagement",
+    "DataStructures",
+    "Functions",
+    "Events",
+    "Encoding",
+    "Edge",
+]
+
+
+def discover_benchmark_contracts(bench_src: Optional[Path] = None) -> list[str]:
+    """Return sorted benchmark contract names from foundry/src/bench."""
+    root = bench_src or (PROJECT_ROOT / "foundry" / "src" / "bench")
+    if not root.exists():
+        return list(_LEGACY_DEFAULT_CONTRACTS)
+
+    discovered = sorted(path.stem for path in root.glob("*.sol"))
+    if discovered:
+        return discovered
+    return list(_LEGACY_DEFAULT_CONTRACTS)
+
+
 @dataclass
 class BenchmarkConfig:
     """Benchmark configuration."""
     # Contracts to benchmark
-    contracts: list[str] = field(default_factory=lambda: [
-        "Arithmetic",
-        "ControlFlow",
-        "StateManagement", 
-        "DataStructures",
-        "Functions",
-        "Events",
-        "Encoding",
-        "Edge",
-    ])
+    contracts: list[str] = field(default_factory=discover_benchmark_contracts)
     
     # Transpiler optimization level (none, O0, O2, O3, Os, debug, yul-o2, native)
     # yul-o2 = PASSES_YUL_O2 (optimized for Yul-sourced IR) - use this for benchmarks
@@ -119,6 +120,86 @@ class BenchmarkConfig:
     gas_enabled: bool = False
 
 
+def _apply_nested_profile(config: BenchmarkConfig, data: dict) -> None:
+    """Apply nested profile sections to benchmark config."""
+    contracts = data.get("contracts")
+    if contracts is not None:
+        config.contracts = contracts
+
+    optimization = data.get("optimization", {})
+    venom_level = optimization.get("venom_level")
+    if venom_level is not None:
+        config.transpiler_opt_level = venom_level
+    yul_level = optimization.get("yul_level")
+    if yul_level is not None:
+        config.yul_opt_level = yul_level
+
+    solc = data.get("solc", {})
+    runs = solc.get("runs")
+    if runs is not None:
+        config.optimization_runs = runs
+    modes = solc.get("modes")
+    if modes is not None:
+        config.solc_modes = modes
+    baseline = solc.get("baseline")
+    if baseline is not None:
+        config.baseline = baseline
+
+    output = data.get("output", {})
+    report = output.get("report")
+    if report:
+        config.report_file = PROJECT_ROOT / report
+    json_output = output.get("json")
+    if json_output:
+        config.json_file = PROJECT_ROOT / json_output
+
+    benchmarks = data.get("benchmarks", {})
+    gas = benchmarks.get("gas")
+    if gas is not None:
+        config.gas_enabled = gas
+
+
+def _apply_top_level_profile(config: BenchmarkConfig, data: dict) -> None:
+    """Apply top-level profile keys and legacy flat overrides."""
+    if "gas_enabled" in data:
+        config.gas_enabled = data["gas_enabled"]
+    if "verbose" in data:
+        config.verbose = data["verbose"]
+    if "force_rebuild" in data:
+        config.force_rebuild = data["force_rebuild"]
+
+    for key in (
+        "transpiler_opt_level",
+        "yul_opt_level",
+        "optimization_runs",
+        "solc_modes",
+        "baseline",
+        "verbose",
+        "gas_enabled",
+        "force_rebuild",
+    ):
+        if key in data and not isinstance(data[key], dict):
+            setattr(config, key, data[key])
+
+    if "report_file" in data:
+        config.report_file = Path(data["report_file"])
+    if "json_file" in data:
+        config.json_file = Path(data["json_file"])
+
+
+def build_solc_config_keys(config: BenchmarkConfig) -> list[str]:
+    """Build unique result keys for configured solc mode/run combinations."""
+    keys: list[str] = []
+    for mode in config.solc_modes:
+        if mode == "ir_optimized":
+            if mode not in keys:
+                keys.append(mode)
+            continue
+        for runs in config.optimization_runs:
+            keys.append(f"{mode}_{runs}")
+    return keys
+
+
 def load_config(config_path: Optional[Path]) -> BenchmarkConfig:
     """Load configuration from YAML profile file.
     
@@ -145,62 +226,8 @@ def load_config(config_path: Optional[Path]) -> BenchmarkConfig:
         if not data:
             return config
         
-        # === Parse nested format (new profiles) ===
-        
-        # Contracts list
-        if 'contracts' in data:
-            config.contracts = data['contracts']
-        
-        # Optimization section
-        opt = data.get('optimization', {})
-        if 'venom_level' in opt:
-            config.transpiler_opt_level = opt['venom_level']
-        if 'yul_level' in opt:
-            config.yul_opt_level = opt['yul_level']
-        
-        # Solc section
-        solc = data.get('solc', {})
-        if 'runs' in solc:
-            config.optimization_runs = solc['runs']
-        if 'modes' in solc:
-            config.solc_modes = solc['modes']
-        if 'baseline' in solc:
-            config.baseline = solc['baseline']
-        
-        # Output section
-        output = data.get('output', {})
-        if 'report' in output:
-            config.report_file = PROJECT_ROOT / output['report']
-        if 'json' in output:
-            config.json_file = PROJECT_ROOT / output['json']
-        
-        # Benchmarks section (new format)
-        benchmarks = data.get('benchmarks', {})
-        if 'gas' in benchmarks:
-            config.gas_enabled = benchmarks['gas']
-        if 'bytecode' in benchmarks:
-            # bytecode is always enabled; this is for future extensibility
-            pass
-        
-        # Top-level options
-        if 'gas_enabled' in data:
-            config.gas_enabled = data['gas_enabled']
-        if 'verbose' in data:
-            config.verbose = data['verbose']
-        if 'force_rebuild' in data:
-            config.force_rebuild = data['force_rebuild']
-        
-        # === Legacy flat format fallback ===
-        # Direct key mapping for backward compatibility
-        for key in ['transpiler_opt_level', 'yul_opt_level', 'optimization_runs',
-                    'solc_modes', 'baseline', 'verbose', 'gas_enabled', 'force_rebuild']:
-            if key in data and not isinstance(data[key], dict):
-                setattr(config, key, data[key])
-        
-        if 'report_file' in data:
-            config.report_file = Path(data['report_file'])
-        if 'json_file' in data:
-            config.json_file = Path(data['json_file'])
+        _apply_nested_profile(config, data)
+        _apply_top_level_profile(config, data)
             
     except ImportError:
         print("[WARN] PyYAML not installed. Run: pip install pyyaml")
@@ -738,15 +765,7 @@ def generate_markdown_report(config: BenchmarkConfig, results: list[ContractResu
     lines.append(f"- **Solc modes:** {config.solc_modes}")
     lines.append("")
     
-    # Build configs list
-    configs = []
-    for mode in config.solc_modes:
-        if mode == "ir_optimized":
-            if "ir_optimized" not in configs:
-                configs.append("ir_optimized")
-        else:
-            for runs in config.optimization_runs:
-                configs.append(f"{mode}_{runs}")
+    configs = build_solc_config_keys(config)
     
     # Column widths for uniform tables
     COL_CONTRACT = 18
@@ -1107,15 +1126,7 @@ Examples:
     print("  Summary")
     print("=" * 60)
     
-    # Build config columns
-    configs = []
-    for mode in config.solc_modes:
-        if mode == "ir_optimized":
-            if "ir_optimized" not in configs:
-                configs.append("ir_optimized")
-        else:
-            for runs in config.optimization_runs:
-                configs.append(f"{mode}_{runs}")
+    configs = build_solc_config_keys(config)
     
     # Compute dynamic column widths based on data
     # Headers

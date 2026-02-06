@@ -1,18 +1,4 @@
-"""
-Yul Source Optimizer - Production-Grade Implementation
-
-Pre-transpilation optimization of Yul source code through:
-1. Structural analysis - Remove panics/reverts in if blocks
-2. Regex transformations - Pattern-based code rewriting
-3. Algebraic simplifications - Constant folding and identity elimination
-
-Usage:
-    from yul_source_optimizer import YulSourceOptimizer, OptimizationLevel
-    
-    opt = YulSourceOptimizer(level=OptimizationLevel.AGGRESSIVE)
-    optimized_yul = opt.optimize(yul_source)
-    opt.print_report()
-"""
+"""Yul source optimizer used before Venom IR generation."""
 
 from __future__ import annotations
 
@@ -21,17 +7,11 @@ import sys
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Pattern, Optional
+from typing import Pattern, Optional
 
 
 class OptimizationLevel(Enum):
-    """Optimization aggressiveness levels.
-    
-    SAFE: Only remove clearly dead code (validators, empty blocks)
-    STANDARD: Remove non-payable checks, basic ABI decoder checks  
-    AGGRESSIVE: Remove runtime checks (extcodesize, returndatasize)
-    MAXIMUM: Remove overflow/bounds checks (DANGEROUS - use with caution)
-    """
+    """Optimization aggressiveness levels."""
     SAFE = "safe"
     STANDARD = "standard"
     AGGRESSIVE = "aggressive"
@@ -71,15 +51,7 @@ class OptimizationStats:
 
 
 class YulSourceOptimizer:
-    """Production-grade Yul source optimizer.
-    
-    Applies a series of transformations to reduce bytecode size:
-    - Structural: Remove if-blocks containing panic/revert
-    - Regex: Pattern-based code rewriting
-    - Cleanup: Remove dead function definitions
-    
-    Thread-safe: Each instance maintains its own state.
-    """
+    """Apply structural and regex-based Yul simplifications."""
     
     # Maximum optimization passes before stopping
     MAX_PASSES = 5
@@ -197,8 +169,10 @@ class YulSourceOptimizer:
         self._add_rule("Simplify eq(x,x)", r'eq\((\w+),\s*\1\)', '1')
         self._add_rule("Simplify iszero(eq(x,x))", r'iszero\(eq\((\w+),\s*\1\)\)', '0')
         self._add_rule("Simplify add(x,0)", r'add\((\w+),\s*0\)', r'\1')
+        self._add_rule("Simplify add(0,x)", r'add\(0,\s*(\w+)\)', r'\1')
         self._add_rule("Simplify sub(x,0)", r'sub\((\w+),\s*0\)', r'\1')
         self._add_rule("Simplify mul(x,1)", r'mul\((\w+),\s*1\)', r'\1')
+        self._add_rule("Simplify mul(1,x)", r'mul\(1,\s*(\w+)\)', r'\1')
         
         # Double negation: iszero(iszero(x)) → bool(x), but since Yul has no bool type,
         # we keep it for conditions. For return values like mstore(pos, iszero(iszero(x))),
@@ -254,113 +228,122 @@ class YulSourceOptimizer:
         )
     
     def _add_aggressive_rules(self) -> None:
-        """Rules that strip runtime safety checks."""
-        
-        # Strip extcodesize check (external call target verification)
+        """Rules that strip runtime checks and ABI sanitizers."""
+        self._add_aggressive_runtime_rules()
+        self._add_aggressive_decoder_rules()
+
+    def _add_aggressive_runtime_rules(self) -> None:
+        """Strip runtime safety checks that are expensive and repetitive."""
+
         self._add_rule(
             "Strip ExtCodeSize",
             r'if iszero\(extcodesize\([^)]+\)\)\s*\{\s*revert\([^)]+\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip returndatasize check
         self._add_rule(
             "Strip Returndatasize Check",
             r'if\s+(gt\(|iszero\().*returndatasize\(\).*\{[^}]*revert[^}]*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip memory allocation overflow check
         self._add_rule(
             "Strip Memory Alloc Check",
             r'if\s+gt\([^,]+,\s*0xffffffffffffffff\)\s*\{[^}]+\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip calldata length check (ABI decoder)
         self._add_rule(
             "Strip CallData Length Check",
             r'if\s+slt\(add\(calldatasize\(\),\s*not\(3\)\),\s*\d+\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip offset validation
         self._add_rule(
             "Strip Offset Validation",
             r'if\s+gt\([^,]+,\s*0xffffffffffffffff\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip address mask check
         self._add_rule(
             "Strip Address Mask",
             r'if\s+iszero\(eq\(([^,]+),\s*and\(\1,\s*sub\(shl\(160,\s*1\),\s*1\)\)\)\)\s*\{[^}]+\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip FinalizeAlloc Overflow check
         self._add_rule(
             "Strip FinalizeAlloc Overflow",
             r'if\s+or\(gt\([^,]+,\s*0x[f]+\),\s*lt\([^,]+,\s*[^)]+\)\)\s*\{[^}]+\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip memory overflow panic (0x41)
         self._add_rule(
             "Strip Memory Panic 0x41",
             r'if\s+or\([^)]+\)\s*\{\s*mstore\([^)]+\)\s*mstore\([^)]+,\s*0x41\)\s*revert\([^)]+\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip inline panic selector sequence (very common: mstore selector, mstore code, revert)
-        # Pattern: mstore(0, shl(224, 0x4e487b71)) mstore(4, 0xXX) revert(0, 36)
         self._add_rule(
             "Strip Panic Selector",
             r'mstore\(0,\s*shl\(224,\s*0x4e487b71\)\)\s*\n?\s*mstore\(4,\s*0x[0-9a-f]+\)\s*\n?\s*revert\(0,\s*36\)',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip address validation: iszero(eq(x, and(x, ADDRESS_MASK)))
         self._add_rule(
             "Strip Address Validation",
             r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*sub\(shl\(160,\s*1\),\s*1\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip require_helper calls (error message wrappers)
-        # IMPORTANT: These can have deeply nested parentheses like:
-        #   require_helper_e9a2(iszero(lt(mload(...), 32)))
-        # We need to match balanced parens, not just [^)]+
-        # Pattern matches: require_helper_XXXX followed by balanced ()
         self._add_rule(
             "Strip Require Helper",
             r'require_helper_\w+\((?:[^()]*|\((?:[^()]*|\([^()]*\))*\))*\)',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
-        # Strip type validation for smaller integer types (uint8, uint16, bytes4, etc)
-        # Pattern: iszero(eq(x, and(x, shl(N, MASK)))) where MASK validates type range
+
+    def _add_aggressive_decoder_rules(self) -> None:
+        """Strip ABI decoder sanitizer patterns."""
+
         self._add_rule(
             "Strip Type Validation Bytes4",
             r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*shl\(224,\s*0xffffffff\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
-        
         self._add_rule(
             "Strip Type Validation Bytes1",
             r'if\s+iszero\(eq\((\w+),\s*and\(\1,\s*shl\(248,\s*255\)\)\)\)\s*\{\s*revert\(0,\s*0\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        self._add_rule(
+            "Strip Cleanup Self-Validation",
+            r'if\s+iszero\(eq\((\w+),\s*cleanup_t_[\w$]+\(\1\)\)\)\s*\{\s*revert\(\s*0\s*,\s*0\s*\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        self._add_rule(
+            "Strip Bool Self-Validation",
+            r'if\s+iszero\(\s*eq\(\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*,\s*iszero\(\s*iszero\(\s*\1\s*\)\s*\)\s*\)\s*\)\s*\{\s*revert\(\s*0\s*,\s*0\s*\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        self._add_rule(
+            "Strip Add/Sub Span Guard",
+            r'if\s+slt\(\s*sub\(\s*add\(\s*(\w+)\s*,\s*([^)]+?)\)\s*,\s*\1\s*\)\s*,\s*\d+\s*\)\s*\{\s*revert\(\s*0\s*,\s*0\s*\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        self._add_rule(
+            "Strip Decode Span Guard",
+            r'if\s+slt\(\s*sub\(\s*dataEnd\s*,\s*[A-Za-z_$][A-Za-z0-9_$]*\s*\)\s*,\s*(0x[0-9a-fA-F]+|\d+)\s*\)\s*\{\s*revert\(\s*0\s*,\s*0\s*\)\s*\}',
+            '',
+            OptimizationLevel.AGGRESSIVE
+        )
+        self._add_rule(
+            "Strip Decode Offset Guard",
+            r'if\s+iszero\(\s*slt\(\s*add\(\s*offset\s*,\s*(0x[0-9a-fA-F]+|\d+)\s*\)\s*,\s*(?:end|calldatasize\(\))\s*\)\s*\)\s*\{\s*revert\(\s*0\s*,\s*0\s*\)\s*\}',
             '',
             OptimizationLevel.AGGRESSIVE
         )
@@ -388,6 +371,35 @@ class YulSourceOptimizer:
         self._add_rule(
             "Strip Division Check",
             r'if\s+iszero\([^)]+\)\s*\{[^}]*panic_error_0x12[^}]*\}',
+            '',
+            OptimizationLevel.MAXIMUM
+        )
+
+        # Strip low-level call failure forwarding wrappers:
+        # if iszero(success) { let p := mload(64) returndatacopy(p,0,returndatasize()) revert(p,returndatasize()) }
+        # DANGEROUS: suppresses revert bubbling on failed external calls.
+        self._add_rule(
+            "Strip Call Failure Forward-Revert",
+            r'if\s+iszero\([^)]+\)\s*\{\s*let\s+(\w+)\s*:=\s*mload\(\s*64\s*\)\s*returndatacopy\(\s*\1\s*,\s*0\s*,\s*returndatasize\(\)\s*\)\s*revert\(\s*\1\s*,\s*returndatasize\(\)\s*\)\s*\}',
+            '',
+            OptimizationLevel.MAXIMUM
+        )
+
+        # Strip "revert(0, returndatasize())" wrappers.
+        # DANGEROUS: allows execution to continue when call status is false.
+        self._add_rule(
+            "Strip Revert(0, Returndatasize)",
+            r'if\s+iszero\([^)]+\)\s*\{\s*revert\(\s*0\s*,\s*returndatasize\(\)\s*\)\s*\}',
+            '',
+            OptimizationLevel.MAXIMUM
+        )
+
+        # Strip returndata length capping to 32 bytes:
+        # let n := 32; if gt(32, returndatasize()) { n := returndatasize() }
+        # DANGEROUS: decoders may read zero/stale bytes on short returndata.
+        self._add_rule(
+            "Strip Returndatasize Cap32",
+            r'if\s+gt\(\s*32\s*,\s*returndatasize\(\)\s*\)\s*\{\s*\w+\s*:=\s*returndatasize\(\)\s*\}',
             '',
             OptimizationLevel.MAXIMUM
         )

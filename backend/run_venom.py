@@ -1,55 +1,91 @@
-import sys
-import os
-import json
 import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Dict, Optional
 
-# Add local vyper to path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-vyper_path = os.path.join(current_dir, "vyper")
-sys.path.insert(0, vyper_path)
+# Resolve local Vyper fork from project root.
+BACKEND_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BACKEND_DIR.parent
+VYPER_PATH = PROJECT_ROOT / "vyper"
+if str(VYPER_PATH) not in sys.path:
+    sys.path.insert(0, str(VYPER_PATH))
 
 from vyper.venom import generate_assembly_experimental, run_passes_on
 from vyper.venom.parser import parse_venom
 
-# Import centralized constants
 try:
-    from utils.constants import SPILL_OFFSET
+    from yul2venom.utils.constants import SPILL_OFFSET
 except ImportError:
-    SPILL_OFFSET = 0x4000  # Fallback if utils not available
+    try:
+        from utils.constants import SPILL_OFFSET
+    except ImportError:
+        SPILL_OFFSET = 0x4000
 
 
-def load_immutables(config_path: str, verbose: bool = False) -> dict:
-    """
-    Load immutable values from JSON config file.
-    
-    Supports two formats:
-    1. Simple: {"3077": "0x..."}
-    2. Enhanced: {"3077": {"name": "weth", "value": "0x..."}}
-    """
+def _to_int(value) -> int:
+    if isinstance(value, str):
+        if value.startswith("0x"):
+            return int(value, 16)
+        return int(value) if value else 0
+    return int(value) if value else 0
+
+
+def _parse_immutable_entry(key: str, value, verbose: bool = False) -> tuple[int, int]:
+    if isinstance(value, dict):
+        name = value.get('name', key)
+        raw_value = value.get('value', '0x0')
+        if verbose:
+            print(f"  {key}: {name} = {raw_value}")
+        return int(key), _to_int(raw_value)
+    return int(key), _to_int(value)
+
+
+def load_immutables(config_path: str, verbose: bool = False) -> Dict[int, int]:
+    """Load immutable values from JSON config."""
     if not config_path or not os.path.exists(config_path):
         return {}
-    
+
     with open(config_path, 'r') as f:
         data = json.load(f)
-    
-    result = {}
+
+    result: Dict[int, int] = {}
     for key, value in data.items():
-        # Enhanced format: {name, value}
-        if isinstance(value, dict):
-            name = value.get('name', key)
-            addr = value.get('value', '0x0')
-            if verbose:
-                print(f"  {key}: {name} = {addr}")
-            if isinstance(addr, str) and addr.startswith("0x"):
-                result[key] = int(addr, 16)
-            else:
-                result[key] = int(addr) if addr else 0
-        # Simple format: direct value
-        elif isinstance(value, str) and value.startswith("0x"):
-            result[key] = int(value, 16)
-        else:
-            result[key] = int(value) if value else 0
+        imm_id, imm_value = _parse_immutable_entry(key, value, verbose=verbose)
+        result[imm_id] = imm_value
     return result
+
+
+def _build_context(source: str, immutables: Optional[Dict[int, int]]):
+    ctx = parse_venom(source)
+
+    # Ensure function spill endpoints exist when parsing raw VNM text.
+    for fn in ctx.functions.values():
+        ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
+
+    ctx.immutables = immutables or {}
+    return ctx
+
+
+def compile_venom_source(source: str, immutables: Optional[Dict[int, int]] = None) -> bytes:
+    """Compile Venom IR source text to EVM bytecode bytes."""
+    ctx = _build_context(source, immutables)
+
+    from vyper.compiler.settings import OptimizationLevel, VenomOptimizationFlags
+    from vyper.compiler.phases import generate_bytecode
+
+    flags = VenomOptimizationFlags(level=OptimizationLevel.default(), disable_mem2var=True)
+    run_passes_on(ctx, flags)
+
+    asm = generate_assembly_experimental(ctx)
+    bytecode, _ = generate_bytecode(asm)
+    return bytecode
+
+
+def run_venom_backend(source: str, immutables: Optional[Dict[int, int]] = None) -> bytes:
+    """Programmatic backend API used by pipeline callers."""
+    return compile_venom_source(source, immutables)
 
 
 def main():
@@ -61,42 +97,27 @@ def main():
     args = parser.parse_args()
 
     vnm_path = args.vnm_file
-    with open(vnm_path, 'r') as f:
+    with open(vnm_path, "r") as f:
         source = f.read()
     
     if not args.quiet:
         import hashlib
-        print(f"Input: {vnm_path} ({len(source)} bytes, MD5: {hashlib.md5(source.encode()).hexdigest()})")
+        digest = hashlib.md5(source.encode()).hexdigest()
+        print(f"Input: {vnm_path} ({len(source)} bytes, MD5: {digest})")
         
     try:
-        ctx = parse_venom(source)
-        
-        # CRITICAL: Initialize fn_eom for all functions.
-        # When parsing VNM from file, memory allocator doesn't run, leaving fn_eom empty.
-        # This causes StackSpiller to use offset 0 for spills, corrupting scratch space.
-        for fn in ctx.functions.values():
-            ctx.mem_allocator.fn_eom[fn] = SPILL_OFFSET
-        
         # Load immutables from config file
         immutables = load_immutables(args.immutables)
-        ctx.immutables = immutables
         
         if not args.quiet and immutables:
             print(f"Loaded {len(immutables)} immutable value(s)")
-        
-        from vyper.compiler.settings import OptimizationLevel, VenomOptimizationFlags
-        from vyper.compiler.phases import generate_bytecode
-        
-        flags = VenomOptimizationFlags(level=OptimizationLevel.default(), disable_mem2var=True)
-        run_passes_on(ctx, flags)
-        
-        asm = generate_assembly_experimental(ctx)
-        bytecode, _ = generate_bytecode(asm)
+
+        bytecode = compile_venom_source(source, immutables)
         hex_code = bytecode.hex()
         
         # Determine output path
         bin_path = args.output if args.output else vnm_path.replace(".vnm", ".bin")
-        with open(bin_path, 'w') as f:
+        with open(bin_path, "w") as f:
             f.write(hex_code)
         
         print(f"Success! Wrote {len(hex_code)//2} bytes to {bin_path}")

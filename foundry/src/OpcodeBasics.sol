@@ -54,4 +54,10 @@ contract OpcodeBasics {
         }
         return count;
     }
+
+    function test_invalid() external pure {
+        assembly {
+            invalid()
+        }
+    }
 }

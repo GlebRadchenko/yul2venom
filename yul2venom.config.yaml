@@ -20,12 +20,18 @@
 
 inlining:
   # Functions with MORE than this many statements may be emitted instead of inlined
-  # Default: 1 (aggressive - emit almost everything with >1 statement)
-  stmt_threshold: 1
+  # Tuned default: 4 (best size/gas balance in current corpus)
+  stmt_threshold: 4
   
-  # Functions called MORE than this many times may be emitted instead of inlined
-  # Default: 2 (emit if called 3+ times)
-  call_threshold: 2
+  # Functions called MORE than this many times may be emitted instead of inlined.
+  # Tuned default: 0 (emit reused non-trivial helpers quickly).
+  call_threshold: 0
+
+  # Always inline helpers with <= N statements, even if call count is high.
+  # This trims invoke/ret overhead on hot tiny functions while keeping larger
+  # routines eligible for emission to avoid bytecode explosion.
+  # Set to 0 to disable.
+  always_inline_max_statements: 3
   
   # Set to false to inline everything (except recursive functions which always use invoke)
   enabled: true
@@ -42,7 +48,7 @@ yul_optimizer:
   # - standard: Remove non-payable checks, basic ABI decoder checks
   # - aggressive: Remove runtime checks (extcodesize, returndatasize)
   # - maximum: Remove overflow/bounds checks (DANGEROUS - use with caution)
-  level: safe  # TESTING: Disabled aggressive to debug mstore bug
+  level: aggressive
   
   # Maximum number of optimization passes before stopping
   # Optimizer runs until no changes or this limit is reached
@@ -59,20 +65,29 @@ optimization:
   # Optimization level for Venom IR passes:
   # - none: No optimization passes at all
   # - O0: Minimal - only store elimination and SSA conversion
-  # - O2: Safe Yul pipeline - balanced optimization (DEFAULT)
+  # - O2: Safe Yul pipeline - balanced optimization
   # - O3/Os: Same as O2 (safe pipeline)
   # - yul-o2: Alias for O2
-  # - native: Vyper's O2 pipeline via run_passes_on
+  # - native: Vyper pipeline via run_passes_on (DEFAULT profile)
   # - debug: Legacy debug pipeline
-  level: yul-o2
+  level: native
+
+  # Native profile defaults (can still be overridden via env vars):
+  #   Y2V_NATIVE_LEVEL
+  #   Y2V_NATIVE_DISABLE_MEM2VAR
+  #   Y2V_NATIVE_DISABLE_LOAD_ELIMINATION
+  native_level: codesize
+  native_disable_mem2var: true
+  native_disable_load_elimination: false
   
   # DJMP threshold: minimum case count to use O(1) jump table dispatch.
   # Trade-off analysis:
   #   - DJMP overhead: codecopy + mload + djmp ≈ 20 gas setup + 8 gas/jump
   #   - JNZ chain: ~9 gas per comparison (eq + jnz)
-  # Break-even point is ~3-4 cases. Default 4 is conservative.
+  # Break-even point is ~3-4 cases. Tuned default 6 trims init/deploy
+  # overhead in current workloads.
   # Lower = more aggressive O(1) dispatch, Higher = more linear search.
-  djmp_threshold: 4
+  djmp_threshold: 6
 
 # =============================================================================
 # MEMORY LAYOUT (utils/constants.py)
@@ -158,6 +173,11 @@ safety:
   # Enable this in CI/production to catch missing object/immutable references.
   # Default: false (backward compatible - warnings only)
   strict_intrinsics: false
+
+  # Optional Solidity/Yul compatibility mode for memoryguard.
+  # If true, FMP floor becomes max(memoryguard_arg, venom_start).
+  # Default false keeps venom-native floor (venom_start).
+  memoryguard_parity: false
 
 # =============================================================================
 # PROJECT PATHS

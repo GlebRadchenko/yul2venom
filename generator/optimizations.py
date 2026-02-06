@@ -123,8 +123,9 @@ class AssertOptimizer(YulOptimizer):
                             return val0 == 0 and val1 == 0
                         except ValueError:
                             pass
-            elif stmt.function.startswith("revert_error_"):
-                return True
+            # NOTE: revert_error_* functions are NOT simple reverts - they emit
+            # custom error selectors and data. Converting them to assert would
+            # lose this information. Only revert(0,0) is truly "simple".
         
         return False
 

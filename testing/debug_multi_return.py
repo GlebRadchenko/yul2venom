@@ -1,32 +1,14 @@
 #!/usr/bin/env python3
-"""
-Multi-Return Function Debug Tool
-
-Automated debugging for multi-return function issues in the Yul2Venom transpiler.
-Traces ret/invoke operand ordering, simulates stack behavior, and correlates with test results.
-
-Usage:
-    python3 debug_multi_return.py [--config CONFIG] [--function FUNC] [--verbose]
-    
-Examples:
-    python3 debug_multi_return.py --function fun_fibonacci
-    python3 debug_multi_return.py --config configs/MultiReturnTest.yul2venom.json
-    
-Features:
-    1. Traces ret operand ordering in raw vs optimized IR
-    2. Simulates stack behavior through invoke/ret cycles
-    3. Runs forge tests and extracts actual vs expected values
-    4. Identifies specific ordering/reversal issues
-"""
+"""Debug multi-return call/ret ordering by correlating IR with forge output."""
 
 import sys
 import os
 import argparse
 import subprocess
 import re
-import json
+import shutil
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Setup path for imports
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -34,6 +16,21 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 VYPER_PATH = os.path.join(PROJECT_ROOT, "vyper")
 sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, VYPER_PATH)
+
+RAW_IR_PATH = os.path.join(PROJECT_ROOT, "debug", "raw_ir.vnm")
+OPT_IR_PATH = os.path.join(PROJECT_ROOT, "debug", "opt_ir.vnm")
+FOUNDRY_DIR = os.path.join(PROJECT_ROOT, "foundry")
+MULTI_RET_BIN = os.path.join(PROJECT_ROOT, "output", "MultiReturnTest_opt.bin")
+MULTI_RET_RUNTIME_BIN = os.path.join(PROJECT_ROOT, "output", "MultiReturnTest_opt_runtime.bin")
+
+FUNCTION_PATTERN = re.compile(r"function\s+(\S+)")
+BLOCK_PATTERN = re.compile(r"(\S+):")
+RET_PATTERN = re.compile(r"ret\s+(.+)")
+INVOKE_PATTERN = re.compile(
+    r"((?:%\d+(?:,\s*%\d+)*)\s*=\s*)?invoke\s+@(\S+)(?:,\s*(.+))?"
+)
+FORGE_PASS_PATTERN = re.compile(r"\[PASS\]\s+([^\s(]+)\(\)\s+\(gas:\s*(\d+)\)")
+FORGE_FAIL_PATTERN = re.compile(r"\[FAIL[^\]]*\]\s+([^\s(]+)\(\)")
 
 
 @dataclass
@@ -62,14 +59,58 @@ class FunctionAnalysis:
     return_count: int = 0
 
 @dataclass
-class TestResult:
-    """Test case result."""
-    input_n: int
-    expected_a: int
-    expected_b: int
-    actual_a: int
-    actual_b: int
-    matches: bool
+class ForgeTestResult:
+    """Parsed forge test result."""
+    name: str
+    passed: bool
+    gas: int | None = None
+    details: str = ""
+
+
+def _extract_function_name(line: str) -> str | None:
+    match = FUNCTION_PATTERN.match(line)
+    return match.group(1) if match else None
+
+
+def _extract_block_label(line: str) -> str | None:
+    if ":" not in line or line.startswith("%") or line.startswith("#"):
+        return None
+    match = BLOCK_PATTERN.match(line)
+    return match.group(1) if match else None
+
+
+def _parse_ret_info(line: str, current_block: str) -> RetInfo | None:
+    match = RET_PATTERN.search(line)
+    if not match:
+        return None
+    display_ops = [op.strip() for op in match.group(1).split(",")]
+    return RetInfo(
+        block=current_block,
+        display_operands=display_ops,
+        internal_operands=list(reversed(display_ops)),
+        is_base_case=("then" in current_block.lower() or "1_then" in current_block),
+    )
+
+
+def _parse_invoke_info(
+    line: str, current_function: str, current_block: str | None
+) -> InvokeInfo | None:
+    match = INVOKE_PATTERN.search(line)
+    if not match:
+        return None
+
+    outputs_str = (match.group(1) or "").replace("=", "").strip()
+    outputs = [item.strip() for item in outputs_str.split(",")] if outputs_str else []
+    args_str = match.group(3) or ""
+    args = [item.strip() for item in args_str.split(",")] if args_str else []
+
+    return InvokeInfo(
+        block=current_block or "<unknown>",
+        target=match.group(2),
+        args=args,
+        outputs=outputs,
+        is_internal=not current_function.startswith("__"),
+    )
 
 
 def parse_vnm_file(vnm_path: str) -> Dict[str, FunctionAnalysis]:
@@ -79,80 +120,35 @@ def parse_vnm_file(vnm_path: str) -> Dict[str, FunctionAnalysis]:
         print(f"ERROR: File not found: {vnm_path}")
         return {}
     
-    with open(vnm_path, 'r') as f:
+    with open(vnm_path, "r") as f:
         content = f.read()
     
     results = {}
     current_function = None
     current_block = None
     
-    for line in content.split('\n'):
+    for line in content.split("\n"):
         line = line.strip()
-        
-        # Function declaration
-        if line.startswith('function '):
-            match = re.match(r'function\s+(\S+)', line)
-            if match:
-                current_function = match.group(1)
-                results[current_function] = FunctionAnalysis(name=current_function)
-        
-        # Block label
-        if ':' in line and not line.startswith('%') and not line.startswith('#'):
-            block_match = re.match(r'(\S+):', line)
-            if block_match:
-                current_block = block_match.group(1)
-        
-        # ret instruction
-        if 'ret ' in line or line.startswith('ret '):
-            if current_function and current_block:
-                # Extract operands from display format: ret %PC, %val1, %val2
-                ret_match = re.search(r'ret\s+(.+)', line)
-                if ret_match:
-                    operands_str = ret_match.group(1)
-                    # Split on comma, handling possible spaces
-                    display_ops = [op.strip() for op in operands_str.split(',')]
-                    
-                    # Internal order is reversed (except for control flow)
-                    # For ret: display [PC, val1, val2] → internal [val2, val1, PC]
-                    internal_ops = list(reversed(display_ops))
-                    
-                    is_base = 'then' in current_block.lower() or '1_then' in current_block
-                    
-                    ret_info = RetInfo(
-                        block=current_block,
-                        display_operands=display_ops,
-                        internal_operands=internal_ops,
-                        is_base_case=is_base
-                    )
-                    results[current_function].rets.append(ret_info)
-        
-        # invoke instruction
-        if 'invoke @' in line:
-            if current_function:
-                # Match: %out1, %out2 = invoke @target, %arg1 OR just invoke @target, %arg
-                invoke_match = re.search(r'((?:%\d+(?:,\s*%\d+)*)\s*=\s*)?invoke\s+@(\S+)(?:,\s*(.+))?', line)
-                if invoke_match:
-                    outputs_str = invoke_match.group(1)
-                    target = invoke_match.group(2)
-                    args_str = invoke_match.group(3) or ""
-                    
-                    outputs = []
-                    if outputs_str:
-                        outputs_str = outputs_str.replace('=', '').strip()
-                        outputs = [o.strip() for o in outputs_str.split(',')]
-                    
-                    args = [a.strip() for a in args_str.split(',')] if args_str else []
-                    
-                    is_internal = not current_function.startswith('__')
-                    
-                    invoke_info = InvokeInfo(
-                        block=current_block,
-                        target=target,
-                        args=args,
-                        outputs=outputs,
-                        is_internal=is_internal
-                    )
-                    results[current_function].invokes.append(invoke_info)
+
+        fn_name = _extract_function_name(line)
+        if fn_name:
+            current_function = fn_name
+            results[current_function] = FunctionAnalysis(name=current_function)
+            continue
+
+        block_name = _extract_block_label(line)
+        if block_name:
+            current_block = block_name
+
+        if current_function and current_block and "ret " in line:
+            ret_info = _parse_ret_info(line, current_block)
+            if ret_info:
+                results[current_function].rets.append(ret_info)
+
+        if current_function and "invoke @" in line:
+            invoke_info = _parse_invoke_info(line, current_function, current_block)
+            if invoke_info:
+                results[current_function].invokes.append(invoke_info)
     
     return results
 
@@ -219,55 +215,44 @@ def simulate_stack_after_ret(ret_info: RetInfo) -> Tuple[str, str]:
     return (tos, below)
 
 
-def run_forge_test(test_name: str = "fibDirect") -> List[TestResult]:
-    """Run forge test and extract results."""
-    
-    # Expected Fibonacci values from Solidity definition
-    # fib(0) = (0, 1), fib(1) = (1, 1), fib(2) = (1, 2), etc.
-    expected = {
-        0: (0, 1),
-        1: (1, 1),
-        2: (1, 2),
-        3: (2, 3),
-        4: (3, 5),
-        5: (5, 8),
-    }
-    
-    os.chdir(os.path.join(PROJECT_ROOT, "foundry"))
-    
+def run_forge_test(test_filter: str | None = None) -> List[ForgeTestResult]:
+    """Run forge tests for MultiReturnTest suite and parse test case results."""
     try:
+        cmd = ["forge", "test", "--match-path", "test/MultiReturnTest.t.sol", "-vv"]
+        if test_filter:
+            cmd.extend(["--match-test", test_filter])
         result = subprocess.run(
-            ["forge", "test", "--match-test", test_name, "-vvv"],
+            cmd,
             capture_output=True,
             text=True,
-            timeout=60
+            timeout=60,
+            cwd=FOUNDRY_DIR,
         )
         output = result.stdout + result.stderr
     except Exception as e:
         print(f"Error running forge test: {e}")
         return []
-    
-    os.chdir(PROJECT_ROOT)
-    
-    results = []
-    
-    # Parse output: fib(0) = (0, 1)
-    for match in re.finditer(r'fib\((\d+)\)\s*=\s*\((\d+),\s*(\d+)\)', output):
-        n = int(match.group(1))
-        actual_a = int(match.group(2))
-        actual_b = int(match.group(3))
-        
-        exp_a, exp_b = expected.get(n, (None, None))
-        
-        results.append(TestResult(
-            input_n=n,
-            expected_a=exp_a,
-            expected_b=exp_b,
-            actual_a=actual_a,
-            actual_b=actual_b,
-            matches=(exp_a == actual_a and exp_b == actual_b)
-        ))
-    
+
+    pass_results = {
+        match.group(1): ForgeTestResult(
+            name=match.group(1), passed=True, gas=int(match.group(2))
+        )
+        for match in FORGE_PASS_PATTERN.finditer(output)
+    }
+
+    fail_results = {
+        match.group(1): ForgeTestResult(name=match.group(1), passed=False)
+        for match in FORGE_FAIL_PATTERN.finditer(output)
+    }
+
+    merged = {**pass_results, **fail_results}
+    results = sorted(merged.values(), key=lambda item: item.name)
+
+    if result.returncode != 0 and not results:
+        error_tail = (result.stderr or result.stdout).strip().splitlines()
+        details = error_tail[-1] if error_tail else "forge test failed"
+        return [ForgeTestResult(name="forge", passed=False, details=details)]
+
     return results
 
 
@@ -364,8 +349,8 @@ def trace_ret_stack_behavior(raw_path: str, opt_path: str, function: str) -> Dic
 def full_debug(config_path: str = None, function: str = "fun_fibonacci", verbose: bool = True):
     """Run full debug analysis."""
     
-    raw_ir = os.path.join(PROJECT_ROOT, "debug", "raw_ir.vnm")
-    opt_ir = os.path.join(PROJECT_ROOT, "debug", "opt_ir.vnm")
+    raw_ir = RAW_IR_PATH
+    opt_ir = OPT_IR_PATH
     
     print("=" * 70)
     print("MULTI-RETURN DEBUG ANALYSIS")
@@ -447,52 +432,22 @@ def full_debug(config_path: str = None, function: str = "fun_fibonacci", verbose
     
     if test_results:
         print("\n  Test Results:")
-        print("  " + "-" * 60)
-        print("  {:>4} | {:>12} | {:>12} | {}".format("N", "Expected", "Actual", "Status"))
-        print("  " + "-" * 60)
-        
+        print("  " + "-" * 72)
+        print("  {:<32} | {:<7} | {:>8} | {}".format("Test", "Status", "Gas", "Details"))
+        print("  " + "-" * 72)
+
         for tr in test_results:
-            status = "✓ PASS" if tr.matches else "✗ FAIL"
-            expected = f"({tr.expected_a}, {tr.expected_b})"
-            actual = f"({tr.actual_a}, {tr.actual_b})"
-            print("  {:>4} | {:>12} | {:>12} | {}".format(
-                tr.input_n, expected, actual, status
-            ))
-        
-        # Analyze failure pattern
-        failures = [tr for tr in test_results if not tr.matches]
+            status = "PASS" if tr.passed else "FAIL"
+            gas = str(tr.gas) if tr.gas is not None else "-"
+            print(
+                "  {:<32} | {:<7} | {:>8} | {}".format(
+                    tr.name, status, gas, tr.details
+                )
+            )
+
+        failures = [tr for tr in test_results if not tr.passed]
         if failures:
             print(f"\n  ⚠ {len(failures)}/{len(test_results)} tests failed")
-            
-            # Detect patterns
-            patterns = []
-            
-            # Check if values are swapped
-            swapped = all(
-                (tr.expected_a == tr.actual_b and tr.expected_b == tr.actual_a)
-                for tr in failures
-            )
-            if swapped:
-                patterns.append("Values are SWAPPED (a↔b)")
-            
-            # Check if second value is consistently wrong
-            second_wrong = all(
-                tr.expected_a == tr.actual_a and tr.expected_b != tr.actual_b
-                for tr in failures
-            )
-            if second_wrong:
-                patterns.append("Second return value (b) is consistently wrong")
-            
-            # Check offset pattern
-            if len(failures) >= 2:
-                offsets = [tr.expected_a - tr.actual_a for tr in failures]
-                if len(set(offsets)) == 1 and offsets[0] != 0:
-                    patterns.append(f"First value offset by {offsets[0]}")
-            
-            if patterns:
-                print("\n  Detected patterns:")
-                for p in patterns:
-                    print(f"    → {p}")
         else:
             print(f"\n  ✓ All {len(test_results)} tests passed!")
     else:
@@ -540,22 +495,19 @@ Examples:
     # If config provided, run transpilation first
     if args.config:
         print(f"Transpiling {args.config}...")
-        os.chdir(PROJECT_ROOT)
         result = subprocess.run(
             ["python3.11", "yul2venom.py", "transpile", args.config, "--runtime-only"],
             capture_output=True,
-            text=True
+            text=True,
+            cwd=PROJECT_ROOT,
         )
-        if "Failed" in result.stdout or "Error" in result.stdout:
+        if result.returncode != 0 or "Failed" in result.stdout or "Error" in result.stdout:
             print(f"Transpilation failed:\n{result.stdout}")
+            if result.stderr:
+                print(result.stderr)
             sys.exit(1)
         
-        # Copy binary for forge
-        subprocess.run([
-            "cp", 
-            "output/MultiReturnTest_opt.bin", 
-            "output/MultiReturnTest_opt_runtime.bin"
-        ])
+        shutil.copy2(MULTI_RET_BIN, MULTI_RET_RUNTIME_BIN)
         print("✓ Transpilation complete")
     
     full_debug(function=args.function, verbose=args.verbose)

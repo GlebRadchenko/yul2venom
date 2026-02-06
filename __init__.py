@@ -31,7 +31,7 @@ __version__ = "0.2.0"
 __author__ = "Yul2Venom Contributors"
 
 # Core API
-from core import (
+from .core import (
     TranspilationConfig,
     TranspilationResult,
     TranspilationPipeline,
@@ -40,7 +40,7 @@ from core import (
 )
 
 # Error types
-from core import (
+from .core import (
     Yul2VenomError,
     ConfigurationError,
     ParseError,
@@ -53,7 +53,7 @@ from core import (
 )
 
 # Key constants
-from utils import (
+from .utils import (
     VENOM_MEMORY_START,
     YUL_FMP_SLOT,
     VOID_OPS,

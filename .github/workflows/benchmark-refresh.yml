@@ -1,0 +1,78 @@
+name: Benchmark Refresh
+
+on:
+  push:
+    branches: [main, master]
+    paths-ignore:
+      - benchmark_report.md
+      - benchmark_data.json
+  workflow_dispatch:
+
+concurrency:
+  group: benchmark-refresh-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    name: Refresh Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Setup environment
+        uses: ./.github/actions/setup-environment
+        with:
+          python-version: '3.11'
+          solc-version: '0.8.30'
+
+      - name: Discover benchmark contracts
+        id: contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONTRACTS=$(find foundry/src/bench -maxdepth 1 -name '*.sol' -print \
+            | sed 's|.*/||' \
+            | sed 's|\.sol$||' \
+            | sort \
+            | paste -sd, -)
+          COUNT=$(echo "${CONTRACTS}" | tr ',' '\n' | sed '/^$/d' | wc -l | tr -d ' ')
+          echo "contracts=${CONTRACTS}" >> "${GITHUB_OUTPUT}"
+          echo "count=${COUNT}" >> "${GITHUB_OUTPUT}"
+          echo "Discovered ${COUNT} benchmark contracts"
+
+      - name: Run full benchmark suite
+        run: |
+          python3.11 tools/benchmark.py \
+            --output benchmark_report.md \
+            --json benchmark_data.json \
+            --contracts "${{ steps.contracts.outputs.contracts }}" \
+            --gas
+
+      - name: Open benchmark update PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(bench): refresh benchmark artifacts"
+          title: "chore(bench): refresh benchmark report/data"
+          body: |
+            Automated benchmark refresh after merge to `${{ github.ref_name }}`.
+
+            - Bench contracts: `${{ steps.contracts.outputs.count }}`
+            - Updated files:
+              - `benchmark_report.md`
+              - `benchmark_data.json`
+          branch: codex/benchmark-refresh
+          delete-branch: true
+          add-paths: |
+            benchmark_report.md
+            benchmark_data.json
+          labels: |
+            benchmarks
+            automated

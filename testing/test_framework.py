@@ -1,35 +1,5 @@
 #!/usr/bin/env python3
-"""
-Yul2Venom Test Framework - Comprehensive transpilation testing and analysis.
-
-USAGE:
-    python3 test_framework.py --test-all          # Full dry run: transpile + test all
-    python3 test_framework.py --prepare-all       # Prepare (compile Solidity to Yul)
-    python3 test_framework.py --transpile-all     # Transpile all contracts
-    python3 test_framework.py --analyze <vnm>     # Analyze VNM file
-
-CONTRACT CATEGORIES:
-    Each category has specific bytecode requirements for its test pattern:
-
-    ┌─────────────┬─────────────────────┬──────────────────────────────────┐
-    │ Category    │ Bytecode Type       │ Test Pattern                     │
-    ├─────────────┼─────────────────────┼──────────────────────────────────┤
-    │ core/       │ runtime only        │ vm.etch (direct code injection)  │
-    │ bench/      │ runtime only        │ vm.etch (direct code injection)  │
-    │ repro/      │ runtime only        │ vm.etch (direct code injection)  │
-    │ init/       │ init + runtime      │ CREATE opcode (deployment)       │
-    └─────────────┴─────────────────────┴──────────────────────────────────┘
-
-    - Runtime only: Pure runtime bytecode for vm.etch tests
-    - Init + runtime: Full init code that decodes constructor args at deploy time
-
-FEATURES:
-    1. Batch preparation (Solidity -> Yul)
-    2. Smart transpilation (knows bytecode type per category)
-    3. Automated Forge test execution
-    4. VNM IR analysis (phi nodes, memory ops, loops)
-    5. Bytecode comparison tools
-"""
+"""Test harness for prepare/transpile flows and Forge regression runs."""
 
 import subprocess
 import sys
@@ -44,9 +14,18 @@ from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from enum import Enum
 
-# Directory constants
+# Ensure project root is importable when script is executed directly.
 SCRIPT_DIR = Path(__file__).parent.absolute()
 YUL2VENOM_DIR = SCRIPT_DIR.parent
+if str(YUL2VENOM_DIR) not in sys.path:
+    sys.path.insert(0, str(YUL2VENOM_DIR))
+
+try:
+    from yul2venom.utils.env import env_str
+except ImportError:
+    from utils.env import env_str
+
+# Directory constants
 CONFIGS_DIR = YUL2VENOM_DIR / "configs"
 CONFIGS_BENCH_DIR = YUL2VENOM_DIR / "configs" / "bench"
 CONFIGS_INIT_DIR = YUL2VENOM_DIR / "configs" / "init"
@@ -63,6 +42,20 @@ FOUNDRY_SRC_REPRO = FOUNDRY_DIR / "src" / "repro"
 PREPARE_TIMEOUT = 60
 TRANSPILE_TIMEOUT = 120
 FORGE_TEST_TIMEOUT = 300
+
+CATEGORY_CONFIG_DIRS = {
+    "core": CONFIGS_DIR,
+    "bench": CONFIGS_BENCH_DIR,
+    "init": CONFIGS_INIT_DIR,
+    "repro": CONFIGS_REPRO_DIR,
+}
+
+CATEGORY_SOURCE_DIRS = {
+    "core": FOUNDRY_SRC,
+    "bench": FOUNDRY_SRC_BENCH,
+    "init": FOUNDRY_SRC_INIT,
+    "repro": FOUNDRY_SRC_REPRO,
+}
 
 
 class BytecodeType(Enum):
@@ -158,6 +151,46 @@ def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[boo
         return False, "", str(e)
 
 
+def _config_name(config_path: str | Path) -> str:
+    return Path(config_path).stem.replace('.yul2venom', '')
+
+
+def _missing_yul_result(config_path: str, error_message: str = "Yul file not found") -> TranspileResult:
+    return TranspileResult(
+        config_path=config_path,
+        success=False,
+        error_message=error_message,
+    )
+
+
+def _save_transpile_results(results: List[TranspileResult]) -> None:
+    DEBUG_DIR.mkdir(exist_ok=True)
+    results_path = DEBUG_DIR / 'transpile_results.json'
+    with open(results_path, 'w') as f:
+        json.dump([r.to_dict() for r in results], f, indent=2)
+    print(f"Results saved to {results_path}")
+
+
+def _collect_config_entries(
+    include_core: bool = True,
+    include_bench: bool = True,
+    include_init: bool = True,
+    include_repro: bool = True,
+) -> List[Tuple[str, Path]]:
+    entries: List[Tuple[str, Path]] = []
+    enabled = {
+        "core": include_core,
+        "bench": include_bench,
+        "init": include_init,
+        "repro": include_repro,
+    }
+    for category, directory in CATEGORY_CONFIG_DIRS.items():
+        if not enabled[category] or not directory.exists():
+            continue
+        entries.extend((category, cfg) for cfg in directory.glob('*.yul2venom.json'))
+    return entries
+
+
 def discover_contracts() -> Dict[str, Tuple[Path, Path]]:
     """Discover all Solidity contracts from foundry/src/ directories.
     
@@ -165,38 +198,15 @@ def discover_contracts() -> Dict[str, Tuple[Path, Path]]:
     This works even when configs don't exist yet.
     """
     mapping = {}
-    
-    # Core contracts (foundry/src/*.sol -> configs/*.yul2venom.json)
-    for sol in FOUNDRY_SRC.glob("*.sol"):
-        name = sol.stem
-        config_path = CONFIGS_DIR / f"{name}.yul2venom.json"
-        yul_path = OUTPUT_DIR / f"{name}.yul"
-        mapping[str(config_path)] = (sol, yul_path)
-    
-    # Bench contracts (foundry/src/bench/*.sol -> configs/bench/*.yul2venom.json)
-    if FOUNDRY_SRC_BENCH.exists():
-        for sol in FOUNDRY_SRC_BENCH.glob("*.sol"):
+    for category, src_dir in CATEGORY_SOURCE_DIRS.items():
+        cfg_dir = CATEGORY_CONFIG_DIRS[category]
+        if not src_dir.exists():
+            continue
+        for sol in src_dir.glob("*.sol"):
             name = sol.stem
-            config_path = CONFIGS_BENCH_DIR / f"{name}.yul2venom.json"
+            config_path = cfg_dir / f"{name}.yul2venom.json"
             yul_path = OUTPUT_DIR / f"{name}.yul"
             mapping[str(config_path)] = (sol, yul_path)
-    
-    # Init contracts (foundry/src/init/*.sol -> configs/init/*.yul2venom.json)
-    if FOUNDRY_SRC_INIT.exists():
-        for sol in FOUNDRY_SRC_INIT.glob("*.sol"):
-            name = sol.stem
-            config_path = CONFIGS_INIT_DIR / f"{name}.yul2venom.json"
-            yul_path = OUTPUT_DIR / f"{name}.yul"
-            mapping[str(config_path)] = (sol, yul_path)
-    
-    # Repro contracts (foundry/src/repro/*.sol -> configs/repro/*.yul2venom.json)
-    if FOUNDRY_SRC_REPRO.exists():
-        for sol in FOUNDRY_SRC_REPRO.glob("*.sol"):
-            name = sol.stem
-            config_path = CONFIGS_REPRO_DIR / f"{name}.yul2venom.json"
-            yul_path = OUTPUT_DIR / f"{name}.yul"
-            mapping[str(config_path)] = (sol, yul_path)
-    
     return mapping
 
 
@@ -234,7 +244,15 @@ def transpile_contract(config_path: str, runtime_only: bool = False, with_init: 
     import time
     start = time.time()
     
-    cmd = ["python3.11", "yul2venom.py", "transpile", config_path, "-O", "O2"]
+    # By default keep O2 for stable apples-to-apples regression snapshots.
+    # Override with:
+    #   Y2V_TEST_OPT_LEVEL=native
+    #   Y2V_TEST_OPT_LEVEL=yul-o2
+    #   Y2V_TEST_OPT_LEVEL=config   (use yul2venom config default)
+    test_opt_level = env_str("Y2V_TEST_OPT_LEVEL", "O2")
+    cmd = ["python3.11", "yul2venom.py", "transpile", config_path]
+    if test_opt_level and test_opt_level.lower() != "config":
+        cmd += ["-O", test_opt_level]
     if runtime_only:
         cmd.append("--runtime-only")
     if with_init:
@@ -263,10 +281,10 @@ def transpile_contract(config_path: str, runtime_only: bool = False, with_init: 
         config = Path(config_path)
         # Determine output path based on config location
         if "bench" in str(config):
-            name = config.stem.replace('.yul2venom', '')
+            name = _config_name(config)
             bin_path = OUTPUT_DIR / 'bench' / f'{name}_opt.bin'
         else:
-            name = config.stem.replace('.yul2venom', '')
+            name = _config_name(config)
             bin_path = OUTPUT_DIR / f'{name}_opt.bin'
         
         if bin_path.exists():
@@ -346,7 +364,7 @@ def prepare_all(verbose: bool = True) -> List[Tuple[str, bool, str]]:
     results = []
     
     for config_path, (sol_path, yul_path) in sorted(mapping.items()):
-        name = Path(config_path).stem.replace('.yul2venom', '')
+        name = _config_name(config_path)
         if verbose:
             print(f"  {name:30s} ... ", end='', flush=True)
         
@@ -377,46 +395,40 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
         include_bench: If True, include bench contracts from configs/bench/
         include_init: If True, include init contracts from configs/init/ (uses --with-init flag)
     """
-    results = []
-    
-    # Collect core of configs
-    configs = list(CONFIGS_DIR.glob('*.yul2venom.json'))
-    if include_bench and CONFIGS_BENCH_DIR.exists():
-        configs.extend(CONFIGS_BENCH_DIR.glob('*.yul2venom.json'))
-    # Always include repro configs (they use runtime-only like bench)
-    if CONFIGS_REPRO_DIR.exists():
-        configs.extend(CONFIGS_REPRO_DIR.glob('*.yul2venom.json'))
-    
-    # Collect init configs separately (need special handling with --with-init)
-    init_configs = []
-    if include_init and CONFIGS_INIT_DIR.exists():
-        init_configs = list(CONFIGS_INIT_DIR.glob('*.yul2venom.json'))
-    
-    total_configs = len(configs) + len(init_configs)
-    print(f"Found {total_configs} configs to transpile ({len(configs)} core/bench, {len(init_configs)} init)")
+    results: List[TranspileResult] = []
+
+    non_init = _collect_config_entries(
+        include_core=True,
+        include_bench=include_bench,
+        include_init=False,
+        include_repro=True,
+    )
+    init_entries = _collect_config_entries(
+        include_core=False,
+        include_bench=False,
+        include_init=include_init,
+        include_repro=False,
+    )
+
+    total_configs = len(non_init) + len(init_entries)
+    print(f"Found {total_configs} configs to transpile ({len(non_init)} core/bench, {len(init_entries)} init)")
     print("=" * 60)
     
     passed = 0
     failed = 0
     
-    # Transpile core and bench configs
-    for config in sorted(configs):
-        name = config.stem.replace('.yul2venom', '')
-        
-        # Check if Yul exists
-        if not check_yul_exists(str(config)):
+    for _, config in sorted(non_init):
+        config_str = str(config)
+        name = _config_name(config)
+
+        if not check_yul_exists(config_str):
             print(f"  {name:30s} ... ✗ Yul file not found")
             failed += 1
-            results.append(TranspileResult(
-                config_path=str(config),
-                success=False,
-                error_message="Yul file not found"
-            ))
+            results.append(_missing_yul_result(config_str))
             continue
         
         print(f"  {name:30s} ... ", end='', flush=True)
-        
-        result = transpile_contract(str(config), runtime_only=runtime_only)
+        result = transpile_contract(config_str, runtime_only=runtime_only)
         results.append(result)
         
         if result.success:
@@ -426,24 +438,18 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
             failed += 1
             print(f"✗ {result.error_message[:50]}")
     
-    # Transpile init configs with --with-init flag
-    for config in sorted(init_configs):
-        name = config.stem.replace('.yul2venom', '')
-        
-        if not check_yul_exists(str(config)):
+    for _, config in sorted(init_entries):
+        config_str = str(config)
+        name = _config_name(config)
+
+        if not check_yul_exists(config_str):
             print(f"  {name:30s} ... ✗ Yul file not found")
             failed += 1
-            results.append(TranspileResult(
-                config_path=str(config),
-                success=False,
-                error_message="Yul file not found"
-            ))
+            results.append(_missing_yul_result(config_str))
             continue
         
         print(f"  {name:30s} ... ", end='', flush=True)
-        
-        # Init contracts use --with-init, not runtime_only
-        result = transpile_contract(str(config), with_init=True)
+        result = transpile_contract(config_str, with_init=True)
         results.append(result)
         
         if result.success:
@@ -456,12 +462,7 @@ def transpile_all(runtime_only: bool = False, include_bench: bool = True, includ
     print("=" * 60)
     print(f"Results: {passed} passed, {failed} failed, {len(results)} total")
     
-    # Save results
-    DEBUG_DIR.mkdir(exist_ok=True)
-    results_path = DEBUG_DIR / 'transpile_results.json'
-    with open(results_path, 'w') as f:
-        json.dump([r.to_dict() for r in results], f, indent=2)
-    print(f"Results saved to {results_path}")
+    _save_transpile_results(results)
     
     return results
 
@@ -479,36 +480,18 @@ def transpile_for_testing() -> List[TranspileResult]:
     
     Returns list of all transpilation results.
     """
-    results = []
-    
-    # Collect ALL configs from all directories
-    all_configs = []
-    
-    # Core configs
-    for config in CONFIGS_DIR.glob('*.yul2venom.json'):
-        all_configs.append(('core', config))
-    
-    # Bench configs
-    if CONFIGS_BENCH_DIR.exists():
-        for config in CONFIGS_BENCH_DIR.glob('*.yul2venom.json'):
-            all_configs.append(('bench', config))
-    
-    # Repro configs
-    if CONFIGS_REPRO_DIR.exists():
-        for config in CONFIGS_REPRO_DIR.glob('*.yul2venom.json'):
-            all_configs.append(('repro', config))
-    
-    # Init configs
-    if CONFIGS_INIT_DIR.exists():
-        for config in CONFIGS_INIT_DIR.glob('*.yul2venom.json'):
-            all_configs.append(('init', config))
+    results: List[TranspileResult] = []
+    all_configs = _collect_config_entries(
+        include_core=True,
+        include_bench=True,
+        include_init=True,
+        include_repro=True,
+    )
     
     # Group by category for display
     categories = {}
     for cat, config in all_configs:
-        if cat not in categories:
-            categories[cat] = []
-        categories[cat].append(config)
+        categories.setdefault(cat, []).append(config)
     
     total = len(all_configs)
     print(f"Transpiling {total} contracts for testing")
@@ -523,31 +506,23 @@ def transpile_for_testing() -> List[TranspileResult]:
     
     # Transpile each config with correct bytecode type
     for category, config in sorted(all_configs, key=lambda x: (x[0], x[1].stem)):
-        name = config.stem.replace('.yul2venom', '')
-        bytecode_type = get_bytecode_type(str(config))
+        config_str = str(config)
+        name = _config_name(config)
+        bytecode_type = get_bytecode_type(config_str)
         
-        if not check_yul_exists(str(config)):
+        if not check_yul_exists(config_str):
             print(f"  [{category:5s}] {name:30s} ... ✗ Yul not found")
             failed += 1
-            results.append(TranspileResult(
-                config_path=str(config),
-                success=False,
-                error_message="Yul file not found"
-            ))
+            results.append(_missing_yul_result(config_str))
             continue
         
         print(f"  [{category:5s}] {name:30s} ... ", end='', flush=True)
         
-        # Transpilation strategy:
-        # - init/  -> --with-init (full init code for CREATE deployment)
-        # - all others -> default (generates both _opt.bin and _opt_runtime.bin)
-        # Tests need both files: _opt.bin (for CREATE) and _opt_runtime.bin (for vm.etch)
         if bytecode_type == BytecodeType.WITH_INIT:
-            result = transpile_contract(str(config), with_init=True)
+            result = transpile_contract(config_str, with_init=True)
             type_label = "init"
         else:
-            # Default mode generates both _opt.bin and _opt_runtime.bin
-            result = transpile_contract(str(config))
+            result = transpile_contract(config_str)
             type_label = "both"
         
         results.append(result)
@@ -562,12 +537,7 @@ def transpile_for_testing() -> List[TranspileResult]:
     print("=" * 60)
     print(f"Results: {passed} passed, {failed} failed, {len(results)} total")
     
-    # Save results
-    DEBUG_DIR.mkdir(exist_ok=True)
-    results_path = DEBUG_DIR / 'transpile_results.json'
-    with open(results_path, 'w') as f:
-        json.dump([r.to_dict() for r in results], f, indent=2)
-    print(f"Results saved to {results_path}")
+    _save_transpile_results(results)
     
     return results
 
@@ -724,13 +694,19 @@ def transpile_init_all() -> List[TranspileResult]:
     
     Init contracts require full init bytecode (not runtime-only) for deployment testing.
     """
-    results = []
-    
+    results: List[TranspileResult] = []
     if not CONFIGS_INIT_DIR.exists():
         print("No init configs found")
         return results
     
-    configs = list(CONFIGS_INIT_DIR.glob('*.yul2venom.json'))
+    configs = [
+        cfg for _, cfg in _collect_config_entries(
+            include_core=False,
+            include_bench=False,
+            include_init=True,
+            include_repro=False,
+        )
+    ]
     
     print(f"Found {len(configs)} init configs to transpile")
     print("=" * 60)
@@ -739,22 +715,18 @@ def transpile_init_all() -> List[TranspileResult]:
     failed = 0
     
     for config in sorted(configs):
-        name = config.stem.replace('.yul2venom', '')
+        config_str = str(config)
+        name = _config_name(config)
         
-        # Check if Yul exists
-        if not check_yul_exists(str(config)):
+        if not check_yul_exists(config_str):
             print(f"  {name:30s} ... ✗ Yul file not found")
             failed += 1
-            results.append(TranspileResult(
-                config_path=str(config),
-                success=False,
-                error_message="Yul file not found"
-            ))
+            results.append(_missing_yul_result(config_str))
             continue
         
         print(f"  {name:30s} ... ", end='', flush=True)
         
-        result = transpile_contract(str(config), with_init=True)
+        result = transpile_contract(config_str, with_init=True)
         results.append(result)
         
         if result.success:
