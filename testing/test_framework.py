@@ -151,6 +151,41 @@ def run_command(cmd: List[str], cwd: str = None, timeout: int = 60) -> Tuple[boo
         return False, "", str(e)
 
 
+def _config_project_root(config_path: str) -> Path:
+    """Infer project root from config path (supports nested configs/* directories)."""
+    config_dir = Path(config_path).resolve().parent
+    for candidate in (config_dir, *config_dir.parents):
+        if candidate.name.lower() in {"configs", "config"}:
+            return candidate.parent
+    return config_dir
+
+
+def _resolve_config_reference(config_path: str, path_value: str) -> Optional[Path]:
+    """Resolve path from config with config-dir/project-root/script-dir fallbacks."""
+    if not path_value:
+        return None
+
+    raw = Path(path_value)
+    if raw.is_absolute():
+        return raw
+
+    config_dir = Path(config_path).resolve().parent
+    project_root = _config_project_root(config_path)
+
+    config_relative = (config_dir / path_value).resolve()
+    project_relative = (project_root / path_value).resolve()
+    script_relative = (YUL2VENOM_DIR / path_value).resolve()
+
+    for candidate in (config_relative, project_relative, script_relative):
+        if candidate.exists():
+            return candidate
+
+    under_config_tree = any(
+        p.name.lower() in {"configs", "config"} for p in (config_dir, *config_dir.parents)
+    )
+    return project_relative if under_config_tree else config_relative
+
+
 def _config_name(config_path: str | Path) -> str:
     return Path(config_path).stem.replace('.yul2venom', '')
 
@@ -308,8 +343,9 @@ def check_yul_exists(config_path: str) -> bool:
     try:
         with open(config_path, 'r') as f:
             config = json.load(f)
-        yul_path = YUL2VENOM_DIR / config.get('yul', '')
-        return yul_path.exists()
+        yul_value = config.get('yul', '')
+        yul_path = _resolve_config_reference(config_path, yul_value)
+        return bool(yul_path and yul_path.exists())
     except:
         return False
 

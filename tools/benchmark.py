@@ -308,6 +308,41 @@ def run_command(cmd: list[str], cwd: Optional[Path] = None, timeout: int = 120, 
         return -1, "", str(e)
 
 
+def _config_project_root(config_path: Path) -> Path:
+    """Infer project root from config path (supports nested configs/* directories)."""
+    config_dir = config_path.resolve().parent
+    for candidate in (config_dir, *config_dir.parents):
+        if candidate.name.lower() in {"configs", "config"}:
+            return candidate.parent
+    return config_dir
+
+
+def _resolve_config_reference(config_path: Path, path_value: str) -> Optional[Path]:
+    """Resolve a config path value with compatibility fallbacks."""
+    if not path_value:
+        return None
+
+    raw = Path(path_value)
+    if raw.is_absolute():
+        return raw
+
+    config_dir = config_path.resolve().parent
+    project_root = _config_project_root(config_path)
+
+    config_relative = (config_dir / path_value).resolve()
+    project_relative = (project_root / path_value).resolve()
+    script_relative = (PROJECT_ROOT / path_value).resolve()
+
+    for candidate in (config_relative, project_relative, script_relative):
+        if candidate.exists():
+            return candidate
+
+    under_config_tree = any(
+        p.name.lower() in {"configs", "config"} for p in (config_dir, *config_dir.parents)
+    )
+    return project_relative if under_config_tree else config_relative
+
+
 def get_bytecode_size(path: Path) -> int:
     """Get bytecode size in bytes from a bin file (binary or hex text)."""
     if not path.exists():
@@ -420,36 +455,29 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
                 elif line.strip().startswith('•'):
                     print(f"      {line.strip()}")
         
-        # Find the output bytecode file FIRST
-        # yul2venom.py outputs to same directory as yul file, named <Contract>_opt.bin
+        # Find output bytecode file.
+        # yul2venom.py writes output beside the resolved Yul path.
         with open(config_path) as f:
             cfg = json.load(f)
-        
-        # Get contract name and output directory from config's yul path
+
         contract_name = contract
-        yul_path = cfg.get("yul", "")
-        yul_output_dir = PROJECT_ROOT / "output"  # default
-        if yul_path:
-            # Extract contract name from yul path like "output/Arithmetic.yul"
-            yul_path_obj = Path(yul_path)
-            base = yul_path_obj.stem
-            if base:
-                contract_name = base
-            # yul2venom.py outputs to the same directory as the yul file
-            # e.g., output/Arithmetic.yul -> output/Arithmetic_opt.bin
-            if yul_path_obj.parent.name:
-                yul_output_dir = PROJECT_ROOT / yul_path_obj.parent
-        
-        # Primary: look in same directory as yul file
-        bin_path = yul_output_dir / f"{contract_name}_opt.bin"
-        
-        if not bin_path.exists():
-            # Fallback 1: config.output_dir (for backwards compatibility)
-            bin_path = config.output_dir / f"{contract_name}_opt.bin"
-        
-        if not bin_path.exists():
-            # Try _opt_runtime.bin pattern (older format)
-            bin_path = config.output_dir / f"{contract_name}_opt_runtime.bin"
+        resolved_yul = _resolve_config_reference(config_path, cfg.get("yul", ""))
+        if resolved_yul and resolved_yul.stem:
+            contract_name = resolved_yul.stem
+
+        candidate_paths = []
+        if resolved_yul:
+            yul_output_dir = resolved_yul.parent
+            candidate_paths.extend([
+                yul_output_dir / f"{contract_name}_opt.bin",
+                yul_output_dir / f"{contract_name}_opt_runtime.bin",
+            ])
+        candidate_paths.extend([
+            config.output_dir / f"{contract_name}_opt.bin",
+            config.output_dir / f"{contract_name}_opt_runtime.bin",
+        ])
+
+        bin_path = next((p for p in candidate_paths if p.exists()), candidate_paths[-1])
         
         # Check success by output file existence (more reliable than return code)
         # Return code may be non-zero if optimizer prints warnings to stderr
@@ -461,7 +489,7 @@ def transpile_contract(config: BenchmarkConfig, contract: str) -> CompilationRes
         size = get_bytecode_size(bin_path)
         elapsed = (time.time() - start_time) * 1000
         
-        return CompilationResult(True, size, compile_time_ms=elapsed)
+        return CompilationResult(True, size, compile_time_ms=elapsed, bytecode_path=bin_path)
         
     except Exception as e:
         return CompilationResult(False, 0, str(e))
@@ -688,9 +716,8 @@ def benchmark_contract(config: BenchmarkConfig, contract: str) -> ContractResult
         print(f"  [Gas Benchmarks]")
         
         # Gas test for transpiled bytecode
-        if results.transpiled.success:
-            # yul2venom.py writes to output/bench/<Contract>_opt.bin (from config)
-            bin_path = config.output_dir / f"{contract}_opt.bin"
+        if results.transpiled.success and results.transpiled.bytecode_path:
+            bin_path = results.transpiled.bytecode_path
             if bin_path.exists():
                 print(f"    Transpiled...", end=" ", flush=True)
                 gas = run_gas_benchmark(config, contract, bin_path)
