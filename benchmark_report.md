@@ -1,6 +1,6 @@
 # Yul2Venom Benchmark Report
 
-**Generated:** 2026-02-06 20:18:50
+**Generated:** 2026-02-06 20:42:09
 **Baseline:** `default_200`
 
 ---
