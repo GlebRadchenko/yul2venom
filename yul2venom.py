@@ -80,10 +80,15 @@ sys.path.insert(0, str(VYPER_PATH))
 
 def _config_project_root(config_path: str) -> str:
     """Infer project root from config path."""
-    config_dir = os.path.dirname(os.path.abspath(config_path))
-    if os.path.basename(config_dir).lower() in {"configs", "config"}:
-        return os.path.dirname(config_dir)
-    return config_dir
+    config_dir = Path(config_path).resolve().parent
+
+    # Support nested config layouts like configs/bench/*.json and configs/init/*.json
+    # by walking up the directory tree until we find the configs root.
+    for candidate in (config_dir, *config_dir.parents):
+        if candidate.name.lower() in {"configs", "config"}:
+            return str(candidate.parent)
+
+    return str(config_dir)
 
 
 def _resolve_config_path(config_path: str, path_value: str) -> str:
@@ -107,7 +112,12 @@ def _resolve_config_path(config_path: str, path_value: str) -> str:
         if os.path.exists(candidate):
             return candidate
 
-    if os.path.basename(config_dir).lower() in {"configs", "config"}:
+    config_path_obj = Path(config_dir).resolve()
+    under_config_tree = any(
+        p.name.lower() in {"configs", "config"} for p in (config_path_obj, *config_path_obj.parents)
+    )
+
+    if under_config_tree:
         return project_relative
     return config_relative
 
@@ -1030,12 +1040,15 @@ def cmd_prepare(args):
         print("    No external libraries detected")
     
     # Build config - merge with existing
-    # Use project-local relative paths (relative to config directory).
+    # Always store paths relative to the inferred project root to keep configs portable.
     def make_relative(p, base_dir=project_root):
+        abs_p = os.path.abspath(p)
+        abs_base = os.path.abspath(base_dir)
         try:
-            return str(Path(p).resolve().relative_to(Path(base_dir).resolve()))
+            return os.path.relpath(abs_p, abs_base)
         except ValueError:
-            return os.path.abspath(p)  # Keep absolute if outside project root
+            # e.g. different Windows drives where relpath is undefined
+            return abs_p
     
     config = {
         "version": "1.0",
